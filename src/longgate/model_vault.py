@@ -385,6 +385,35 @@ def list_installed(
     return rows
 
 
+def _disk_preflight(
+    root: Path,
+    spec: ModelSpec,
+) -> dict[str, float]:
+    usage = shutil.disk_usage(
+        root
+    )
+    free_gb = round(
+        usage.free / 1_000_000_000,
+        2,
+    )
+    required_gb = round(
+        spec.size_gb + 1.0,
+        2,
+    )
+    if free_gb < required_gb:
+        raise OSError(
+            "Not enough free space in the Model Vault. "
+            f"Model={spec.alias}, free={free_gb} GB, "
+            f"required≈{required_gb} GB. "
+            "Choose a smaller model or move LONGGATE_MODEL_VAULT "
+            "to a drive with more free space."
+        )
+    return {
+        "free_gb": free_gb,
+        "required_gb": required_gb,
+    }
+
+
 def install_model(
     alias: str,
     vault_dir: str | Path | None = None,
@@ -462,6 +491,11 @@ def install_model(
             "Move or delete it before reinstalling."
         )
 
+    disk_preflight = _disk_preflight(
+        root,
+        spec,
+    )
+
     staging = (
         root
         / ".staging"
@@ -493,9 +527,8 @@ def install_model(
                 "Downloaded model SHA-256 does not match the "
                 "Long Gate catalog. Installation aborted."
             )
-        shutil.copy2(
-            downloaded,
-            destination,
+        downloaded.replace(
+            destination
         )
     finally:
         shutil.rmtree(
@@ -531,6 +564,7 @@ def install_model(
         "verified": True,
         "downloaded": True,
         "network_mode": "setup-only",
+        "disk_preflight": disk_preflight,
     }
 
 
@@ -587,7 +621,7 @@ def verify_model(
     )
     if not path.is_file():
         return {
-            "alias": alias,
+            "alias": resolved_alias,
             "path": str(path),
             "exists": False,
             "verified": False,

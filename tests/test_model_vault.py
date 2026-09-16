@@ -3,6 +3,7 @@ from pathlib import Path
 
 from longgate.model_vault import (
     MODEL_CATALOG,
+    _disk_preflight,
     recommend_model,
     resolve_model_path,
     setup_model,
@@ -193,3 +194,49 @@ def test_setup_model_uses_recommendation_and_verification(
     assert "--model auto" in result[
         "private_processing_example"
     ]
+
+
+
+def test_disk_preflight_reports_space(
+    tmp_path: Path,
+    monkeypatch,
+):
+    class Usage:
+        free = 20_000_000_000
+
+    monkeypatch.setattr(
+        "longgate.model_vault.shutil.disk_usage",
+        lambda _path: Usage(),
+    )
+    result = _disk_preflight(
+        tmp_path,
+        MODEL_CATALOG["qwen3-4b"],
+    )
+    assert result["free_gb"] == 20.0
+    assert result["required_gb"] == 3.5
+
+
+def test_disk_preflight_fails_with_helpful_message(
+    tmp_path: Path,
+    monkeypatch,
+):
+    class Usage:
+        free = 2_000_000_000
+
+    monkeypatch.setattr(
+        "longgate.model_vault.shutil.disk_usage",
+        lambda _path: Usage(),
+    )
+    try:
+        _disk_preflight(
+            tmp_path,
+            MODEL_CATALOG["qwen3-4b"],
+        )
+    except OSError as exc:
+        message = str(exc)
+        assert "LONGGATE_MODEL_VAULT" in message
+        assert "qwen3-4b" in message
+    else:
+        raise AssertionError(
+            "Expected disk preflight to fail."
+        )

@@ -17,9 +17,23 @@ The RAM recommendation is approximate. Context length, GPU offload, the operatin
 Check:
 
 1. Internet access is available in **Model Setup Mode**.
-2. You have enough free disk space.
+2. You have enough free disk space. Long Gate checks the selected Model Vault before downloading and reserves roughly the model size plus 1 GB of headroom.
 3. Hugging Face is reachable from your network.
 4. The Model Vault directory is writable.
+
+If the default drive is full, move the Model Vault:
+
+```bash
+export LONGGATE_MODEL_VAULT=/larger/drive/longgate-models
+longgate model setup
+```
+
+Windows PowerShell:
+
+```powershell
+$env:LONGGATE_MODEL_VAULT = "D:\LongGate\models"
+longgate model setup
+```
 
 Retry:
 
