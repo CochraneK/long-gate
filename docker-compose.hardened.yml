@@ -1,0 +1,40 @@
+services:
+  local-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.local
+    network_mode: none
+    read_only: true
+    volumes:
+      - ${LONGGATE_PRIVATE_DIR:?set LONGGATE_PRIVATE_DIR}:/private:ro
+      - ${LONGGATE_RUN_DIR:-./longgate-runs}:/runs
+    tmpfs:
+      - /tmp
+    command:
+      - longgate
+      - run
+      - /private/input.csv
+      - --out
+      - /runs
+      - --backend
+      - auto
+
+  cloud-worker:
+    image: python:3.12-slim
+    read_only: true
+    volumes:
+      - ${LONGGATE_EGRESS_DIR:?set LONGGATE_EGRESS_DIR}:/safe:ro
+    tmpfs:
+      - /tmp
+    command:
+      - python
+      - -c
+      - |
+        from pathlib import Path
+        root = Path("/safe")
+        print("\n".join(str(p.relative_to(root)) for p in root.rglob("*") if p.is_file()))
+
+# Security invariant:
+# - local-worker sees /private and has no network.
+# - cloud-worker has network capability but sees /safe only.
+# - never add LONGGATE_PRIVATE_DIR or /private to cloud-worker.
