@@ -31,3 +31,5 @@
 - [Release ladder](release-ladder.md) — how Long Gate continues safely when a requested representation is rejected.
 
 - [Organization policy files](organization-policy.md) — reviewed JSON thresholds with fail-closed validation and provenance.
+
+- [Egress approval ledger](approval-ledger.md) — local path + SHA-256 + purpose approvals for network-agent artifact reads.

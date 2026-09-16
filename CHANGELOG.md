@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add hash-bound egress approvals and purpose-scoped MCP reads with an observational access log.
+
 - Add a non-dead-end release ladder: row-level synthetic rejection now falls back to guarded aggregate output or explicit local-only next actions.
 - Add machine-readable privacy blocker codes and remediation guidance.
 

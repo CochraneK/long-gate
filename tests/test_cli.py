@@ -51,3 +51,20 @@ def test_profile_file_parser():
     )
     assert args.command == "run"
     assert args.profile_file == "policy/org.json"
+
+
+def test_approve_egress_parser():
+    args = build_parser().parse_args(
+        [
+            "approve-egress",
+            "run/egress/safe.json",
+            "--workspace",
+            "run/egress",
+            "--ledger",
+            "approvals.jsonl",
+            "--purpose",
+            "interpret aggregate statistics",
+        ]
+    )
+    assert args.command == "approve-egress"
+    assert args.purpose == "interpret aggregate statistics"

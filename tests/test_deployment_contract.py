@@ -31,6 +31,10 @@ def test_hardened_compose_separates_raw_and_network_capabilities():
         )[0]
     )
     assert "/safe:ro" in cloud_block
+    assert "/policy/approvals.jsonl:ro" in cloud_block
+    assert "LONGGATE_APPROVAL_LEDGER: /policy/approvals.jsonl" in cloud_block
+    assert "LONGGATE_ACCESS_LOG: /access/access.jsonl" in cloud_block
+    assert "Dockerfile.network" in cloud_block
 
 
 def test_model_setup_worker_has_network_but_no_private_mount():

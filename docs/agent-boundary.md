@@ -4,7 +4,7 @@ Long Gate's network agent is a capability-limited consumer, not a general proces
 
 ## Filesystem contract
 
-The future network agent receives only an egress workspace:
+The network agent receives only an egress workspace **and must also present an exact declared purpose that matches a local hash-bound approval**:
 
 ```text
 /private                 local worker only
@@ -44,7 +44,11 @@ longgate-mcp
 The network-facing MCP server intentionally exposes only:
 
 - `gate_info`
-- `list_safe_files`
-- `read_safe_text(relative_path)`
+- `list_safe_files(purpose)`
+- `read_safe_text(relative_path, purpose)`
+
+Artifact access additionally requires `LONGGATE_APPROVAL_LEDGER`. The server has no tool for creating approvals.
 
 It does not expose a raw-path parameter, arbitrary shell execution, arbitrary Python execution, or source-data mounts.
+
+See [Egress approval ledger](approval-ledger.md) for the path + SHA-256 + purpose authorization layer and access logging.
