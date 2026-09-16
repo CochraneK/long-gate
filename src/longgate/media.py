@@ -7,6 +7,9 @@ from pathlib import Path
 from .pii import scan_text
 
 
+MAX_IMAGE_PIXELS = 100_000_000
+
+
 class MediaDependencyMissing(RuntimeError):
     pass
 
@@ -69,6 +72,15 @@ def _pillow_image(path: Path):
     return Image.open(path)
 
 
+def _validate_image_dimensions(width: int, height: int) -> None:
+    if width < 1 or height < 1:
+        raise ValueError("Image dimensions must be positive.")
+    if width * height > MAX_IMAGE_PIXELS:
+        raise ValueError(
+            "Image exceeds Long Gate's local pixel safety limit."
+        )
+
+
 def inspect_image_file(path: str | Path) -> ImageInspection:
     source = Path(path)
     suffix = source.suffix.lower()
@@ -79,6 +91,7 @@ def inspect_image_file(path: str | Path) -> ImageInspection:
         exif = image.getexif()
         gps_present = 34853 in exif
         width, height = image.size
+        _validate_image_dimensions(int(width), int(height))
         mode = str(image.mode)
 
     return ImageInspection(
@@ -117,6 +130,8 @@ def _ocr_pil_image(image: object) -> str:
 def ocr_image_local(path: str | Path) -> OCRInspection:
     source = Path(path)
     with _pillow_image(source) as image:
+        width, height = image.size
+        _validate_image_dimensions(int(width), int(height))
         text = _ocr_pil_image(image)
     findings = scan_text(text)
     return OCRInspection(
@@ -171,6 +186,8 @@ def ocr_pdf_local(
     chunks: list[str] = []
     for image in pages:
         try:
+            width, height = image.size
+            _validate_image_dimensions(int(width), int(height))
             chunks.append(_ocr_pil_image(image))
         finally:
             close = getattr(image, "close", None)
