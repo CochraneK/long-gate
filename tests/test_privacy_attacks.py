@@ -274,3 +274,32 @@ def test_fuzzy_longitudinal_linkage_rejects_negative_tolerance():
             numeric_tolerances={"age": -1},
             entity_column="person_id",
         )
+
+
+
+def test_ensemble_budget_preserves_full_attack():
+    members = pd.DataFrame({
+        "a": [0.0, 1.0],
+        "b": [0.0, 1.0],
+        "c": [0.0, 1.0],
+        "d": [0.0, 1.0],
+    })
+    holdout = pd.DataFrame({
+        "a": [10.0, 11.0],
+        "b": [10.0, 11.0],
+        "c": [10.0, 11.0],
+        "d": [10.0, 11.0],
+    })
+    result = ensemble_membership_diagnostic(
+        members,
+        holdout,
+        members.copy(),
+        ["a", "b", "c", "d"],
+        max_subset_size=2,
+        max_attacks=2,
+    )
+    assert result.attacks_run == 2
+    assert any(
+        attack["columns"] == ["a", "b", "c", "d"]
+        for attack in result.attack_results
+    )
