@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from .executor import correlation, describe_numeric, group_summary, ols
+from .doctor import capabilities\nfrom .executor import correlation, describe_numeric, group_summary, ols
 from .inspect import profile_dataframe
 from .io import load_table
 from .pii import scan_dataframe_values
@@ -23,12 +23,12 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--out", default="./longgate-runs")
     run.add_argument(
         "--backend",
-        default="demo",
-        help="demo, synthcity[:plugin], or mostlyai. v0.2 row-level egress remains fail-closed.",
+        default="auto",
+        help="auto, demo, synthcity[:plugin], or mostlyai. v0.2 row-level egress remains fail-closed.",
     )
     run.add_argument("--seed", type=int, default=42)
 
-    inspect = sub.add_parser("inspect", help="Local schema and PII-count inspection only.")
+    doctor = sub.add_parser("doctor", help="Show local Long Gate capabilities and optional engines.")\n\n    inspect = sub.add_parser("inspect", help="Local schema and PII-count inspection only.")
     inspect.add_argument("input")
 
     purpose = sub.add_parser("purpose", help="Show the disclosure mode for a requested purpose.")
@@ -48,7 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
 
-    if args.command == "run":
+    if args.command == "doctor":\n        print(json.dumps([c.to_dict() for c in capabilities()], indent=2, ensure_ascii=False))\n        return\n\n    if args.command == "run":
         result = run_pipeline(args.input, args.out, args.backend, args.seed)
         print(json.dumps({
             "run_id": result.run_id,
