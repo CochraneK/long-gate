@@ -60,20 +60,25 @@ def validate_compose_capability_contract(text: str) -> DeploymentContractResult:
     violations: list[dict[str, str]] = []
 
     for service, block in _service_blocks(text).items():
-        network_disabled = "network_mode: none" in block
+        effective_block = "\n".join(
+            line
+            for line in block.splitlines()
+            if not line.lstrip().startswith("#")
+        )
+        network_disabled = "network_mode: none" in effective_block
         private_data = (
-            "/private" in block
-            or "LONGGATE_PRIVATE_DIR" in block
+            "/private" in effective_block
+            or "LONGGATE_PRIVATE_DIR" in effective_block
         )
         model_read = (
-            "/models:ro" in block
-            or "LONGGATE_MODEL_VAULT: /models" in block
+            "/models:ro" in effective_block
+            or "LONGGATE_MODEL_VAULT: /models" in effective_block
         )
         model_write = (
             re.search(r":/models(?:\s|$)", block) is not None
-            and ":/models:ro" not in block
+            and ":/models:ro" not in effective_block
         )
-        safe_read = "/safe:ro" in block
+        safe_read = "/safe:ro" in effective_block
 
         capability = ServiceCapabilities(
             service=service,
