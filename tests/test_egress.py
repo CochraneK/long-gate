@@ -1,0 +1,27 @@
+from pathlib import Path
+
+import pandas as pd
+
+from longgate.egress import stage_egress
+from longgate.policy import PolicyDecision
+from longgate.types import ReleaseClass
+
+
+def _allow() -> PolicyDecision:
+    return PolicyDecision(True, ReleaseClass.SYNTHETIC, "test allow")
+
+
+def test_final_scan_blocks_direct_pii(tmp_path: Path):
+    df = pd.DataFrame({"note": ["email person@example.com"]})
+    payload, scan = stage_egress(df, tmp_path, _allow())
+    assert payload is None
+    assert scan["passed"] is False
+    assert scan["pii_hits"] >= 1
+
+
+def test_final_scan_allows_clean_payload(tmp_path: Path):
+    df = pd.DataFrame({"score": [1, 2, 3], "group": ["A", "B", "A"]})
+    payload, scan = stage_egress(df, tmp_path, _allow())
+    assert scan["passed"] is True
+    assert payload is not None
+    assert payload.exists()
