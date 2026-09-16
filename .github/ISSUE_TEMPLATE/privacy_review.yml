@@ -1,0 +1,20 @@
+name: Privacy / threat-model review
+description: Propose a privacy invariant, attack test, or threat-model improvement.
+title: "[Privacy]: "
+labels: ["privacy", "security"]
+body:
+  - type: textarea
+    id: threat
+    attributes:
+      label: Threat or failure mode
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / reproduction
+      description: Use synthetic data only. Do not publish sensitive data.
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Proposed invariant or mitigation
