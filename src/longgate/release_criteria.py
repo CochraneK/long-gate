@@ -49,6 +49,17 @@ def evaluate_row_level_release(
     It only says whether the minimum evidence package is complete enough for
     a separate human/policy decision in a future release process.
     """
+    for name, value in {
+        "max_near_copy_rate": max_near_copy_rate,
+        "max_membership_auc": max_membership_auc,
+        "max_attribute_inference_uplift": max_attribute_inference_uplift,
+        "max_longitudinal_linkage_rate": max_longitudinal_linkage_rate,
+    }.items():
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{name} must be numeric.")
+        if not 0 <= float(value) <= 1:
+            raise ValueError(f"{name} must be between 0 and 1.")
+
     thresholds = {
         "max_near_copy_rate": float(max_near_copy_rate),
         "max_membership_auc": float(max_membership_auc),
