@@ -13,7 +13,7 @@ from .io import load_table, save_table
 from .pii import scan_dataframe_values
 from .policy import PolicyEngine
 from .report import build_report
-from .types import ReleaseClass
+from .types import DataClass, ReleaseClass
 from .utils import sha256_file, utc_now, write_json
 
 
@@ -30,7 +30,7 @@ class RunResult:
 def run_pipeline(
     input_path: str | Path,
     out_root: str | Path = "./longgate-runs",
-    backend_name: str = "demo",
+    backend_name: str = "auto",
     seed: int = 42,
 ) -> RunResult:
     input_path = Path(input_path).resolve()
@@ -47,12 +47,21 @@ def run_pipeline(
     def event(name: str, detail: str) -> None:
         events.append({"time": utc_now(), "name": name, "detail": detail})
 
-    event("Run started", "Trusted local pipeline initialized; network transmission is disabled.")
+    event(
+        "Run started",
+        "Trusted local pipeline initialized; network transmission is disabled.",
+    )
     input_hash = sha256_file(input_path)
-    event("Source registered", "Input SHA-256 recorded; source row values are not written to the report.")
+    event(
+        "Source registered",
+        "Input SHA-256 recorded; source row values are not written to the report.",
+    )
 
     df = load_table(input_path)
-    event("Table loaded", f"Loaded {len(df)} rows and {len(df.columns)} columns locally.")
+    event(
+        "Table loaded",
+        f"Loaded {len(df)} rows and {len(df.columns)} columns locally.",
+    )
 
     profiles = profile_dataframe(df)
     event("Schema classified", "Columns classified locally by privacy role.")
@@ -60,42 +69,92 @@ def run_pipeline(
     source_pii = scan_dataframe_values(df)
     event(
         "Value-level PII scan completed",
-        f"Detected {source_pii.total_hits} direct-PII pattern hit(s) locally; only counts are recorded.",
+        (
+            f"Detected {source_pii.total_hits} direct-PII pattern hit(s) locally; "
+            "only counts are recorded."
+        ),
     )
 
     backend = get_backend(backend_name)
     syn = backend.generate(df, profiles, seed=seed)
     event(
         "Synthetic data generated",
-        f"Backend={backend.name}; direct identifier columns are handled outside model training where supported.",
+        (
+            f"Backend={backend.name}; direct identifiers are handled "
+            "outside model training where supported."
+        ),
     )
 
     synthetic_path = safe_dir / "synthetic.csv"
     save_table(syn, synthetic_path)
-    event("Synthetic artifact staged locally", "Synthetic table written to the local safe workspace.")
+    event(
+        "Synthetic artifact staged locally",
+        "Synthetic table written to the local safe workspace.",
+    )
 
-    audit = audit_dataset(df, syn, profiles, backend.certified_for_egress)
+    audit = audit_dataset(
+        df,
+        syn,
+        profiles,
+        backend.certified_for_egress,
+    )
     event(
         "Privacy audit completed",
         "PASS" if audit.passed else "BLOCKED: " + "; ".join(audit.reasons),
     )
 
-    decision = PolicyEngine().decide(ReleaseClass.SYNTHETIC, audit)
-    event("Policy evaluated", f"allow={decision.allow}; {decision.reason}")
+    decision = PolicyEngine().decide(
+        ReleaseClass.SYNTHETIC,
+        audit,
+    )
+    event(
+        "Policy evaluated",
+        f"allow={decision.allow}; {decision.reason}",
+    )
 
-    staged_payload, egress_scan = stage_egress(syn, out_dir, decision)
+    identifier_columns = [
+        p.name
+        for p in profiles
+        if p.data_class == DataClass.IDENTIFIER
+    ]
+    outbound = syn.drop(
+        columns=identifier_columns,
+        errors="ignore",
+    )
+    event(
+        "Direct identifiers removed from outbound view",
+        (
+            f"Dropped {len(identifier_columns)} identifier column(s) "
+            "before final egress scan."
+        ),
+    )
+
+    staged_payload, egress_scan = stage_egress(
+        outbound,
+        out_dir,
+        decision,
+    )
     if staged_payload:
         event(
             "Final egress scan passed",
-            "No direct-PII pattern was detected in the outbound payload; payload staged locally only.",
+            (
+                "No direct-PII pattern was detected in the outbound payload; "
+                "payload staged locally only."
+            ),
         )
     elif decision.allow and not egress_scan["passed"]:
         event(
             "Final egress scan blocked release",
-            f"Detected {egress_scan['pii_hits']} direct-PII pattern hit(s); no payload created.",
+            (
+                f"Detected {egress_scan['pii_hits']} direct-PII pattern hit(s); "
+                "no payload created."
+            ),
         )
     else:
-        event("Egress blocked", "No network-eligible payload was created.")
+        event(
+            "Egress blocked",
+            "No network-eligible payload was created.",
+        )
 
     effective_allow = staged_payload is not None
     status = "PASS" if effective_allow else "BLOCKED"
@@ -115,6 +174,7 @@ def run_pipeline(
         "profiles": [p.to_dict() for p in profiles],
         "audit": audit.to_dict(),
         "decision": decision.to_dict(),
+        "outbound_identifier_columns_removed": identifier_columns,
         "egress_scan": egress_scan,
         "effective_allow": effective_allow,
         "events": events,
@@ -136,6 +196,7 @@ def run_pipeline(
         "audit": audit.to_dict(),
         "decision": decision.to_dict(),
         "source_pii_scan": source_pii.to_dict(),
+        "identifier_columns_removed": identifier_columns,
         "egress_scan": egress_scan,
         "events": events,
         "run_id": run_id,
