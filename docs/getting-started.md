@@ -170,12 +170,30 @@ longgate document-inspect report.docx
 longgate document-inspect transcript.pdf
 ```
 
+Run the structured privacy workflow:
+
+```bash
+longgate run study.csv --profile research
+```
+
+A row-level synthetic rejection is not a dead end. Long Gate will try the next safer representation automatically:
+
+```text
+synthetic row-level
+      ↓ not justified
+aggregate fallback
+      ↓ not justified
+LOCAL_ONLY + next actions
+```
+
 Exact local statistics:
 
 ```bash
 longgate exact study.csv describe
 longgate exact study.csv ols --outcome score --predictor age
 ```
+
+See [Release ladder](release-ladder.md).
 
 ---
 
