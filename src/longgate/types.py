@@ -44,6 +44,7 @@ class AuditResult:
     exact_row_overlap: int
     identifier_overlap: int
     quasi_combo_overlap: int
+    rare_quasi_overlap: int
     near_copy_rate: float | None
     free_text_columns: list[str]
     reasons: list[str]
