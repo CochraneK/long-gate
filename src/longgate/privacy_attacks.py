@@ -610,13 +610,17 @@ def ensemble_membership_diagnostic(
     if full not in candidates:
         candidates.append(full)
     if len(candidates) > max_attacks:
-        # Preserve single-column attacks and the full attack, then take
-        # deterministic early combinations within the configured budget.
-        singles = [item for item in candidates if len(item) == 1]
-        middle = [item for item in candidates if len(item) > 1 and item != full]
-        budget = max(0, max_attacks - len(singles) - 1)
-        candidates = [*singles, *middle[:budget], full]
-        candidates = candidates[:max_attacks]
+        # Always preserve the full-column attack. Use the remaining budget
+        # for deterministic smaller attacks without silently dropping the
+        # strongest joint feature surface.
+        if max_attacks == 1:
+            candidates = [full]
+        else:
+            non_full = [item for item in candidates if item != full]
+            candidates = [
+                *non_full[: max_attacks - 1],
+                full,
+            ]
 
     results: list[dict[str, object]] = []
     for subset in candidates:
