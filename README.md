@@ -577,39 +577,40 @@ Long Gate is deliberately conservative.
 
 ### Implemented baseline
 
-- [x] CSV / XLSX / JSON / Parquet ingest
-- [x] schema-level privacy classification
-- [x] value-level direct-PII scanning
-- [x] optional Presidio integration
-- [x] SynthCity adapter
-- [x] MOSTLY AI local-mode adapter
-- [x] exact-row / identifier / near-copy checks
-- [x] rare quasi-identifier overlap checks
-- [x] identifier stripping before outbound staging
-- [x] final egress PII rescan
+- [x] structured CSV / XLSX / JSON / Parquet ingest
+- [x] schema + value-level PII inspection
+- [x] Presidio integration
+- [x] SynthCity / MOSTLY AI local adapters
+- [x] exact-row / identifier / near-copy / rare quasi-ID checks
+- [x] k-anonymity-style / membership / auxiliary-linkage diagnostics
 - [x] purpose-bound disclosure
-- [x] local describe / correlation / group summaries / OLS
+- [x] local Python exact statistics
+- [x] fixed-template local R describe / OLS
 - [x] aggregate guard
-- [x] SafeWorkspace boundary
-- [x] minimal FastMCP surface
-- [x] local-only free-text inspection/redaction preview
-- [x] local DOCX / PDF text-layer inspection
-- [x] adversarial benchmark scaffold
+- [x] research / clinical / enterprise engineering privacy profiles
+- [x] SafeWorkspace + narrow FastMCP surface
+- [x] hardened local/network process boundary examples
+- [x] SHA-256 provenance + verification
+- [x] TXT / Markdown / DOCX / PDF local inspection
+- [x] local GGUF semantic preview + copy-risk audit
+- [x] curated Model Vault with RAM-aware one-command setup
+- [x] pinned model revision + SHA-256 verification
+- [x] copyable AI setup prompt
+- [x] adversarial benchmark CI
 - [x] offline Trust Report
-- [x] security CI, SBOM, and tag-build workflow
+- [x] public synthetic-only Safe Demo
+- [x] build / clean-install release readiness
 
 ### Still being hardened
 
-- [ ] formal production criteria for row-level synthetic egress
-- [ ] stronger membership-inference / linkage testing
-- [ ] explicit privacy profiles and threshold configuration
-- [ ] signed manifests and stronger provenance
-- [x] fixed-template local R describe / OLS engine
-- [ ] semantic privacy / synthetic narrative generation for free text
-- [x] local GGUF semantic preview + copy-risk audit (still network-blocked)
-- [ ] semantic-safe DOCX / PDF release path
-- [ ] image / audio privacy paths
-- [ ] broader adversarial test corpus
+- [ ] production criteria for row-level synthetic egress
+- [ ] stronger membership / attribute / longitudinal linkage attacks
+- [ ] semantic-safe unstructured release criteria
+- [ ] organization-defined policy/profile files
+- [ ] key-backed digital signatures / attestation
+- [ ] scanned-PDF OCR, image, and audio privacy paths
+- [ ] outbound network-agent request ledger / approval protocol
+- [ ] broader adversarial red-team corpus
 
 See the [Roadmap](ROADMAP.md).
 
