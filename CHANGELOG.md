@@ -1,12 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- Add hash-bound egress approvals and purpose-scoped MCP reads with an observational access log.
-
-- Add a non-dead-end release ladder: row-level synthetic rejection now falls back to guarded aggregate output or explicit local-only next actions.
-- Add machine-readable privacy blocker codes and remediation guidance.
-
 All notable changes to Long Gate will be documented here.
 
 The project is currently **pre-1.0**. Security behavior may become stricter between minor versions.
@@ -14,6 +7,11 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 ## [Unreleased]
 
 ### Added
+- Hash-bound egress approvals and purpose-scoped MCP reads with an observational access log.
+- Non-dead-end release ladder: rejected row-level synthetic output falls back to guarded aggregate output or explicit local-only next actions.
+- Machine-readable privacy blocker codes and remediation guidance.
+- Attribute-inference and longitudinal-linkage diagnostics.
+
 - SafeWorkspace and minimal FastMCP boundary.
 - Purpose-bound disclosure routing.
 - Local exact-statistics path with aggregate guards.
@@ -32,7 +30,6 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - `--model auto` verified default-model resolution.
 - Copyable `longgate setup-prompt` for AI-assisted machine setup.
 - Windows PowerShell and macOS/Linux bootstrap guides/scripts.
-- Public synthetic-only Safe Demo.
 - Offline Trust Report v2.
 - CodeQL, Bandit, pip-audit, Trivy, SBOM, Dependabot, release-readiness workflows.
 
@@ -47,6 +44,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Curated model downloads are pinned to immutable upstream revisions and file SHA-256.
 
 ### Changed
+- Retired the public Railway Safe Demo and removed deployable demo assets from the repository.
 - Local model onboarding moved from manual GGUF selection to a curated Model Vault with one-command setup.
 - Model installation now preflights disk space and moves staged GGUF files into place instead of duplicating them.
 - README and docs emphasize capabilities over prompt-only privacy controls.
