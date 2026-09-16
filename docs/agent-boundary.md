@@ -29,3 +29,22 @@ The future cloud worker may have network access, but it receives only a read-onl
 ## Current release posture
 
 Long Gate v0.2 does not make cloud API calls. The cloud-worker entry in the hardened Compose file is a mount-boundary demonstration only.
+
+
+## MCP surface
+
+Install the optional server:
+
+```bash
+pip install 'long-gate[mcp]'
+export LONGGATE_SAFE_WORKSPACE=/path/to/approved/egress
+longgate-mcp
+```
+
+The network-facing MCP server intentionally exposes only:
+
+- `gate_info`
+- `list_safe_files`
+- `read_safe_text(relative_path)`
+
+It does not expose a raw-path parameter, arbitrary shell execution, arbitrary Python execution, or source-data mounts.
