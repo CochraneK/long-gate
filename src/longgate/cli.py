@@ -20,9 +20,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    run = sub.add_parser("run", help="Inspect → synthesize → audit → gate → report.")
-    run.add_argument("input", help="CSV, XLSX, JSON, or Parquet file")
-    run.add_argument("--out", default="./longgate-runs")
+    run = sub.add_parser(
+        "run",
+        help="Inspect → synthesize → audit → gate → report.",
+    )
+    run.add_argument(
+        "input",
+        help="CSV, XLSX, JSON, or Parquet file",
+    )
+    run.add_argument(
+        "--out",
+        default="./longgate-runs",
+    )
     run.add_argument(
         "--backend",
         default="auto",
@@ -31,7 +40,11 @@ def build_parser() -> argparse.ArgumentParser:
             "v0.2 row-level egress remains fail-closed."
         ),
     )
-    run.add_argument("--seed", type=int, default=42)
+    run.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+    )
 
     sub.add_parser(
         "doctor",
@@ -50,16 +63,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     purpose_cmd.add_argument("name")
 
-    exact = sub.add_parser("exact", help="Run safe exact statistics locally.")
+    exact = sub.add_parser(
+        "exact",
+        help="Run safe exact statistics locally.",
+    )
     exact.add_argument("input")
     exact.add_argument(
         "analysis",
-        choices=["describe", "correlation", "group-summary", "ols"],
+        choices=[
+            "describe",
+            "correlation",
+            "group-summary",
+            "ols",
+        ],
     )
     exact.add_argument("--group-by")
     exact.add_argument("--value")
     exact.add_argument("--outcome")
-    exact.add_argument("--predictor", action="append", default=[])
+    exact.add_argument(
+        "--predictor",
+        action="append",
+        default=[],
+    )
 
     return p
 
@@ -78,7 +103,12 @@ def main() -> None:
         return
 
     if args.command == "run":
-        result = run_pipeline(args.input, args.out, args.backend, args.seed)
+        result = run_pipeline(
+            args.input,
+            args.out,
+            args.backend,
+            args.seed,
+        )
         print(
             json.dumps(
                 {
@@ -107,7 +137,10 @@ def main() -> None:
             json.dumps(
                 {
                     "rows": len(df),
-                    "columns": [p.to_dict() for p in profiles],
+                    "columns": [
+                        p.to_dict()
+                        for p in profiles
+                    ],
                     "pii_counts": pii.to_dict(),
                 },
                 indent=2,
@@ -133,13 +166,22 @@ def main() -> None:
     if args.command == "exact":
         df = load_table(args.input)
         profiles = profile_dataframe(df)
+
         if args.analysis == "describe":
-            result = describe_numeric(df, profiles)
+            result = describe_numeric(
+                df,
+                profiles,
+            )
         elif args.analysis == "correlation":
-            result = correlation(df, profiles)
+            result = correlation(
+                df,
+                profiles,
+            )
         elif args.analysis == "group-summary":
             if not args.group_by or not args.value:
-                raise SystemExit("--group-by and --value are required")
+                raise SystemExit(
+                    "--group-by and --value are required"
+                )
             result = group_summary(
                 df,
                 profiles,
@@ -157,7 +199,17 @@ def main() -> None:
                 args.outcome,
                 args.predictor,
             )
-        result = validate_aggregate_payload(result)\n        print(json.dumps(result, indent=2, ensure_ascii=False))
+
+        result = validate_aggregate_payload(
+            result
+        )
+        print(
+            json.dumps(
+                result,
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
 
 
 if __name__ == "__main__":
