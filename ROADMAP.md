@@ -23,7 +23,7 @@ Long Gate is developed in layers. **Implemented does not mean privacy-certified.
 - final outbound PII rescan
 - CodeQL / Bandit / pip-audit / Trivy / SBOM / Dependabot
 
-**Release posture:** row-level synthetic egress remains blocked by default.
+**Release posture:** row-level synthetic egress remains blocked by default, but the workflow now continues through a guarded aggregate fallback instead of ending at a dead-end `BLOCKED` state.
 
 ## v0.3 — exact local computation baseline ✅
 
@@ -80,6 +80,8 @@ Still open:
 ## v0.6 — adversarial evaluation & release hardening (active)
 
 Implemented:
+- non-dead-end release ladder: synthetic → aggregate → local-only
+- machine-readable blocker codes + remediation actions
 - k-anonymity-style equivalence-class diagnostics
 - distance-based membership diagnostic
 - auxiliary-data linkage diagnostic

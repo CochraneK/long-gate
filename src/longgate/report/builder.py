@@ -11,7 +11,13 @@ def _pill(text: str, cls: str = "neutral") -> str:
 
 def build_report(data: dict[str, Any], path: Path) -> None:
     status = data["status"]
-    status_cls = "ok" if status == "PASS" else "bad"
+    status_cls = (
+        "ok"
+        if status == "PASS"
+        else "warn"
+        if status == "LOCAL_ONLY"
+        else "bad"
+    )
     profiles = data["profiles"]
     events = data["events"]
     audit = data["audit"]
@@ -19,6 +25,14 @@ def build_report(data: dict[str, Any], path: Path) -> None:
     source_pii = data.get("source_pii_scan", {})
     egress_scan = data.get("egress_scan", {})
     removed_ids = data.get("identifier_columns_removed", [])
+    resolution = data.get("release_resolution", {})
+    status_note = (
+        resolution.get("aggregate_reason")
+        or decision["reason"]
+    )
+    granted = resolution.get("granted_release_class") or "local_only"
+    blockers = resolution.get("blockers") or []
+    next_actions = resolution.get("next_actions") or []
 
     rows = []
     for p in profiles:
@@ -54,6 +68,14 @@ def build_report(data: dict[str, Any], path: Path) -> None:
     )
     reasons = audit.get("reasons") or ["No blocking reason recorded."]
     reason_html = "".join(f"<li>{escape(r)}</li>" for r in reasons)
+    blocker_html = "".join(
+        f"<li>{escape(str(r))}</li>"
+        for r in blockers
+    ) or "<li>No row-level blocker recorded.</li>"
+    action_html = "".join(
+        f"<li>{escape(str(r))}</li>"
+        for r in next_actions
+    ) or "<li>No additional remediation action required.</li>"
     near = audit.get("near_copy_rate")
     near_text = "n/a" if near is None else f"{near:.2%}"
     source_pii_hits = int(source_pii.get("total_hits", 0))
@@ -87,7 +109,7 @@ table{{width:100%;border-collapse:collapse}} th,td{{text-align:left;padding:11px
   <div class="brand">LONG GATE · TRUST REPORT</div>
   <h1>Privacy processing, made visible.</h1>
   <div class="sub">No source row values are embedded in this report. It records transformations, privacy checks, policy decisions, and egress facts.</div>
-  <div class="status"><span class="dot"></span><div><div class="label">Gate status</div><strong>{escape(status)}</strong> · {escape(decision["reason"])}</div></div>
+  <div class="status"><span class="dot"></span><div><div class="label">Workflow status</div><strong>{escape(status)}</strong> · {escape(str(status_note))}</div></div>
   <div class="grid">
     <div class="card"><div class="label">Rows</div><div class="metric">{data["rows"]:,}</div></div>
     <div class="card"><div class="label">Columns</div><div class="metric">{data["columns"]}</div></div>
@@ -121,6 +143,18 @@ table{{width:100%;border-collapse:collapse}} th,td{{text-align:left;padding:11px
 <div class="card"><div class="label">Near-copy rate</div><div class="metric">{near_text}</div></div>
 </div><ul>{reason_html}</ul>
 <p class="note">Engineering safeguards are not a formal anonymity or differential-privacy proof. Row-level egress remains fail-closed in v0.2.</p>
+</section>
+
+<section><h2>Release ladder</h2>
+<div class="grid">
+<div class="card"><div class="label">Requested</div><div class="metric" style="font-size:20px">{escape(str(resolution.get("requested_release_class", "synthetic")))}</div></div>
+<div class="card"><div class="label">Granted</div><div class="metric" style="font-size:20px">{escape(str(granted))}</div></div>
+<div class="card"><div class="label">Row-level release</div><div class="metric" style="font-size:20px">{"YES" if resolution.get("row_level_release_allowed") else "NO"}</div></div>
+<div class="card"><div class="label">Aggregate fallback</div><div class="metric" style="font-size:20px">{"YES" if resolution.get("aggregate_fallback_used") else "NO"}</div></div>
+</div>
+<h3>Why row-level release was not used</h3><ul>{blocker_html}</ul>
+<h3>What Long Gate does next</h3><ul>{action_html}</ul>
+<p class="note">A blocked representation is not a dead end: Long Gate moves down the disclosure ladder rather than weakening the policy.</p>
 </section>
 
 <section><h2>Egress inspection</h2>

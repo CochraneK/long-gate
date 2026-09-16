@@ -15,6 +15,7 @@ from .policy import PolicyEngine
 from .profiles import get_profile
 from .provenance import build_provenance
 from .report import build_report
+from .release_ladder import resolve_release
 from .types import DataClass, ReleaseClass
 from .utils import sha256_file, utc_now, write_json
 
@@ -28,6 +29,8 @@ class RunResult:
     staged_payload: Path | None
     provenance_path: Path
     status: str
+    release_class: str | None
+    next_actions: list[str]
 
 
 def run_pipeline(
@@ -205,12 +208,12 @@ def run_pipeline(
         ),
     )
 
-    staged_payload, egress_scan = stage_egress(
+    row_level_payload, row_level_egress_scan = stage_egress(
         outbound,
         out_dir,
         decision,
     )
-    if staged_payload:
+    if row_level_payload:
         event(
             "Final egress scan passed",
             (
@@ -221,12 +224,12 @@ def run_pipeline(
         )
     elif (
         decision.allow
-        and not egress_scan["passed"]
+        and not row_level_egress_scan["passed"]
     ):
         event(
             "Final egress scan blocked release",
             (
-                f"Detected {egress_scan['pii_hits']} "
+                f"Detected {row_level_egress_scan['pii_hits']} "
                 "direct-PII pattern hit(s); "
                 "no payload created."
             ),
@@ -237,13 +240,34 @@ def run_pipeline(
             "No network-eligible payload was created.",
         )
 
-    effective_allow = (
-        staged_payload is not None
+    resolution, staged_payload, aggregate_egress_scan = resolve_release(
+        df,
+        profiles,
+        policy_profile,
+        audit,
+        out_dir,
+        row_level_payload,
     )
+    if row_level_payload is None:
+        event(
+            "Release ladder continued",
+            (
+                f"workflow={resolution.workflow_status}; "
+                f"granted={resolution.granted_release_class or 'local_only'}; "
+                f"{resolution.aggregate_reason or 'no fallback required'}"
+            ),
+        )
+
+    effective_allow = staged_payload is not None
     status = (
         "PASS"
-        if effective_allow
-        else "BLOCKED"
+        if resolution.workflow_status == "READY"
+        else "LOCAL_ONLY"
+    )
+    egress_scan = (
+        row_level_egress_scan
+        if row_level_payload is not None
+        else aggregate_egress_scan
     )
 
     manifest = {
@@ -274,7 +298,10 @@ def run_pipeline(
         "outbound_identifier_columns_removed": (
             identifier_columns
         ),
+        "row_level_egress_scan": row_level_egress_scan,
+        "aggregate_egress_scan": aggregate_egress_scan,
         "egress_scan": egress_scan,
+        "release_resolution": resolution.to_dict(),
         "effective_allow": effective_allow,
         "events": events,
         "network": {
@@ -316,6 +343,7 @@ def run_pipeline(
             identifier_columns
         ),
         "egress_scan": egress_scan,
+        "release_resolution": resolution.to_dict(),
         "events": events,
         "run_id": run_id,
         "input_sha256": input_hash,
@@ -349,4 +377,6 @@ def run_pipeline(
         staged_payload=staged_payload,
         provenance_path=provenance_path,
         status=status,
+        release_class=resolution.granted_release_class,
+        next_actions=resolution.next_actions,
     )

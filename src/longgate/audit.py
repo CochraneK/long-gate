@@ -217,31 +217,42 @@ def audit_dataset(
     ]
 
     reasons: list[str] = []
-    if not backend_certified or not policy.row_level_synthetic_egress:
+    reason_codes: list[str] = []
+    if not backend_certified:
         reasons.append(
-            "Row-level synthetic egress is not approved "
+            "Selected synthetic backend is not approved for row-level egress."
+        )
+        reason_codes.append("backend_not_approved")
+    if not policy.row_level_synthetic_egress:
+        reasons.append(
+            "Row-level synthetic egress is disabled "
             f"under profile {policy.name!r}."
         )
+        reason_codes.append("profile_disallows_row_level")
     if exact_rows > 0:
         reasons.append(
             f"Detected {exact_rows} exact row overlap(s) "
             "between source and synthetic data."
         )
+        reason_codes.append("exact_row_overlap")
     if id_overlap > 0:
         reasons.append(
             f"Detected {id_overlap} source identifier value(s) "
             "in the synthetic dataset."
         )
+        reason_codes.append("identifier_overlap")
     if rare_overlap > 0:
         reasons.append(
             f"Detected {rare_overlap} rare source quasi-identifier "
             "combination(s) reproduced by the synthetic dataset."
         )
+        reason_codes.append("rare_quasi_overlap")
     if free_text:
         reasons.append(
             "Free-text columns remain local-only: "
             + ", ".join(free_text)
         )
+        reason_codes.append("free_text_present")
     if (
         near_rate is not None
         and near_rate > policy.max_near_copy_rate
@@ -250,6 +261,7 @@ def audit_dataset(
             f"Near-copy rate {near_rate:.3%} exceeds "
             f"profile threshold {policy.max_near_copy_rate:.3%}."
         )
+        reason_codes.append("near_copy_rate")
 
     return AuditResult(
         passed=not reasons,
@@ -261,4 +273,5 @@ def audit_dataset(
         near_copy_rate=near_rate,
         free_text_columns=free_text,
         reasons=reasons,
+        reason_codes=reason_codes,
     )

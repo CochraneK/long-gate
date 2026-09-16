@@ -39,3 +39,16 @@ Profiles make the decision surface visible in:
 - tests.
 
 Organizations should replace or extend these defaults through reviewed policy rather than treating them as universal safety thresholds.
+
+
+## Blocked row-level does not mean blocked workflow
+
+The built-in presets deliberately keep row-level synthetic egress disabled.
+
+When `longgate run` cannot justify row-level release, it does **not** lower the profile thresholds. It moves down the [release ladder](release-ladder.md):
+
+1. keep the synthetic rows local;
+2. attempt a guarded aggregate artifact;
+3. if that is also inappropriate, remain `LOCAL_ONLY` with machine-readable next actions.
+
+This preserves the privacy posture without turning `BLOCKED` into a user dead end.

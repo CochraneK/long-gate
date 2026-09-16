@@ -27,3 +27,5 @@
 - [Security policy](../SECURITY.md)
 - [Contributing](../CONTRIBUTING.md)
 - [Changelog](../CHANGELOG.md)
+
+- [Release ladder](release-ladder.md) — how Long Gate continues safely when a requested representation is rejected.

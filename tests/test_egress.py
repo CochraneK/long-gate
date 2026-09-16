@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from longgate.egress import stage_egress
+from longgate.egress import stage_egress, stage_json_egress
 from longgate.policy import PolicyDecision
 from longgate.types import ReleaseClass
 
@@ -25,3 +25,15 @@ def test_final_scan_allows_clean_payload(tmp_path: Path):
     assert scan["passed"] is True
     assert payload is not None
     assert payload.exists()
+
+
+def test_aggregate_json_egress(tmp_path: Path):
+    decision = PolicyDecision(True, ReleaseClass.AGGREGATE, "aggregate allow")
+    payload, scan = stage_json_egress(
+        {"n_rows": 10, "mean": 2.5},
+        tmp_path,
+        decision,
+    )
+    assert scan["passed"] is True
+    assert payload is not None
+    assert payload.name == "safe_aggregate.json"

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add a non-dead-end release ladder: row-level synthetic rejection now falls back to guarded aggregate output or explicit local-only next actions.
+- Add machine-readable privacy blocker codes and remediation guidance.
+
 All notable changes to Long Gate will be documented here.
 
 The project is currently **pre-1.0**. Security behavior may become stricter between minor versions.

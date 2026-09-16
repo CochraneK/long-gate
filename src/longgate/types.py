@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any
 
@@ -48,6 +48,7 @@ class AuditResult:
     near_copy_rate: float | None
     free_text_columns: list[str]
     reasons: list[str]
+    reason_codes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

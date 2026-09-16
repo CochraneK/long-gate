@@ -242,7 +242,7 @@ longgate run examples/demo.csv --backend auto
 
 `auto` prefers an installed mature local backend and otherwise falls back to the demo backend.
 
-The demo backend is intentionally **never eligible for row-level egress**. A `BLOCKED` result is expected and demonstrates fail-closed behavior.
+The demo backend is intentionally **never eligible for row-level egress**. Long Gate now continues through a release ladder: when row-level synthetic output is rejected, it attempts a guarded aggregate fallback instead of ending at `BLOCKED`. If even aggregate disclosure is not justified, the run stays `LOCAL_ONLY` with explicit next actions.
 
 Want to see the product without installing anything? Open the **[public Safe Demo](https://long-gate-demo-production.up.railway.app)**. It is deliberately static: no upload endpoint, no API key, no private-data worker.
 
@@ -310,9 +310,9 @@ Long Gate currently includes adapters for:
 
 | Capability | Integration | Default row-level egress |
 |---|---|---|
-| Demo synthesis | built-in | **BLOCKED** |
-| Synthetic data | SynthCity | **BLOCKED in pre-1.0 baseline** |
-| Synthetic data | MOSTLY AI local mode | **BLOCKED in pre-1.0 baseline** |
+| Demo synthesis | built-in | row-level blocked → aggregate fallback |
+| Synthetic data | SynthCity | row-level blocked in baseline → aggregate fallback |
+| Synthetic data | MOSTLY AI local mode | row-level blocked in baseline → aggregate fallback |
 | PII analysis | built-in local scanner | local only |
 | PII analysis | Microsoft Presidio | local only |
 | Exact statistics | pandas / statsmodels | guarded aggregate only |
@@ -360,7 +360,7 @@ Current routing philosophy:
 | “Show distributions” | synthetic path / safe summaries |
 | “Compute the real regression” | exact local executor |
 | free-text narrative | local-only inspection baseline |
-| unknown / ambiguous purpose | **BLOCK** |
+| unknown / ambiguous purpose | local-only / clarify purpose |
 
 Exact local examples:
 
@@ -587,6 +587,7 @@ Long Gate is deliberately conservative.
 - [x] local Python exact statistics
 - [x] fixed-template local R describe / OLS
 - [x] aggregate guard
+- [x] non-dead-end release ladder (synthetic → aggregate → local-only)
 - [x] research / clinical / enterprise engineering privacy profiles
 - [x] SafeWorkspace + narrow FastMCP surface
 - [x] hardened local/network process boundary examples
@@ -715,6 +716,7 @@ Start with [docs/index.md](docs/index.md).
 - [Unstructured data](docs/unstructured.md)
 - [Benchmarks](docs/benchmarks.md)
 - [Privacy profiles](docs/privacy-profiles.md)
+- [Release ladder](docs/release-ladder.md)
 - [Provenance](docs/provenance.md)
 - [Local R executor](docs/r-executor.md)
 - [Local semantic preview](docs/semantic-preview.md)
