@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-from .pii import scan_text
+from .pii import scan_structured_strings, scan_text
 from .policy import PolicyDecision
 
 
@@ -76,13 +76,32 @@ def stage_json_egress(
         indent=2,
         sort_keys=True,
     )
-    return _stage_json_text(
-        payload_text,
-        out_dir,
-        decision,
-        payload_name=payload_name,
-        manifest_name=manifest_name,
+    egress_dir = out_dir / "egress"
+    egress_dir.mkdir(parents=True, exist_ok=True)
+    scan_findings = scan_structured_strings(payload)
+    scan = {
+        "passed": scan_findings.total_hits == 0,
+        "pii_hits": scan_findings.total_hits,
+        "by_entity": scan_findings.by_entity,
+    }
+    effective_allow = decision.allow and bool(scan["passed"])
+    (egress_dir / manifest_name).write_text(
+        json.dumps(
+            {
+                **decision.to_dict(),
+                "allow_after_final_scan": effective_allow,
+                "final_scan": scan,
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
     )
+    if not effective_allow:
+        return None, scan
+    path = egress_dir / payload_name
+    path.write_text(payload_text, encoding="utf-8")
+    return path, scan
 
 
 def stage_egress(
