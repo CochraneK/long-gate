@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a new capability, backend, policy, or workflow.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user/security problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: threat
+    attributes:
+      label: Privacy/security implications
+      description: What new data, filesystem, process, or network capability would this introduce?
