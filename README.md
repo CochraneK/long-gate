@@ -273,6 +273,27 @@ Long Gate currently includes adapters for:
 
 ---
 
+## Privacy profiles: engineering presets, not certifications
+
+Privacy thresholds should be reviewable and reproducible, not hidden in source code.
+
+```bash
+longgate profiles
+
+longgate run study.csv --profile clinical
+longgate exact study.csv describe --profile clinical
+```
+
+Built-in profiles currently include `research`, `clinical`, and `enterprise`.
+
+**These are engineering presets, not certifications.** The `clinical` profile does not imply HIPAA, GDPR, NHS, medical-device, ethics-board, or other regulatory approval.
+
+Every built-in profile still keeps row-level synthetic egress blocked by default.
+
+See [Privacy profiles](docs/privacy-profiles.md).
+
+---
+
 ## Purpose-bound disclosure
 
 Different questions should not receive the same amount of data.
