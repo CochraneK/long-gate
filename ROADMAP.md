@@ -1,6 +1,6 @@
 # Roadmap
 
-## v0.1 — structured trust loop (current scaffold)
+## v0.1 — structured trust loop ✅
 
 - CSV / XLSX / JSON / Parquet ingest
 - local schema and sensitivity classification
@@ -13,7 +13,7 @@
 - self-contained Trust Report HTML
 - hardened local-worker Docker target with `network_mode: none`
 
-## v0.2 — hardened structured release
+## v0.2 — hardened structured release (active)
 
 - Presidio/value-level detectors and custom recognizers
 - MOSTLY AI adapter and backend capability registry
@@ -45,3 +45,20 @@
 ## Guiding rule
 
 Do not reimplement mature privacy or synthesis algorithms when a suitable upstream project exists. Long Gate should own orchestration, capability boundaries, policy, audit, and provenance.
+
+
+## Implemented in v0.2 baseline
+
+- value-level PII pattern scanning with count-only reporting
+- optional local Presidio scanner
+- final outbound PII rescan
+- direct identifier removal from outbound row view
+- MOSTLY AI local-mode adapter
+- purpose-bound disclosure router
+- local exact describe / correlation / group summaries / OLS
+- small-group suppression and identifier exclusion
+- CodeQL / Bandit / pip-audit / Trivy / SBOM / Dependabot
+- executable privacy security invariants
+- `doctor` capability discovery and `auto` backend selection
+
+Row-level synthetic egress remains intentionally fail-closed until the privacy audit is strengthened further.
