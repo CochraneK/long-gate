@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from longgate.privacy_attacks import (
     distance_membership_diagnostic,
@@ -49,4 +50,4 @@ def test_unique_linkage_diagnostic_counts_unique_matches():
         ["age", "city"],
     )
     assert result.unique_matches == 1
-    assert result.unique_linkage_rate == 1 / 3
+    assert result.unique_linkage_rate == pytest.approx(1 / 3, abs=1e-6)
