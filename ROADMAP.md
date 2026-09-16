@@ -22,13 +22,13 @@
 - explicit privacy profiles: research / clinical / enterprise
 - signed run manifest and backend/version provenance
 
-## v0.3 — exact local computation loop
+## v0.3 — exact local computation loop (baseline implemented)
 
 - local Python/R executor for real-data statistics
 - cloud AI receives schema/synthetic data for planning, then aggregate-only real results
 - analysis provenance linking generated code to local result hashes
 
-## v0.4 — agent boundary
+## v0.4 — agent boundary (baseline implemented)
 
 - MCP/tool interface for `inspect`, `request_access`, `run_local`, `get_safe_result`
 - cloud agent receives no raw filesystem capability
@@ -62,3 +62,8 @@ Do not reimplement mature privacy or synthesis algorithms when a suitable upstre
 - `doctor` capability discovery and `auto` backend selection
 
 Row-level synthetic egress remains intentionally fail-closed until the privacy audit is strengthened further.
+
+
+## Current validation state
+
+The v0.2-v0.4 baseline is implemented on `main`, but tasks remain In Progress until CI/runtime validation is observable and production egress criteria are finalized. This is intentional: implementation is not treated as security certification.
