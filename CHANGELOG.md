@@ -12,8 +12,6 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Machine-readable privacy blocker codes and remediation guidance.
 - Attribute-inference and longitudinal-linkage diagnostics.
 
-
-### Added
 - SafeWorkspace and minimal FastMCP boundary.
 - Purpose-bound disclosure routing.
 - Local exact-statistics path with aggregate guards.
