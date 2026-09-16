@@ -16,7 +16,7 @@ from .inspect import profile_dataframe
 from .io import load_table
 from .pii import scan_dataframe_values
 from .pipeline import RunResult, run_pipeline
-from .profiles import get_profile
+from .profiles import resolve_profile
 from .purpose import (
     PurposeDecision,
     route_purpose,
@@ -62,6 +62,7 @@ class LongGate:
         backend: str = "auto",
         seed: int = 42,
         privacy_profile: str = "research",
+        profile_file: str | Path | None = None,
     ) -> RunResult:
         return run_pipeline(
             input_path,
@@ -69,6 +70,7 @@ class LongGate:
             backend,
             seed,
             privacy_profile,
+            profile_file,
         )
 
     def exact(
@@ -76,13 +78,15 @@ class LongGate:
         input_path: str | Path,
         analysis: str,
         privacy_profile: str = "research",
+        profile_file: str | Path | None = None,
         engine: str = "python",
         **kwargs: Any,
     ) -> dict[str, Any]:
         df = load_table(input_path)
         profiles = profile_dataframe(df)
-        policy = get_profile(
-            privacy_profile
+        policy = resolve_profile(
+            privacy_profile,
+            profile_file,
         )
 
         if engine not in {
