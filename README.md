@@ -11,6 +11,7 @@
 [![Tests](https://github.com/CochraneK/long-gate/actions/workflows/test.yml/badge.svg)](https://github.com/CochraneK/long-gate/actions/workflows/test.yml)
 [![Security boundary](https://github.com/CochraneK/long-gate/actions/workflows/security.yml/badge.svg)](https://github.com/CochraneK/long-gate/actions/workflows/security.yml)
 [![Security audit](https://github.com/CochraneK/long-gate/actions/workflows/security-audit.yml/badge.svg)](https://github.com/CochraneK/long-gate/actions/workflows/security-audit.yml)
+[![Benchmarks](https://github.com/CochraneK/long-gate/actions/workflows/benchmarks.yml/badge.svg)](https://github.com/CochraneK/long-gate/actions/workflows/benchmarks.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-7ee2a8)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-86a7ff)](pyproject.toml)
 [![Status](https://img.shields.io/badge/status-pre--1.0-ffd479)](ROADMAP.md)
@@ -527,6 +528,7 @@ path escapes safe root   → BLOCK
 CI includes:
 
 - unit + privacy invariant tests;
+- synthetic adversarial benchmark smoke tests;
 - CodeQL;
 - Bandit;
 - pip-audit;

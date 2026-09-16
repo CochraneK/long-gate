@@ -1,0 +1,44 @@
+name: benchmark-smoke
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-privacy-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Long Gate
+        run: python -m pip install -e .
+      - name: Generate synthetic benchmark fixture
+        run: python benchmarks/generate_adversarial.py
+      - name: Run structured audit benchmark
+        run: python benchmarks/run_privacy_benchmark.py > benchmark-privacy.json
+      - name: Run k-anonymity-style benchmark
+        run: python benchmarks/run_k_anonymity_benchmark.py > benchmark-k.json
+      - name: Run membership diagnostic
+        run: python benchmarks/run_membership_benchmark.py > benchmark-membership.json
+      - name: Run auxiliary linkage diagnostic
+        run: python benchmarks/run_linkage_benchmark.py > benchmark-linkage.json
+      - name: Confirm machine-readable output
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for path in sorted(Path(".").glob("benchmark-*.json")):
+              data = json.loads(path.read_text())
+              assert "benchmark" in data
+              print(path, data["benchmark"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: long-gate-synthetic-benchmark-results
+          path: benchmark-*.json
