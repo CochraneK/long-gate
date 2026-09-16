@@ -116,8 +116,8 @@ def test_ai_setup_prompt_forbids_private_data_access():
     lower = AI_SETUP_PROMPT.lower()
     assert "do not open" in lower
     assert "sensitive data" in lower
-    assert "longgate model recommend" in lower
-    assert "longgate model verify" in lower
+    assert "longgate model setup" in lower
+    assert "longgate model verify auto" in lower
 
 
 def test_auto_resolution_uses_verified_default_model(
