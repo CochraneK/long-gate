@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a reproducible Long Gate defect using synthetic/minimal data only.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not attach real sensitive data.** Use a synthetic/minimal reproduction.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Commands, synthetic sample schema, and expected behavior.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Long Gate version
+  - type: dropdown
+    id: security
+    attributes:
+      label: Could this expose sensitive data?
+      options:
+        - "No"
+        - "Possibly"
+        - "Yes — I will report privately via SECURITY.md instead"
+    validations:
+      required: true
