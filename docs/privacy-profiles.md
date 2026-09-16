@@ -52,3 +52,6 @@ When `longgate run` cannot justify row-level release, it does **not** lower the 
 3. if that is also inappropriate, remain `LOCAL_ONLY` with machine-readable next actions.
 
 This preserves the privacy posture without turning `BLOCKED` into a user dead end.
+
+
+For reviewed organization-specific thresholds, see [Organization policy files](organization-policy.md).

@@ -1,0 +1,9 @@
+{
+  "name": "example-organization",
+  "min_dataset_size": 50,
+  "min_group_size": 12,
+  "rare_k": 12,
+  "max_near_copy_rate": 0.005,
+  "row_level_synthetic_egress": false,
+  "description": "Example reviewed organization policy. Replace with your own approved thresholds; this file is not a compliance certification."
+}

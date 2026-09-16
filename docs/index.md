@@ -29,3 +29,5 @@
 - [Changelog](../CHANGELOG.md)
 
 - [Release ladder](release-ladder.md) — how Long Gate continues safely when a requested representation is rejected.
+
+- [Organization policy files](organization-policy.md) — reviewed JSON thresholds with fail-closed validation and provenance.

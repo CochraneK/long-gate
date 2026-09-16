@@ -12,7 +12,7 @@ from .inspect import profile_dataframe
 from .io import load_table, save_table
 from .pii import scan_dataframe_values
 from .policy import PolicyEngine
-from .profiles import get_profile
+from .profiles import resolve_profile
 from .provenance import build_provenance
 from .report import build_report
 from .release_ladder import resolve_release
@@ -39,6 +39,7 @@ def run_pipeline(
     backend_name: str = "auto",
     seed: int = 42,
     privacy_profile: str = "research",
+    profile_file: str | Path | None = None,
 ) -> RunResult:
     input_path = Path(input_path).resolve()
     if not input_path.exists():
@@ -46,8 +47,21 @@ def run_pipeline(
             input_path
         )
 
-    policy_profile = get_profile(
-        privacy_profile
+    policy_profile = resolve_profile(
+        privacy_profile,
+        profile_file,
+    )
+    policy_source = (
+        {
+            "type": "file",
+            "filename": Path(profile_file).name,
+            "sha256": sha256_file(Path(profile_file).expanduser().resolve()),
+        }
+        if profile_file is not None
+        else {
+            "type": "builtin",
+            "name": policy_profile.name,
+        }
     )
     run_id = (
         f"LG-{uuid.uuid4().hex[:12]}"
@@ -276,6 +290,7 @@ def run_pipeline(
         "privacy_profile": (
             policy_profile.to_dict()
         ),
+        "policy_source": policy_source,
         "input": {
             "filename": input_path.name,
             "sha256": input_hash,

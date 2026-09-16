@@ -716,6 +716,7 @@ Start with [docs/index.md](docs/index.md).
 - [Unstructured data](docs/unstructured.md)
 - [Benchmarks](docs/benchmarks.md)
 - [Privacy profiles](docs/privacy-profiles.md)
+- [Organization policy files](docs/organization-policy.md)
 - [Release ladder](docs/release-ladder.md)
 - [Provenance](docs/provenance.md)
 - [Local R executor](docs/r-executor.md)

@@ -28,8 +28,8 @@ from .onboarding import AI_SETUP_PROMPT
 from .pii import scan_dataframe_values
 from .pipeline import run_pipeline
 from .profiles import (
-    get_profile,
     list_profiles,
+    resolve_profile,
 )
 from .provenance import verify_provenance
 from .purpose import route_purpose
@@ -57,6 +57,15 @@ def _add_profile_argument(
         help=(
             "Engineering privacy preset; "
             "not a compliance certification."
+        ),
+    )
+    parser.add_argument(
+        "--profile-file",
+        default=None,
+        help=(
+            "Optional reviewed organization JSON profile. "
+            "Overrides --profile; pre-1.0 custom profiles cannot enable "
+            "row-level synthetic egress."
         ),
     )
 
@@ -435,6 +444,7 @@ def main() -> None:
             args.backend,
             args.seed,
             args.profile,
+            args.profile_file,
         )
         print(
             json.dumps(
@@ -593,8 +603,9 @@ def main() -> None:
         profiles = profile_dataframe(
             df
         )
-        policy = get_profile(
-            args.profile
+        policy = resolve_profile(
+            args.profile,
+            args.profile_file,
         )
 
         if args.engine == "r":
