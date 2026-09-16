@@ -3,9 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
 from longgate.provenance import (
     build_provenance,
     sign_provenance,
@@ -46,7 +43,13 @@ def test_provenance_document_does_not_claim_signature(tmp_path: Path):
 
 
 def _write_signing_keys(tmp_path: Path) -> tuple[Path, Path]:
-    key = Ed25519PrivateKey.generate()
+    serialization = pytest.importorskip(
+        "cryptography.hazmat.primitives.serialization"
+    )
+    ed25519 = pytest.importorskip(
+        "cryptography.hazmat.primitives.asymmetric.ed25519"
+    )
+    key = ed25519.Ed25519PrivateKey.generate()
     private_path = tmp_path / "signing-key.pem"
     public_path = tmp_path / "verification-key.pem"
     private_path.write_bytes(
