@@ -1,9 +1,14 @@
+import hashlib
 import json
+import sys
+import types
 from pathlib import Path
 
 from longgate.model_vault import (
     MODEL_CATALOG,
+    ModelSpec,
     _disk_preflight,
+    install_model,
     recommend_model,
     resolve_model_path,
     setup_model,
@@ -240,3 +245,118 @@ def test_disk_preflight_fails_with_helpful_message(
         raise AssertionError(
             "Expected disk preflight to fail."
         )
+
+
+
+def test_install_model_pins_revision_verifies_hash_and_sets_default(
+    tmp_path: Path,
+    monkeypatch,
+):
+    payload = b"tiny-gguf-fixture"
+    sha256 = hashlib.sha256(
+        payload
+    ).hexdigest()
+    spec = ModelSpec(
+        alias="fixture",
+        repo_id="Example/Fixture-GGUF",
+        filename="fixture.gguf",
+        sha256=sha256,
+        size_gb=0.001,
+        min_ram_gb=0.1,
+        recommended_ram_gb=0.1,
+        license="Apache-2.0",
+        description="test fixture",
+        revision="deadbeef1234567890",
+    )
+
+    calls = {}
+
+    def fake_download(
+        *,
+        repo_id,
+        filename,
+        revision,
+        local_dir,
+    ):
+        calls.update(
+            {
+                "repo_id": repo_id,
+                "filename": filename,
+                "revision": revision,
+            }
+        )
+        target = (
+            Path(local_dir)
+            / filename
+        )
+        target.write_bytes(
+            payload
+        )
+        return str(target)
+
+    fake_module = types.ModuleType(
+        "huggingface_hub"
+    )
+    fake_module.hf_hub_download = (
+        fake_download
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "huggingface_hub",
+        fake_module,
+    )
+    monkeypatch.setattr(
+        "longgate.model_vault.get_model_spec",
+        lambda _alias: spec,
+    )
+    monkeypatch.setattr(
+        "longgate.model_vault._disk_preflight",
+        lambda _root, _spec: {
+            "free_gb": 10.0,
+            "required_gb": 1.001,
+        },
+    )
+
+    result = install_model(
+        "fixture",
+        tmp_path,
+    )
+
+    assert result["verified"] is True
+    assert result["downloaded"] is True
+    assert calls["repo_id"] == spec.repo_id
+    assert calls["revision"] == spec.revision
+
+    destination = (
+        tmp_path
+        / spec.filename
+    )
+    assert (
+        destination.read_bytes()
+        == payload
+    )
+
+    manifest = json.loads(
+        (
+            tmp_path
+            / "manifest.json"
+        ).read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        manifest["default_model"]
+        == "fixture"
+    )
+    assert (
+        manifest["models"]["fixture"][
+            "revision"
+        ]
+        == spec.revision
+    )
+    assert (
+        manifest["models"]["fixture"][
+            "sha256"
+        ]
+        == sha256
+    )
