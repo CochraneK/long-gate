@@ -40,7 +40,7 @@ The diagram source is also available in [architecture.mmd](architecture.mmd).
 3. The local worker runs with `network_mode: none` in the hardened deployment.
 4. Row-level synthetic backends remain fail-closed in v0.2.
 5. Direct identifiers are excluded from supported synthetic-model training and removed from outbound row views.
-6. Exact statistics run locally; identifier variables, small samples, and unsafe aggregate payloads are blocked.
+6. Exact statistics run locally; identifier variables, small samples, and unsafe aggregate payloads are blocked. Python and fixed-template R engines share the same aggregate guard.
 7. Policy approval is followed by a final egress PII rescan.
 8. Audit/scanner failures are fail-closed.
 9. Trust Reports never embed source row values.
@@ -76,3 +76,12 @@ result = gate.exact(
 ```
 
 The API is intended to be shared by AI-Ques, AI-persona, research tools, and future agents without giving those projects direct cloud access to raw data.
+
+
+## Exact execution engines
+
+The default exact executor uses Python/pandas/statsmodels.
+
+An optional R engine supports reviewed fixed templates such as descriptive statistics and OLS. It does not accept arbitrary R code from a networked agent.
+
+See [Local R exact executor](r-executor.md).

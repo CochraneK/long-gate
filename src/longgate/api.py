@@ -21,6 +21,10 @@ from .purpose import (
     PurposeDecision,
     route_purpose,
 )
+from .r_executor import (
+    r_describe,
+    r_ols,
+)
 
 
 class LongGate:
@@ -72,6 +76,7 @@ class LongGate:
         input_path: str | Path,
         analysis: str,
         privacy_profile: str = "research",
+        engine: str = "python",
         **kwargs: Any,
     ) -> dict[str, Any]:
         df = load_table(input_path)
@@ -80,7 +85,44 @@ class LongGate:
             privacy_profile
         )
 
-        if analysis == "describe":
+        if engine not in {
+            "python",
+            "r",
+        }:
+            raise ValueError(
+                "Exact engine must be 'python' or 'r'."
+            )
+
+        if engine == "r":
+            if analysis == "describe":
+                result = r_describe(
+                    df,
+                    profiles,
+                    min_dataset_size=(
+                        policy.min_dataset_size
+                    ),
+                )
+            elif analysis == "ols":
+                result = r_ols(
+                    df,
+                    profiles,
+                    kwargs["outcome"],
+                    list(
+                        kwargs["predictors"]
+                    ),
+                    min_dataset_size=(
+                        policy.min_dataset_size
+                    ),
+                    min_group_size=(
+                        policy.min_group_size
+                    ),
+                )
+            else:
+                raise ValueError(
+                    "R exact engine currently supports "
+                    "'describe' and 'ols' only."
+                )
+        elif analysis == "describe":
             result = describe_numeric(
                 df,
                 profiles,

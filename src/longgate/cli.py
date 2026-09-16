@@ -23,6 +23,10 @@ from .profiles import (
 )
 from .provenance import verify_provenance
 from .purpose import route_purpose
+from .r_executor import (
+    r_describe,
+    r_ols,
+)
 from .unstructured import (
     inspect_text_file,
     redact_text_file_local,
@@ -156,6 +160,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--predictor",
         action="append",
         default=[],
+    )
+    exact.add_argument(
+        "--engine",
+        choices=[
+            "python",
+            "r",
+        ],
+        default="python",
+        help=(
+            "Exact computation engine. "
+            "R uses fixed Long Gate templates only."
+        ),
     )
     _add_profile_argument(exact)
 
@@ -367,7 +383,42 @@ def main() -> None:
             args.profile
         )
 
-        if args.analysis == "describe":
+        if args.engine == "r":
+            if args.analysis == "describe":
+                result = r_describe(
+                    df,
+                    profiles,
+                    min_dataset_size=(
+                        policy.min_dataset_size
+                    ),
+                )
+            elif args.analysis == "ols":
+                if (
+                    not args.outcome
+                    or not args.predictor
+                ):
+                    raise SystemExit(
+                        "--outcome and at least one "
+                        "--predictor are required"
+                    )
+                result = r_ols(
+                    df,
+                    profiles,
+                    args.outcome,
+                    args.predictor,
+                    min_dataset_size=(
+                        policy.min_dataset_size
+                    ),
+                    min_group_size=(
+                        policy.min_group_size
+                    ),
+                )
+            else:
+                raise SystemExit(
+                    "R engine currently supports "
+                    "describe and ols only."
+                )
+        elif args.analysis == "describe":
             result = describe_numeric(
                 df,
                 profiles,

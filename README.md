@@ -306,6 +306,13 @@ longgate exact study.csv ols \
   --outcome score \
   --predictor age \
   --predictor group
+
+# Same guarded exact path, fixed local R template:
+longgate exact study.csv ols \
+  --engine r \
+  --outcome score \
+  --predictor age \
+  --predictor group
 ```
 
 Exact-stat release guards include:
@@ -505,7 +512,7 @@ Long Gate is deliberately conservative.
 - [ ] stronger membership-inference / linkage testing
 - [ ] explicit privacy profiles and threshold configuration
 - [ ] signed manifests and stronger provenance
-- [ ] local R execution
+- [x] fixed-template local R describe / OLS engine
 - [ ] semantic privacy / synthetic narrative generation for free text
 - [ ] DOCX / PDF / image / audio privacy paths
 - [ ] broader adversarial test corpus
@@ -609,7 +616,7 @@ Start with [docs/index.md](docs/index.md).
 - [Security invariants](docs/security-invariants.md)
 - [Agent boundary](docs/agent-boundary.md)
 - [Unstructured data](docs/unstructured.md)
-- [Benchmarks](docs/benchmarks.md)\n- [Privacy profiles](docs/privacy-profiles.md)\n- [Provenance](docs/provenance.md)
+- [Benchmarks](docs/benchmarks.md)\n- [Privacy profiles](docs/privacy-profiles.md)\n- [Provenance](docs/provenance.md)\n- [Local R executor](docs/r-executor.md)
 
 ---
 
