@@ -1,0 +1,13 @@
+services:
+  local-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.local
+    network_mode: none
+    volumes:
+      - ${LONGGATE_SOURCE_DIR:-./examples}:/input:ro
+      - ${LONGGATE_OUTPUT_DIR:-./longgate-runs}:/output
+    command: ["longgate", "run", "/input/demo.csv", "--out", "/output", "--backend", "demo"]
+
+  # Future cloud worker intentionally omitted from v0.1.
+  # It must receive only a read-only mount of a policy-approved egress directory.
