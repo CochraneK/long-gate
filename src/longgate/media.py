@@ -165,10 +165,7 @@ def _render_pdf_pages(path: Path, max_pages: int) -> list[object]:
             bitmap = page.render(scale=2)
             pages.append(bitmap.to_pil())
     finally:
-        try:
-            document.close()
-        except Exception:
-            pass
+        document.close()
     return pages
 
 
