@@ -453,6 +453,8 @@ def main() -> None:
                     "provenance": str(
                         result.provenance_path
                     ),
+                    "release_class": result.release_class,
+                    "next_actions": result.next_actions,
                     "safe_payload": (
                         str(
                             result.staged_payload
