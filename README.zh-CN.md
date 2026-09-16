@@ -6,7 +6,7 @@
 
 **面向 AI Agent 的 local-first 隐私网关与能力边界。**
 
-[English](README.md) · [Safe Demo](https://long-gate-demo-production.up.railway.app) · [5 分钟上手](docs/getting-started.md) · [FAQ](docs/faq.md)
+[English](README.md) · [5 分钟上手](docs/getting-started.md) · [FAQ](docs/faq.md)
 
 </div>
 
@@ -264,9 +264,6 @@ Long Gate 没有 `--force-release`。
 - 是否发生网络传输；
 - 输入 hash、策略、版本和 provenance。
 
-公开静态示例：
-
-[Long Gate Safe Demo](https://long-gate-demo-production.up.railway.app)
 
 ---
 
