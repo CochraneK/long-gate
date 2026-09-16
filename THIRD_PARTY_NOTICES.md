@@ -1,18 +1,24 @@
 # Third-party notices
 
-Long Gate is an orchestration project. Third-party libraries keep their own licenses and copyrights.
+Long Gate is an orchestration project. Third-party libraries retain their own licenses and copyrights.
 
-## Runtime dependencies
+## Core runtime dependencies
 
 - pandas — BSD-3-Clause
 - NumPy — BSD-3-Clause
 - openpyxl — MIT
 - Faker — MIT
 
-## Optional privacy / synthetic-data integrations
+## Optional integrations
 
-- SynthCity (`vanderschaarlab/synthcity`) — Apache License 2.0
-- MOSTLY AI (`mostly-ai/mostlyai`) — planned adapter; Apache License 2.0 at the time this repository scaffold was created
-- Presidio — planned detector adapter; upstream license applies
+- SynthCity (`vanderschaarlab/synthcity`) — Apache License 2.0 at the time this notice was updated.
+- MOSTLY AI (`mostly-ai/mostlyai`) — Apache License 2.0 at the time this notice was updated.
+- Microsoft Presidio — upstream license applies; used only as an optional local detector.
+- statsmodels — BSD-3-Clause; optional local statistical executor.
+- FastMCP — upstream license applies; optional MCP boundary.
 
-Long Gate does not vendor these upstream projects. Verify dependency licenses at release time and when upgrading major versions.
+## Security/development tooling
+
+GitHub Actions may invoke CodeQL, Bandit, pip-audit, Trivy, Anchore SBOM tooling, and Dependabot. Those tools are not vendored into Long Gate.
+
+Long Gate does not copy or relicense third-party source. Integrations are adapters/dependencies. Re-check upstream licenses and dependency metadata before releases or commercial distribution.
