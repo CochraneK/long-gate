@@ -1,0 +1,72 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, asdict
+import ipaddress
+import re
+from typing import Iterable
+
+import pandas as pd
+
+
+EMAIL_RE = re.compile(r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![\w.-])", re.I)
+PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\d ()-]{7,}\d)(?!\d)")
+CN_ID_RE = re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)")
+UK_POSTCODE_RE = re.compile(r"\b(?:GIR ?0AA|[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2})\b", re.I)
+
+
+@dataclass
+class PiiFindingSummary:
+    total_hits: int
+    by_entity: dict[str, int]
+    by_column: dict[str, int]
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+def _iter_text(values: Iterable[object]) -> Iterable[str]:
+    for value in values:
+        if pd.isna(value):
+            continue
+        text = str(value)
+        if text:
+            yield text
+
+
+def _count_text(text: str) -> dict[str, int]:
+    counts = {
+        "email": len(EMAIL_RE.findall(text)),
+        "phone": len(PHONE_RE.findall(text)),
+        "cn_national_id": len(CN_ID_RE.findall(text)),
+        "uk_postcode": len(UK_POSTCODE_RE.findall(text)),
+        "ip_address": 0,
+    }
+    for token in re.findall(r"(?<![\w:])(?:[0-9A-Fa-f:.]{3,})(?![\w:])", text):
+        try:
+            ipaddress.ip_address(token.strip("[](),;"))
+            counts["ip_address"] += 1
+        except ValueError:
+            pass
+    return counts
+
+
+def scan_dataframe_values(df: pd.DataFrame) -> PiiFindingSummary:
+    """Local, value-level scan which returns counts only, never matched values."""
+    by_entity: dict[str, int] = {}
+    by_column: dict[str, int] = {}
+    for col in df.columns:
+        col_hits = 0
+        for text in _iter_text(df[col].tolist()):
+            counts = _count_text(text)
+            for entity, count in counts.items():
+                if count:
+                    by_entity[entity] = by_entity.get(entity, 0) + count
+                    col_hits += count
+        if col_hits:
+            by_column[str(col)] = col_hits
+    return PiiFindingSummary(sum(by_entity.values()), by_entity, by_column)
+
+
+def scan_text(text: str) -> PiiFindingSummary:
+    counts = {k: v for k, v in _count_text(text).items() if v}
+    return PiiFindingSummary(sum(counts.values()), counts, {"payload": sum(counts.values())} if counts else {})
