@@ -22,7 +22,7 @@ dependencies = [
 parquet = ["pyarrow>=16"]
 synthcity = ["synthcity>=0.2.12"]
 mostlyai = ["mostlyai[local]>=4.0"]
-stats = ["statsmodels>=0.14"]
+stats = ["statsmodels>=0.14"]\npresidio = ["presidio-analyzer>=2.2"]
 dev = ["pytest>=8.0", "ruff>=0.6", "bandit>=1.7", "pip-audit>=2.7"]
 
 [project.scripts]
