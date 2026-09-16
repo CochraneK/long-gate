@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "long-gate"
+version = "0.1.0"
+description = "Local-first privacy orchestration for safe AI data access."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "CochraneK"}]
+keywords = ["privacy", "synthetic-data", "ai", "llm", "data-governance", "security"]
+dependencies = [
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "openpyxl>=3.1",
+  "faker>=30.0"
+]
+
+[project.optional-dependencies]
+parquet = ["pyarrow>=16"]
+synthcity = ["synthcity>=0.2.12"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+longgate = "longgate.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/longgate"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
