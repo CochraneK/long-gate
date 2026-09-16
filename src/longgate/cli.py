@@ -18,6 +18,12 @@ from .executor import (
 )
 from .inspect import profile_dataframe
 from .io import load_table
+from .media import (
+    inspect_audio_file,
+    inspect_image_file,
+    ocr_image_local,
+    ocr_pdf_local,
+)
 from .model_vault import catalog as model_catalog
 from .model_vault import (
     install_model,
@@ -38,6 +44,10 @@ from .purpose import route_purpose
 from .r_executor import (
     r_describe,
     r_ols,
+)
+from .release_criteria import (
+    evaluate_row_level_release,
+    evidence_from_mapping,
 )
 from .semantic import semantic_transform_local
 from .unstructured import (
@@ -350,6 +360,56 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    row_release = sub.add_parser(
+        "row-release-check",
+        help=(
+            "Evaluate a JSON row-level synthetic release evidence package. "
+            "The pre-1.0 hard lock still prevents automatic release."
+        ),
+    )
+    row_release.add_argument("evidence_json")
+
+    image_inspect = sub.add_parser(
+        "image-inspect",
+        help=(
+            "Inspect image metadata locally. Pixel content remains "
+            "network-blocked."
+        ),
+    )
+    image_inspect.add_argument("input")
+
+    image_ocr = sub.add_parser(
+        "image-ocr-local",
+        help=(
+            "Run local OCR on one image and report PII counts only. "
+            "No network OCR fallback is used."
+        ),
+    )
+    image_ocr.add_argument("input")
+
+    pdf_ocr = sub.add_parser(
+        "pdf-ocr-local",
+        help=(
+            "Render and OCR scanned PDF pages locally; output remains "
+            "network-blocked."
+        ),
+    )
+    pdf_ocr.add_argument("input")
+    pdf_ocr.add_argument(
+        "--max-pages",
+        type=int,
+        default=50,
+    )
+
+    audio_inspect = sub.add_parser(
+        "audio-inspect",
+        help=(
+            "Inspect WAV metadata locally. Audio content remains "
+            "network-blocked."
+        ),
+    )
+    audio_inspect.add_argument("input")
+
     document_inspect = sub.add_parser(
         "document-inspect",
         help=(
@@ -620,6 +680,70 @@ def main() -> None:
                     args.run_dir,
                     args.public_key,
                 ),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "row-release-check":
+        evidence_path = Path(args.evidence_json).expanduser().resolve()
+        data = json.loads(evidence_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise SystemExit("Row-level evidence JSON must contain an object.")
+        result = evaluate_row_level_release(
+            evidence_from_mapping(data)
+        )
+        print(
+            json.dumps(
+                result.to_dict(),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "image-inspect":
+        result = inspect_image_file(args.input)
+        print(
+            json.dumps(
+                result.to_dict(),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "image-ocr-local":
+        result = ocr_image_local(args.input)
+        print(
+            json.dumps(
+                result.to_dict(),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "pdf-ocr-local":
+        result = ocr_pdf_local(
+            args.input,
+            max_pages=args.max_pages,
+        )
+        print(
+            json.dumps(
+                result.to_dict(),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "audio-inspect":
+        result = inspect_audio_file(args.input)
+        print(
+            json.dumps(
+                result.to_dict(),
                 indent=2,
                 ensure_ascii=False,
             )
