@@ -114,6 +114,43 @@ def evaluate_row_level_release(
     )
 
 
+def _strict_bool(data: dict[str, object], key: str) -> bool:
+    value = data[key]
+    if not isinstance(value, bool):
+        raise ValueError(f"Row-level evidence {key} must be boolean.")
+    return value
+
+
+def _non_negative_int(data: dict[str, object], key: str) -> int:
+    value = data[key]
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(
+            f"Row-level evidence {key} must be a non-negative integer."
+        )
+    return value
+
+
+def _optional_rate(
+    data: dict[str, object],
+    key: str,
+    *,
+    minimum: float = 0.0,
+    maximum: float = 1.0,
+) -> float | None:
+    value = data[key]
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"Row-level evidence {key} must be numeric or null.")
+    result = float(value)
+    if not minimum <= result <= maximum:
+        raise ValueError(
+            f"Row-level evidence {key} must be between "
+            f"{minimum} and {maximum}."
+        )
+    return result
+
+
 def evidence_from_mapping(data: dict[str, object]) -> RowLevelReleaseEvidence:
     required = {
         "backend_approved",
@@ -136,32 +173,30 @@ def evidence_from_mapping(data: dict[str, object]) -> RowLevelReleaseEvidence:
     if extra:
         raise ValueError(f"Row-level evidence has unknown fields: {sorted(extra)}")
     return RowLevelReleaseEvidence(
-        backend_approved=bool(data["backend_approved"]),
-        direct_pii_hits=int(data["direct_pii_hits"]),
-        exact_row_overlap=int(data["exact_row_overlap"]),
-        identifier_overlap=int(data["identifier_overlap"]),
-        rare_quasi_overlap=int(data["rare_quasi_overlap"]),
-        near_copy_rate=(
-            None
-            if data["near_copy_rate"] is None
-            else float(data["near_copy_rate"])
+        backend_approved=_strict_bool(data, "backend_approved"),
+        direct_pii_hits=_non_negative_int(data, "direct_pii_hits"),
+        exact_row_overlap=_non_negative_int(data, "exact_row_overlap"),
+        identifier_overlap=_non_negative_int(data, "identifier_overlap"),
+        rare_quasi_overlap=_non_negative_int(data, "rare_quasi_overlap"),
+        near_copy_rate=_optional_rate(data, "near_copy_rate"),
+        membership_max_auc=_optional_rate(data, "membership_max_auc"),
+        attribute_inference_uplift=_optional_rate(
+            data,
+            "attribute_inference_uplift",
+            minimum=-1.0,
+            maximum=1.0,
         ),
-        membership_max_auc=(
-            None
-            if data["membership_max_auc"] is None
-            else float(data["membership_max_auc"])
+        longitudinal_linkage_rate=_optional_rate(
+            data,
+            "longitudinal_linkage_rate",
         ),
-        attribute_inference_uplift=(
-            None
-            if data["attribute_inference_uplift"] is None
-            else float(data["attribute_inference_uplift"])
+        benchmark_reproducible=_strict_bool(
+            data,
+            "benchmark_reproducible",
         ),
-        longitudinal_linkage_rate=(
-            None
-            if data["longitudinal_linkage_rate"] is None
-            else float(data["longitudinal_linkage_rate"])
+        policy_reviewed=_strict_bool(data, "policy_reviewed"),
+        human_review_recorded=_strict_bool(
+            data,
+            "human_review_recorded",
         ),
-        benchmark_reproducible=bool(data["benchmark_reproducible"]),
-        policy_reviewed=bool(data["policy_reviewed"]),
-        human_review_recorded=bool(data["human_review_recorded"]),
     )
