@@ -8,6 +8,9 @@ services:
     volumes:
       - ${LONGGATE_PRIVATE_DIR:?set LONGGATE_PRIVATE_DIR}:/private:ro
       - ${LONGGATE_RUN_DIR:-./longgate-runs}:/runs
+      - ${LONGGATE_MODEL_VAULT_DIR:-./.longgate-models}:/models:ro
+    environment:
+      LONGGATE_MODEL_VAULT: /models
     tmpfs:
       - /tmp
     command:
@@ -35,6 +38,6 @@ services:
         print("\n".join(str(p.relative_to(root)) for p in root.rglob("*") if p.is_file()))
 
 # Security invariant:
-# - local-worker sees /private and has no network.
+# - local-worker sees /private plus Model Vault:ro and has no network.
 # - cloud-worker has network capability but sees /safe only.
 # - never add LONGGATE_PRIVATE_DIR or /private to cloud-worker.

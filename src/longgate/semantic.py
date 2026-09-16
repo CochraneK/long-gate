@@ -132,15 +132,11 @@ def audit_semantic_preview(
         transformed
     )
 
-    source_numbers = set(
-        _NUMBER_RE.findall(
-            source
-        )
+    source_numbers = _number_tokens(
+        source
     )
-    transformed_numbers = set(
-        _NUMBER_RE.findall(
-            transformed
-        )
+    transformed_numbers = _number_tokens(
+        transformed
     )
     reused_numbers = len(
         source_numbers
@@ -205,7 +201,8 @@ def audit_semantic_preview(
 class LocalLlamaCppTransformer:
     """In-process local GGUF transformer.
 
-    Long Gate does not download models and does not accept a remote endpoint.
+    Private processing never downloads models and does not accept a remote endpoint.
+    Models may be provisioned separately into the local Model Vault during setup mode.
     """
 
     def __init__(
@@ -214,18 +211,13 @@ class LocalLlamaCppTransformer:
         n_ctx: int = 4096,
         max_input_characters: int = 12000,
     ) -> None:
-        self.model_path = Path(
+        self.model_path = resolve_model_path(
             model_path
-        ).resolve()
+        )
         self.n_ctx = n_ctx
         self.max_input_characters = (
             max_input_characters
         )
-
-        if not self.model_path.is_file():
-            raise FileNotFoundError(
-                self.model_path
-            )
 
     def transform(
         self,

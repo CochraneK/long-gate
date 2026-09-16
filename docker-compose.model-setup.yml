@@ -1,0 +1,20 @@
+services:
+  model-setup:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.models
+    read_only: true
+    environment:
+      LONGGATE_MODEL_VAULT: /models
+    volumes:
+      - ${LONGGATE_MODEL_VAULT_DIR:-./.longgate-models}:/models
+    tmpfs:
+      - /tmp
+    command:
+      - model
+      - recommend
+
+# Security boundary:
+# - model-setup has network access.
+# - model-setup mounts only the Model Vault.
+# - it must never mount LONGGATE_PRIVATE_DIR or a private-data directory.

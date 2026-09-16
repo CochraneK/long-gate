@@ -14,6 +14,8 @@
 - [Agent boundary](agent-boundary.md)
 - [Unstructured data](unstructured.md)
 - [Benchmarks](benchmarks.md)
+- [Local Model Guide](models.md)
+- [AI setup prompt](ai-setup-prompt.md)
 
 ## Project
 

@@ -245,6 +245,49 @@ The demo backend is intentionally **never eligible for row-level egress**. A `BL
 
 ---
 
+## Local AI in four commands
+
+You do **not** need to understand GGUF quantization before using Long Gate.
+
+```bash
+pip install -e '.[models,local-llm]'
+
+longgate model recommend
+longgate model install qwen3-4b
+longgate model verify qwen3-4b
+longgate model list
+```
+
+Then use the installed alias directly:
+
+```bash
+longgate semantic-transform-local interview.txt \
+  --model qwen3-4b \
+  --out preview.txt
+```
+
+The built-in catalog starts with official Qwen3 Q4_K_M GGUF releases:
+
+| Machine RAM | Long Gate default | Model file |
+|---:|---|---:|
+| ~8 GB | `qwen3-4b` | ~2.5 GB |
+| ~16 GB | `qwen3-8b` | ~5.03 GB |
+| ~24 GB+ | `qwen3-14b` | ~9 GB |
+
+Long Gate downloads models only in explicit **Model Setup Mode**, verifies the expected SHA-256, and stores them in the local Model Vault. The private-processing path resolves the local alias and never downloads a model.
+
+Want your own AI to configure everything?
+
+```bash
+longgate setup-prompt
+```
+
+Copy the output into a coding assistant or computer-use agent. The maintained prompt tells it to install Long Gate and the recommended local model **without opening any private dataset**.
+
+See [Local Model Guide](docs/models.md) and [AI setup prompt](docs/ai-setup-prompt.md).
+
+---
+
 ## Optional engines
 
 Install only the capabilities you need:
@@ -257,6 +300,7 @@ pip install -e '.[stats]'      # local OLS/statistics
 pip install -e '.[mcp]'        # safe-workspace MCP boundary
 pip install -e '.[documents]'  # local DOCX/PDF text extraction
 pip install -e '.[local-llm]'  # in-process local GGUF semantic preview
+pip install -e '.[models]'     # curated Model Vault installer
 ```
 
 Long Gate currently includes adapters for:
@@ -659,6 +703,8 @@ Start with [docs/index.md](docs/index.md).
 - [Agent boundary](docs/agent-boundary.md)
 - [Unstructured data](docs/unstructured.md)
 - [Benchmarks](docs/benchmarks.md)\n- [Privacy profiles](docs/privacy-profiles.md)\n- [Provenance](docs/provenance.md)\n- [Local R executor](docs/r-executor.md)\n- [Local semantic preview](docs/semantic-preview.md)
+- [Local Model Guide](docs/models.md)
+- [AI setup prompt](docs/ai-setup-prompt.md)
 
 ---
 

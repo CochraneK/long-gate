@@ -111,6 +111,81 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    sub.add_parser(
+        "setup-prompt",
+        help=(
+            "Print a copyable prompt that tells another AI "
+            "how to configure Long Gate safely."
+        ),
+    )
+
+    model = sub.add_parser(
+        "model",
+        help=(
+            "Recommend, install, verify, and inspect local GGUF models."
+        ),
+    )
+    model_sub = model.add_subparsers(
+        dest="model_command",
+        required=True,
+    )
+
+    recommend = model_sub.add_parser(
+        "recommend",
+        help=(
+            "Recommend a curated local model for this machine."
+        ),
+    )
+    recommend.add_argument(
+        "--ram-gb",
+        type=float,
+        default=None,
+        help=(
+            "Override automatic system-RAM detection."
+        ),
+    )
+
+    model_sub.add_parser(
+        "catalog",
+        help="Show the curated Long Gate model catalog.",
+    )
+
+    install = model_sub.add_parser(
+        "install",
+        help=(
+            "Download and SHA-256 verify a model in network-enabled setup mode."
+        ),
+    )
+    install.add_argument(
+        "alias"
+    )
+    install.add_argument(
+        "--vault",
+        default=None,
+        help="Optional Model Vault directory.",
+    )
+
+    model_list = model_sub.add_parser(
+        "list",
+        help="List models registered in the local Model Vault.",
+    )
+    model_list.add_argument(
+        "--vault",
+        default=None,
+    )
+
+    verify_model_cmd = model_sub.add_parser(
+        "verify",
+        help="Recompute and verify a Model Vault SHA-256.",
+    )
+    verify_model_cmd.add_argument(
+        "alias"
+    )
+    verify_model_cmd.add_argument(
+        "--vault",
+        default=None,
+    )
+
     inspect_cmd = sub.add_parser(
         "inspect",
         help=(
@@ -276,6 +351,42 @@ def main() -> None:
                     profile.to_dict()
                     for profile in list_profiles()
                 ],
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "setup-prompt":
+        print(
+            AI_SETUP_PROMPT
+        )
+        return
+
+    if args.command == "model":
+        if args.model_command == "recommend":
+            result = recommend_model(
+                args.ram_gb
+            )
+        elif args.model_command == "catalog":
+            result = model_catalog()
+        elif args.model_command == "install":
+            result = install_model(
+                args.alias,
+                args.vault,
+            )
+        elif args.model_command == "list":
+            result = list_installed(
+                args.vault
+            )
+        else:
+            result = verify_model(
+                args.alias,
+                args.vault,
+            )
+        print(
+            json.dumps(
+                result,
                 indent=2,
                 ensure_ascii=False,
             )

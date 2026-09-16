@@ -22,6 +22,9 @@ These are executable product requirements, not documentation-only promises.
 18. Semantic preview output remains local-only regardless of detector/audit results.
 19. The built-in local LLM path accepts a local model file, not a remote endpoint.
 20. Semantic transformation does not grant network-egress permission.
+21. Model installation is a separate network-enabled setup capability and accepts no private-data path.
+22. Hardened model setup workers mount the Model Vault but not the private-data directory.
+23. Private semantic processing resolves local Model Vault files and does not download models.
 
 CI should fail when tests covering these invariants fail.
 
