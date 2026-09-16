@@ -1,0 +1,33 @@
+sequenceDiagram
+    participant A as Network AI Agent
+    participant M as Long Gate MCP
+    participant S as SafeWorkspace
+    participant L as Local Privacy Worker
+    participant R as Raw Data
+
+    A->>M: inspect available safe artifacts
+    M->>S: list_safe_files()
+    S-->>M: approved artifacts only
+    M-->>A: safe file list
+
+    Note over A,M: Raw paths are not part of the MCP surface
+
+    A->>L: analysis plan / requested purpose
+    L->>L: route_purpose()
+    alt exploration
+        L->>R: read locally
+        L->>L: synthesize + privacy audit
+        L->>L: strip identifiers + egress rescan
+        L->>S: stage approved artifact
+    else exact statistics
+        L->>R: execute locally
+        L->>L: suppress small groups + aggregate guard
+        L->>S: stage aggregate only
+    else unknown purpose
+        L-->>A: BLOCK
+    end
+
+    A->>M: read_safe_text(relative_path)
+    M->>S: resolve within safe root
+    S-->>M: approved text artifact
+    M-->>A: safe result only
