@@ -53,8 +53,8 @@ Still open:
 - private worker Model Vault read-only mount
 
 Still open:
-- explicit request / approval contracts
-- outbound call ledger
+- explicit request / approval contracts ✅
+- outbound call ledger ✅
 - stronger process-level adversarial tests
 
 ## v0.5 — unstructured privacy baseline ✅ / semantic path active
