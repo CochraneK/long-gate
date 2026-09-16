@@ -1,19 +1,37 @@
 from __future__ import annotations
 
-import json
-import re
 import unicodedata
 from dataclasses import asdict, dataclass
 from pathlib import Path
+import re
 
 from .documents import extract_document_text
+from .model_vault import resolve_model_path
 from .pii import scan_text
 from .utils import write_json
 
 
-_NUMBER_RE = re.compile(
-    r"(?<!\w)\d[\d./:-]{1,}(?!\w)"
+_NUMBER_CANDIDATE_RE = re.compile(
+    r"(?<!\w)\d[\d./:-]*"
 )
+
+
+def _number_tokens(
+    text: str,
+) -> set[str]:
+    """Extract numeric/date-like tokens while ignoring trailing punctuation."""
+    tokens: set[str] = set()
+    for match in _NUMBER_CANDIDATE_RE.findall(
+        text
+    ):
+        normalized = match.rstrip(
+            "./:-"
+        )
+        if normalized:
+            tokens.add(
+                normalized
+            )
+    return tokens
 
 
 @dataclass(frozen=True)
@@ -71,10 +89,8 @@ def _character_ngram_stats(
     source_text = _normalized_characters(
         source
     )
-    transformed_text = (
-        _normalized_characters(
-            transformed
-        )
+    transformed_text = _normalized_characters(
+        transformed
     )
 
     source_ngrams = {
@@ -201,8 +217,9 @@ def audit_semantic_preview(
 class LocalLlamaCppTransformer:
     """In-process local GGUF transformer.
 
-    Private processing never downloads models and does not accept a remote endpoint.
-    Models may be provisioned separately into the local Model Vault during setup mode.
+    Private processing never downloads models and does not accept a remote
+    endpoint. Models may be provisioned separately into the local Model Vault
+    during network-enabled setup mode.
     """
 
     def __init__(
@@ -299,10 +316,8 @@ def semantic_transform_local(
         )
     )
 
-    transformer = (
-        LocalLlamaCppTransformer(
-            model_path
-        )
+    transformer = LocalLlamaCppTransformer(
+        model_path
     )
     transformed = transformer.transform(
         source,
@@ -338,7 +353,7 @@ def semantic_transform_local(
         output_path=str(output),
         audit_path=str(audit_path),
         model_path=str(
-            Path(model_path).resolve()
+            transformer.model_path
         ),
         release_allowed=False,
         note=(
