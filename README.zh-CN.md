@@ -222,8 +222,23 @@ Long Gate 可以本地检查：
 - Markdown
 - DOCX
 - PDF text layer
+- 图片尺寸 / EXIF 是否存在（不返回 EXIF 值）
+- 图片本地 OCR
+- 扫描版 PDF 本地 OCR
+- WAV 音频元数据
 
 也可以使用本地 GGUF 做 semantic preview。
+
+例如：
+
+```bash
+longgate image-inspect photo.jpg
+longgate image-ocr-local scan.png
+longgate pdf-ocr-local scanned.pdf --max-pages 50
+longgate audio-inspect interview.wav
+```
+
+所有 OCR 都是本地路径，不提供云端 OCR fallback。
 
 但目前：
 
@@ -231,7 +246,7 @@ Long Gate 可以本地检查：
 release_allowed = false
 ```
 
-即使没有检测到姓名、邮箱或长文本复制，也不代表已经证明“语义匿名”。
+即使没有检测到姓名、邮箱或长文本复制，也不代表已经证明“语义匿名”。Semantic preview 现在会生成机械 release-evidence：PII、数字复用、长 n-gram 复用、distinctive-token 复用和最小输出长度。全部通过也只表示**可以进入人工复核**，不会自动允许联网释放。
 
 ---
 
@@ -262,7 +277,8 @@ Long Gate 没有 `--force-release`。
 - 是否移除了 identifier；
 - egress scan 是否通过；
 - 是否发生网络传输；
-- 输入 hash、策略、版本和 provenance。
+- 输入 hash、策略、版本和 provenance；
+- 可选 Ed25519 provenance 签名及公钥验证。
 
 
 ---
@@ -276,7 +292,7 @@ Long Gate 当前**不声称**：
 - row-level synthetic 已达到生产级安全释放；
 - semantic rewrite 自动等于匿名；
 - 能抵御被攻陷的宿主操作系统/管理员；
-- PDF 零命中就代表文档没有隐私风险。
+- PDF / OCR 零命中就代表文档没有隐私风险。
 
 这些限制会明确写出来，而不是藏在脚注里。
 
@@ -301,6 +317,8 @@ Long Gate 当前**不声称**：
 - [Contributing](CONTRIBUTING.md)
 - [Threat Model](docs/threat-model.md)
 - [Benchmarks](docs/benchmarks.md)
+- [本地图像 / OCR / 音频隐私路径](docs/unstructured-media.md)
+- [Release evidence gates](docs/release-criteria.md)
 - [FAQ](docs/faq.md)
 
 ---
