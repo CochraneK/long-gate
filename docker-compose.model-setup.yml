@@ -12,7 +12,7 @@ services:
       - /tmp
     command:
       - model
-      - recommend
+      - setup
 
 # Security boundary:
 # - model-setup has network access.
