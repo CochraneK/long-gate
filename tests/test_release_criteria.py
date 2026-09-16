@@ -102,3 +102,12 @@ def test_evidence_mapping_allows_negative_attribute_uplift():
     data["attribute_inference_uplift"] = -0.2
     evidence = evidence_from_mapping(data)
     assert evidence.attribute_inference_uplift == pytest.approx(-0.2)
+
+
+
+def test_release_thresholds_reject_out_of_range_values():
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        evaluate_row_level_release(
+            _passing_evidence(),
+            max_membership_auc=1.5,
+        )
