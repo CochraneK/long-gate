@@ -47,6 +47,22 @@ It reports ROC-style AUC for this defined distance attack:
 
 This is not a general membership-inference guarantee.
 
+## Ensemble membership diagnostic
+
+```bash
+python benchmarks/run_ensemble_membership_benchmark.py
+```
+
+This runs a bounded set of single-column, small-subset, and full-column nearest-distance attacks and reports the **maximum** observed AUC plus the median. Long Gate deliberately uses the strongest observed attack as the conservative signal rather than averaging it away.
+
+## Fuzzy longitudinal linkage
+
+```bash
+python benchmarks/run_fuzzy_longitudinal_benchmark.py
+```
+
+This variant allows explicit numeric drift tolerances while requiring selected categorical quasi-identifiers to match. It tests whether identities can still be uniquely recovered across time after realistic small changes.
+
 ## Auxiliary-data linkage diagnostic
 
 ```bash
@@ -82,6 +98,14 @@ This attack asks whether records can be uniquely linked across two time points u
 
 It reports unique-linkage rate and precision for this defined exact-matching attack.
 
+## Cross-attack comparison table
+
+```bash
+python benchmarks/build_comparison_table.py
+```
+
+The builder emits `benchmark-summary.json` and `benchmark-summary.md`. It keeps attack metrics separate and explicitly records `row_level_release_allowed: false`; it does not manufacture a composite privacy score.
+
 ## Benchmark rules
 
 1. Benchmark data committed to this repository must be synthetic.
@@ -94,9 +118,7 @@ It reports unique-linkage rate and precision for this defined exact-matching att
 ## Planned expansion
 
 - shadow-model membership inference where justified;
-- nearest-neighbor / DCR variants;
 - richer attribute-inference variants;
 - auxiliary-dataset linkage variants;
-- probabilistic / fuzzy longitudinal linkage;
 - DP-backend evaluation;
-- machine-readable release comparison tables.
+- larger semantic privacy attack corpora.
