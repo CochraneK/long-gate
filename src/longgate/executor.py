@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
@@ -43,7 +42,10 @@ def correlation(df: pd.DataFrame, profiles: list[ColumnProfile]) -> dict[str, An
     return {
         "n_rows": int(len(df)),
         "correlation": {
-            str(row): {str(col): None if pd.isna(v) else float(v) for col, v in values.items()}
+            str(row): {
+                str(col): None if pd.isna(v) else float(v)
+                for col, v in values.items()
+            }
             for row, values in corr.to_dict(orient="index").items()
         },
     }
@@ -63,19 +65,27 @@ def group_summary(
         raise KeyError("Unknown group/value column.")
     if not pd.api.types.is_numeric_dtype(df[value]):
         raise TypeError("Group summary value must be numeric.")
+
     groups = []
     for key, part in df.groupby(group_by, dropna=False):
         n = int(len(part))
         if n < min_group_size:
             continue
         s = pd.to_numeric(part[value], errors="coerce")
-        groups.append({
-            "group": str(key),
-            "n": n,
-            "mean": None if s.dropna().empty else float(s.mean()),
-            "std": None if s.dropna().empty else float(s.std(ddof=1)),
-        })
-    return {"group_by": group_by, "value": value, "min_group_size": min_group_size, "groups": groups}
+        groups.append(
+            {
+                "group": str(key),
+                "n": n,
+                "mean": None if s.dropna().empty else float(s.mean()),
+                "std": None if s.dropna().empty else float(s.std(ddof=1)),
+            }
+        )
+    return {
+        "group_by": group_by,
+        "value": value,
+        "min_group_size": min_group_size,
+        "groups": groups,
+    }
 
 
 def ols(
@@ -92,10 +102,13 @@ def ols(
         raise KeyError("Unknown regression column.")
     if not pd.api.types.is_numeric_dtype(df[outcome]):
         raise TypeError("OLS outcome must be numeric.")
+
     try:
         import statsmodels.api as sm
     except ImportError as exc:
-        raise RuntimeError("OLS requires the optional stats dependency: pip install 'long-gate[stats]'") from exc
+        raise RuntimeError(
+            "OLS requires the optional stats dependency: pip install 'long-gate[stats]'"
+        ) from exc
 
     X = pd.DataFrame(index=df.index)
     for col in predictors:
@@ -105,16 +118,26 @@ def ols(
         else:
             counts = s.astype("string").value_counts(dropna=False)
             if len(counts) > 50 or (counts < MIN_GROUP_SIZE).any():
-                raise ValueError(f"Categorical predictor {col!r} has rare/high-cardinality levels.")
-            dummies = pd.get_dummies(s.astype("string"), prefix=col, drop_first=True, dtype=float)
+                raise ValueError(
+                    f"Categorical predictor {col!r} has rare/high-cardinality levels."
+                )
+            dummies = pd.get_dummies(
+                s.astype("string"),
+                prefix=col,
+                drop_first=True,
+                dtype=float,
+            )
             X = pd.concat([X, dummies], axis=1)
+
     y = pd.to_numeric(df[outcome], errors="coerce")
     model_df = pd.concat([y.rename("__y__"), X], axis=1).dropna()
     if len(model_df) < max(10, len(X.columns) + 3):
         raise ValueError("Too few complete observations for safe released OLS summary.")
+
     X2 = sm.add_constant(model_df.drop(columns="__y__"), has_constant="add")
     res = sm.OLS(model_df["__y__"], X2).fit()
     ci = res.conf_int()
+
     terms = {}
     for term in res.params.index:
         terms[str(term)] = {
@@ -124,6 +147,7 @@ def ols(
             "ci_low": float(ci.loc[term, 0]),
             "ci_high": float(ci.loc[term, 1]),
         }
+
     return {
         "model": "OLS",
         "outcome": outcome,
