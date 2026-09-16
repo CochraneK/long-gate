@@ -97,7 +97,7 @@ Still open:
 - stronger membership-inference attacks
 - attribute inference
 - longitudinal linkage
-- organization-defined policy files
+- organization-defined policy files ✅
 - key-backed manifest signatures
 - release benchmark comparison tables
 - production criteria for any row-level synthetic egress
