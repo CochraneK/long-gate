@@ -1,0 +1,6 @@
+name,phone,age,sex,PHQ,GAD,RT,group
+Alice Example,+00-000-0000-0001,23,F,15,11,612,A
+Bob Example,+00-000-0000-0002,29,M,7,5,721,B
+Chen Example,+00-000-0000-0003,25,F,18,13,655,A
+Dara Example,+00-000-0000-0004,31,F,4,3,690,B
+Evan Example,+00-000-0000-0005,27,M,11,8,634,A
