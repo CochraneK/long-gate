@@ -6,7 +6,6 @@ from pathlib import Path
 
 from .utils import sha256_file, write_json
 
-
 DEFAULT_ARTIFACTS = (
     "manifest.json",
     "audit.json",
