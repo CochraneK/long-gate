@@ -3,8 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
-
 from .utils import sha256_file, write_json
 
 
@@ -33,7 +31,7 @@ def build_provenance(
     artifacts: tuple[str, ...] = DEFAULT_ARTIFACTS,
 ) -> Path:
     root = Path(run_dir)
-    records: list[dict[str, Any]] = []
+    records: list[dict[str, object]] = []
     for relative in artifacts:
         path = root / relative
         if not path.is_file():
@@ -64,7 +62,7 @@ def build_provenance(
     return out
 
 
-def verify_provenance(run_dir: str | Path) -> dict[str, Any]:
+def verify_provenance(run_dir: str | Path) -> dict[str, object]:
     root = Path(run_dir)
     path = root / "provenance.json"
     document = json.loads(path.read_text(encoding="utf-8"))
