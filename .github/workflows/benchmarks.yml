@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Long Gate
-        run: python -m pip install -e .
+        run: python -m pip install -c constraints-ci.txt -e .
       - name: Generate synthetic benchmark fixture
         run: python benchmarks/generate_adversarial.py
       - name: Run structured audit benchmark

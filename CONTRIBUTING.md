@@ -24,12 +24,14 @@ cd long-gate
 python -m venv .venv
 source .venv/bin/activate
 
-pip install -e '.[dev]'
+pip install -c constraints-ci.txt -e '.[dev]'
 pytest -q
 ruff check src tests
 ```
 
 Use only synthetic/minimal data in tests and bug reports.
+
+`pyproject.toml` keeps library dependency ranges broad for downstream compatibility. `constraints-ci.txt` is the reviewed CI/dev baseline used to reduce dependency drift in tests, security audits, benchmarks, and package builds. Refresh it deliberately and run the full CI/security suite after any pin change.
 
 ## High-value contribution areas
 

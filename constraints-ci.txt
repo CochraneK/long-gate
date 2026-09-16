@@ -1,0 +1,17 @@
+# CI/development reproducibility constraints.
+#
+# Keep pyproject.toml dependency ranges library-friendly for downstream users.
+# CI intentionally constrains the direct runtime/dev/build toolchain so repeated
+# checks do not silently drift to a different top-level dependency set.
+# Refresh deliberately under tests + pip-audit review.
+pandas==2.2.3
+numpy==1.26.4
+openpyxl==3.1.5
+faker==30.0.0
+pytest==9.0.3
+ruff==0.6.0
+bandit==1.9.4
+pip-audit==2.10.1
+hatchling==1.25.0
+build==1.2.1
+twine==5.1.1
