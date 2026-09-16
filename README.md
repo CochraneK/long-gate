@@ -303,6 +303,9 @@ pip install -e '.[mcp]'        # safe-workspace MCP boundary
 pip install -e '.[documents]'  # local DOCX/PDF text extraction
 pip install -e '.[local-llm]'  # in-process local GGUF semantic preview
 pip install -e '.[models]'     # curated Model Vault installer
+pip install -e '.[media]'      # local image metadata inspection
+pip install -e '.[ocr]'        # local image / scanned-PDF OCR
+pip install -e '.[attestation]' # optional Ed25519 provenance signatures
 ```
 
 Long Gate currently includes adapters for:
@@ -317,6 +320,9 @@ Long Gate currently includes adapters for:
 | Exact statistics | pandas / statsmodels | guarded aggregate only |
 | Free text | TXT / Markdown local inspection | **local only** |
 | Documents | DOCX / PDF text-layer inspection | **local only** |
+| Image metadata | Pillow | **local only** |
+| Image / scanned-PDF OCR | local Tesseract + PDFium | **local only** |
+| Audio baseline | WAV metadata | **local only** |
 | Agent access | FastMCP | SafeWorkspace only |
 
 ---
@@ -415,9 +421,15 @@ DOCX and PDF text-layer inspection is also available locally:
 ```bash
 longgate document-inspect report.docx
 longgate document-inspect transcript.pdf
+
+# Optional local-only media paths:
+longgate image-inspect photo.jpg
+longgate image-ocr-local scan.png
+longgate pdf-ocr-local scanned.pdf --max-pages 50
+longgate audio-inspect interview.wav
 ```
 
-PDF inspection does **not** OCR scanned/image-only pages, so zero extracted hits never means the visible document is safe to upload.
+PDF text-layer inspection still never treats zero hits as permission. Scanned/image-only PDFs can now use the optional **local OCR** path, and OCR output remains network-blocked.
 
 An experimental local GGUF semantic preview is also available:
 
@@ -427,7 +439,7 @@ longgate semantic-transform-local interview.txt \
   --out preview.txt
 ```
 
-It writes a copy-risk audit sidecar and still records `release_allowed=false`.
+It writes a copy-risk audit sidecar with direct-PII, number reuse, long n-gram reuse, and distinctive-token reuse evidence. Passing the mechanical evidence gate only makes an artifact eligible for **manual review**; `automatic_release_allowed=false` and `release_allowed=false` remain enforced.
 
 See [Unstructured data](docs/unstructured.md) and [Local semantic preview](docs/semantic-preview.md).
 
@@ -469,7 +481,7 @@ Each run also writes an integrity-verifiable `provenance.json` containing SHA-25
 longgate verify-run longgate-runs/LG-...
 ```
 
-This detects post-run modification. It is intentionally described as **integrity verification, not a digital signature**. See [Provenance](docs/provenance.md).
+This detects post-run modification. Optional Ed25519 signing is also available with `longgate sign-run`; signature verification still depends on independently trusting the public key. See [Provenance](docs/provenance.md).
 
 ---
 
@@ -532,8 +544,8 @@ CI includes:
 
 - unit + privacy invariant tests;
 - synthetic adversarial benchmark smoke tests;
-- CodeQL;
 - Bandit;
+- Ruff security rules;
 - pip-audit;
 - Trivy;
 - CycloneDX SBOM generation;
@@ -554,7 +566,10 @@ python benchmarks/generate_adversarial.py
 python benchmarks/run_privacy_benchmark.py
 python benchmarks/run_k_anonymity_benchmark.py
 python benchmarks/run_membership_benchmark.py
+python benchmarks/run_ensemble_membership_benchmark.py
 python benchmarks/run_linkage_benchmark.py
+python benchmarks/run_fuzzy_longitudinal_benchmark.py
+python benchmarks/build_comparison_table.py
 ```
 
 The current adversarial suite now includes:
@@ -563,8 +578,11 @@ The current adversarial suite now includes:
 - numeric near-copy diagnostics;
 - rare quasi-identifier overlap checks;
 - k-anonymity-style equivalence-class summaries;
-- a transparent distance-based membership diagnostic;
-- exact auxiliary-data linkage diagnostics.
+- distance-based and bounded ensemble membership diagnostics;
+- exact auxiliary-data linkage diagnostics;
+- exact + fuzzy cross-time linkage diagnostics;
+- attribute-inference diagnostics;
+- machine-readable and Markdown cross-attack comparison tables.
 
 The project deliberately does **not** collapse these into a single magic “privacy score”.
 
@@ -608,14 +626,15 @@ Long Gate is deliberately conservative.
 
 ### Still being hardened
 
-- [ ] production criteria for row-level synthetic egress
-- [ ] stronger membership-inference / fuzzy-linkage variants
-- [ ] semantic-safe unstructured release criteria
-- [ ] organization-defined policy/profile files
-- [ ] key-backed digital signatures / attestation
-- [ ] scanned-PDF OCR, image, and audio privacy paths
+- [x] executable production evidence criteria for row-level synthetic egress (pre-1.0 release hard-lock remains)
+- [x] stronger ensemble membership-inference + fuzzy-linkage variants
+- [x] semantic release-evidence criteria for manual review (automatic release remains disabled)
+- [x] organization-defined policy/profile files
+- [x] key-backed Ed25519 provenance signatures / verification
+- [x] scanned-PDF OCR, image, and audio local-only privacy paths
 - [x] outbound network-agent request ledger / approval protocol
-- [ ] broader adversarial red-team corpus
+- [x] process-level adversarial capability-mutation tests
+- [ ] larger semantic / end-to-end adversarial red-team corpus
 
 See the [Roadmap](ROADMAP.md).
 
@@ -726,6 +745,8 @@ Start with [docs/index.md](docs/index.md).
 - [Provenance](docs/provenance.md)
 - [Local R executor](docs/r-executor.md)
 - [Local semantic preview](docs/semantic-preview.md)
+- [Local image / OCR / audio privacy paths](docs/unstructured-media.md)
+- [Release evidence gates](docs/release-criteria.md)
 - [Local Model Guide](docs/models.md)
 - [AI setup prompt](docs/ai-setup-prompt.md)
 
