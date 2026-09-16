@@ -16,9 +16,9 @@ Long Gate is a privacy control plane between sensitive local data and networked 
 
 The name combines the idea of a gate with the long defensive boundary of walls, passes, and checkpoints. The project is not a new synthetic-data model. It is the gatekeeper and orchestrator around existing privacy technologies.
 
-## v0.1 scope
+## v0.2 scope
 
-Long Gate v0.1 focuses on **structured data**: CSV, XLSX, JSON, and Parquet.
+Long Gate v0.2 focuses on **structured data**: CSV, XLSX, JSON, and Parquet.
 
 ```text
 source file
@@ -36,7 +36,7 @@ safe payload staging
 offline Trust Report
 ```
 
-Important: **v0.1 never performs a network request.** Even when a dataset passes, Long Gate only stages `safe_payload.json`. Cloud-agent integration comes after the isolation and egress contracts are hardened.
+Important: **v0.2 never performs a network request.** Even when a dataset passes, Long Gate only stages `safe_payload.json`. Cloud-agent integration comes after the isolation and egress contracts are hardened.
 
 ## Safety model
 
@@ -61,10 +61,10 @@ A generated PHQ score of `7` may coincide with a source score of `7` simply beca
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e .
-longgate run examples/demo.csv
+longgate doctor\nlonggate inspect examples/demo.csv\nlonggate run examples/demo.csv --backend auto
 ```
 
-The default `demo` backend exercises the full pipeline but is **never allowed through the egress gate**.
+The default `auto` mode prefers an installed mature local backend and otherwise falls back to `demo`. The `demo` backend exercises the full pipeline but is **never allowed through the egress gate**.
 
 To use the SynthCity adapter:
 
@@ -122,3 +122,32 @@ See [docs/architecture.md](docs/architecture.md) and [docs/threat-model.md](docs
 ## License
 
 Long Gate's own code is Apache-2.0. Third-party projects remain under their respective licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+
+## Purpose-bound disclosure
+
+Long Gate separates exploration from official inference:
+
+```text
+schema question      -> schema metadata only
+exploration          -> synthetic twin path
+exact statistics     -> local executor -> aggregate result
+unknown purpose      -> BLOCK
+```
+
+Local exact examples:
+
+```bash
+longgate exact study.csv describe
+longgate exact study.csv correlation
+longgate exact study.csv group-summary --group-by group --value score
+longgate exact study.csv ols --outcome score --predictor age --predictor group
+```
+
+Identifier columns are excluded from released numeric summaries. Small groups are suppressed.
+
+## Security CI
+
+Every push/PR runs a security baseline including CodeQL, Bandit, pip-audit, Trivy, SBOM generation, dependency updates, and Long Gate's own executable privacy invariants.
+
+See [docs/security-invariants.md](docs/security-invariants.md).
