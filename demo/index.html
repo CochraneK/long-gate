@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Long Gate public safe demo — a local-first privacy boundary for AI agents.">
+<title>Long Gate · Safe Demo</title>
+<style>
+:root{--bg:#07101e;--panel:#10182a;--panel2:#151f35;--text:#edf3ff;--muted:#9aa8c4;--line:#27334d;--blue:#8aa4ff;--green:#7ee2a8;--yellow:#ffd479;--red:#ff7d8b}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 50% -10%,#182647 0,#07101e 42%,#050b14 100%);color:var(--text);font:15px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+a{color:#afc0ff}.wrap{max-width:1120px;margin:auto;padding:32px 22px 72px}.nav{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:56px}.brand{font-weight:800;letter-spacing:.16em}.navlinks{display:flex;gap:18px;flex-wrap:wrap}.navlinks a{text-decoration:none;color:var(--muted)}
+.hero{text-align:center;max-width:900px;margin:auto}.kicker{display:inline-block;padding:6px 10px;border:1px solid #34425f;border-radius:999px;color:var(--green);font-size:12px;letter-spacing:.1em;text-transform:uppercase;background:#0b1424}
+h1{font-size:clamp(42px,7vw,78px);line-height:1.02;margin:22px 0 18px;letter-spacing:-.045em}.lead{max-width:760px;margin:0 auto;color:var(--muted);font-size:19px}.cta{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:28px 0 52px}.btn{display:inline-block;padding:11px 16px;border-radius:12px;text-decoration:none;border:1px solid var(--line);font-weight:700}.btn.primary{background:linear-gradient(135deg,#819dff,#6bd99b);color:#07101e;border:0}
+.warning{max-width:860px;margin:0 auto 42px;padding:15px 18px;border:1px solid #604e26;border-radius:14px;background:#231d10;color:#ffe2a0}.section{margin-top:26px;padding:26px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(180deg,#111a2d,#0d1525)}
+h2{font-size:26px;margin:0 0 8px}.sub{color:var(--muted)}.flow{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:center;margin-top:22px}.step{min-height:116px;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;justify-content:center}.step b{font-size:14px}.step span{color:var(--muted);font-size:12px;margin-top:6px}.arrow{text-align:center;color:#64728e;font-size:22px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.card{padding:18px;border-radius:16px;border:1px solid var(--line);background:#0d1525}.card strong{display:block;font-size:18px;margin-bottom:6px}.card p{margin:0;color:var(--muted)}.yes{color:var(--green)}.no{color:var(--red)}.code{white-space:pre-wrap;background:#070d17;border:1px solid var(--line);padding:18px;border-radius:14px;color:#cdd8ef;overflow:auto}.footer{text-align:center;color:var(--muted);font-size:12px;margin-top:34px}
+@media(max-width:900px){.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="wrap">
+<nav class="nav"><div class="brand">LONG GATE</div><div class="navlinks"><a href="#how">How it works</a><a href="#boundary">Boundary</a><a href="report.html">Trust Report</a><a href="https://github.com/CochraneK/long-gate">GitHub ↗</a></div></nav>
+<header class="hero">
+<span class="kicker">Public safe demo</span>
+<h1>Let AI reason about sensitive data<br>without giving AI the sensitive data.</h1>
+<p class="lead">Long Gate is a local-first privacy gateway and capability boundary for AI agents. Raw data stays local; only purpose-appropriate, policy-approved artifacts can approach the network boundary.</p>
+<div class="cta"><a class="btn primary" href="report.html">Open sample Trust Report</a><a class="btn" href="https://github.com/CochraneK/long-gate">View source on GitHub</a></div>
+</header>
+<div class="warning"><b>This demo never processes uploads.</b> It is intentionally static and contains only synthetic/example material. The private-data worker is not deployed here.</div>
+
+<section class="section" id="how">
+<h2>One request, minimum disclosure.</h2>
+<p class="sub">Different questions should not receive the same amount of data.</p>
+<div class="flow">
+<div class="step"><b>Raw data</b><span>Local only</span></div><div class="arrow">→</div>
+<div class="step"><b>Purpose router</b><span>Schema · explore · exact</span></div><div class="arrow">→</div>
+<div class="step"><b>Local processing</b><span>Synthetic twin or exact compute</span></div><div class="arrow">→</div>
+<div class="step"><b>Long Gate</b><span>Audit · policy · rescan</span></div>
+</div>
+</section>
+
+<section class="section" id="boundary">
+<h2>Capabilities beat prompts.</h2>
+<p class="sub">A networked agent is not asked to ignore the private directory. The private directory is absent from its capability surface.</p>
+<div class="grid">
+<div class="card"><strong class="yes">Local worker</strong><p>Can read the private source. Hardened deployment disables network access.</p></div>
+<div class="card"><strong>Long Gate</strong><p>Routes purpose, audits synthetic output, guards aggregates, strips identifiers, and records provenance.</p></div>
+<div class="card"><strong class="no">Network agent</strong><p>Cannot mount the raw-data path. It receives a narrow SafeWorkspace only.</p></div>
+</div>
+</section>
+
+<section class="section">
+<h2>Exact analysis does not require row upload.</h2>
+<pre class="code">AI proposes analysis
+        ↓
+real data stays local
+        ↓
+local exact executor
+        ↓
+β / SE / CI / p / N / R²
+        ↓
+aggregate guard
+        ↓
+safe artifact</pre>
+</section>
+
+<section class="section">
+<h2>Fail closed by default.</h2>
+<div class="grid">
+<div class="card"><strong>Raw rows</strong><p class="no">NEVER network eligible</p></div>
+<div class="card"><strong>Pseudonymized rows</strong><p class="no">NEVER network eligible</p></div>
+<div class="card"><strong>Unknown purpose</strong><p class="no">BLOCK</p></div>
+<div class="card"><strong>Final PII hit</strong><p class="no">BLOCK</p></div>
+<div class="card"><strong>Free text baseline</strong><p class="no">LOCAL ONLY</p></div>
+<div class="card"><strong>Guarded aggregates</strong><p class="yes">Purpose-bound</p></div>
+</div>
+</section>
+<div class="footer">Long Gate public demo · no upload form · no private worker · no analytics · Apache-2.0</div>
+</div></body></html>

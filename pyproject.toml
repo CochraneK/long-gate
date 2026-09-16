@@ -5,18 +5,45 @@ build-backend = "hatchling.build"
 [project]
 name = "long-gate"
 version = "0.2.0"
-description = "Local-first privacy orchestration for safe AI data access."
+description = "Local-first privacy gateway and capability boundary for AI agents."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 authors = [{name = "CochraneK"}]
-keywords = ["privacy", "synthetic-data", "ai", "llm", "data-governance", "security"]
+keywords = [
+  "privacy",
+  "ai-security",
+  "ai-agents",
+  "synthetic-data",
+  "pii",
+  "mcp",
+  "local-first",
+  "data-governance",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: Scientific/Engineering",
+]
 dependencies = [
   "pandas>=2.2",
   "numpy>=1.26",
   "openpyxl>=3.1",
-  "faker>=30.0"
+  "faker>=30.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/CochraneK/long-gate"
+Documentation = "https://github.com/CochraneK/long-gate/blob/main/docs/index.md"
+Repository = "https://github.com/CochraneK/long-gate"
+Issues = "https://github.com/CochraneK/long-gate/issues"
+Changelog = "https://github.com/CochraneK/long-gate/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 parquet = ["pyarrow>=16"]
