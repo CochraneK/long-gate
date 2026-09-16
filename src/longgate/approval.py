@@ -4,8 +4,6 @@ import json
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
-
 from .utils import sha256_file, utc_now
 
 
