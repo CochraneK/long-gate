@@ -482,9 +482,11 @@ It exposes only:
 
 ```text
 gate_info()
-list_safe_files()
-read_safe_text(relative_path)
+list_safe_files(purpose)
+read_safe_text(relative_path, purpose)
 ```
+
+Network-facing reads additionally require a **local hash-bound approval** for the exact relative path, SHA-256, and declared purpose. The MCP surface cannot create approvals.
 
 The `SafeWorkspace` rejects:
 
@@ -503,6 +505,8 @@ There is intentionally no:
 pip install -e '.[mcp]'
 
 export LONGGATE_SAFE_WORKSPACE=/path/to/approved/egress
+export LONGGATE_APPROVAL_LEDGER=/path/to/approvals.jsonl
+export LONGGATE_ACCESS_LOG=/path/to/access.jsonl
 longgate-mcp
 ```
 
@@ -591,6 +595,7 @@ Long Gate is deliberately conservative.
 - [x] research / clinical / enterprise engineering privacy profiles
 - [x] SafeWorkspace + narrow FastMCP surface
 - [x] hardened local/network process boundary examples
+- [x] hash-bound egress approval ledger + network access log
 - [x] SHA-256 provenance + verification
 - [x] TXT / Markdown / DOCX / PDF local inspection
 - [x] local GGUF semantic preview + copy-risk audit
@@ -610,7 +615,7 @@ Long Gate is deliberately conservative.
 - [ ] organization-defined policy/profile files
 - [ ] key-backed digital signatures / attestation
 - [ ] scanned-PDF OCR, image, and audio privacy paths
-- [ ] outbound network-agent request ledger / approval protocol
+- [x] outbound network-agent request ledger / approval protocol
 - [ ] broader adversarial red-team corpus
 
 See the [Roadmap](ROADMAP.md).
@@ -713,6 +718,7 @@ Start with [docs/index.md](docs/index.md).
 - [Threat model](docs/threat-model.md)
 - [Security invariants](docs/security-invariants.md)
 - [Agent boundary](docs/agent-boundary.md)
+- [Egress approval ledger](docs/approval-ledger.md)
 - [Unstructured data](docs/unstructured.md)
 - [Benchmarks](docs/benchmarks.md)
 - [Privacy profiles](docs/privacy-profiles.md)
