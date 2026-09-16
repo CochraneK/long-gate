@@ -10,7 +10,6 @@ from .model_vault import resolve_model_path
 from .pii import scan_text
 from .utils import write_json
 
-
 _NUMBER_CANDIDATE_RE = re.compile(
     r"(?<!\w)\d[\d./:-]*"
 )

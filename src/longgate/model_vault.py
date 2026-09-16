@@ -22,12 +22,13 @@ class ModelSpec:
     recommended_ram_gb: float
     license: str
     description: str
+    revision: str
 
     @property
     def source_url(self) -> str:
         return (
             "https://huggingface.co/"
-            f"{self.repo_id}/blob/main/{self.filename}"
+            f"{self.repo_id}/blob/{self.revision}/{self.filename}"
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -54,6 +55,7 @@ MODEL_CATALOG: dict[str, ModelSpec] = {
             "Default lightweight multilingual option. "
             "Recommended for typical laptops and first-time setup."
         ),
+        revision="a9a60d009fa7ff9606305047c2bf77ac25dbec49",
     ),
     "qwen3-8b": ModelSpec(
         alias="qwen3-8b",
@@ -70,6 +72,7 @@ MODEL_CATALOG: dict[str, ModelSpec] = {
         description=(
             "Balanced local option for machines with more memory."
         ),
+        revision="6a569868d07d3bd59e8b97fb001bf8c0b254bb20",
     ),
     "qwen3-14b": ModelSpec(
         alias="qwen3-14b",
@@ -86,6 +89,7 @@ MODEL_CATALOG: dict[str, ModelSpec] = {
         description=(
             "Higher-capacity local option for well-provisioned machines."
         ),
+        revision="c75e7b2d0234068f674a1bacf548ea32e27ccd29",
     ),
 }
 
@@ -421,6 +425,7 @@ def install_model(
                 "filename": spec.filename,
                 "sha256": actual,
                 "repo_id": spec.repo_id,
+                "revision": spec.revision,
                 "source_url": spec.source_url,
                 "license": spec.license,
                 "size_gb": spec.size_gb,
@@ -470,6 +475,7 @@ def install_model(
             hf_hub_download(
                 repo_id=spec.repo_id,
                 filename=spec.filename,
+                revision=spec.revision,
                 local_dir=staging,
             )
         )
@@ -500,6 +506,7 @@ def install_model(
         "filename": spec.filename,
         "sha256": spec.sha256,
         "repo_id": spec.repo_id,
+        "revision": spec.revision,
         "source_url": spec.source_url,
         "license": spec.license,
         "size_gb": spec.size_gb,

@@ -16,8 +16,8 @@ from .executor import (
 )
 from .inspect import profile_dataframe
 from .io import load_table
+from .model_vault import catalog as model_catalog
 from .model_vault import (
-    catalog as model_catalog,
     install_model,
     list_installed,
     recommend_model,
