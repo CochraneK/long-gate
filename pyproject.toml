@@ -22,11 +22,11 @@ dependencies = [
 parquet = ["pyarrow>=16"]
 synthcity = ["synthcity>=0.2.12"]
 mostlyai = ["mostlyai[local]"]
-stats = ["statsmodels>=0.14"]\npresidio = ["presidio-analyzer>=2.2"]
+stats = ["statsmodels>=0.14"]\npresidio = ["presidio-analyzer>=2.2"]\nmcp = ["fastmcp>=3.2,<4"]
 dev = ["pytest>=8.0", "ruff>=0.6", "bandit>=1.7", "pip-audit>=2.7"]
 
 [project.scripts]
-longgate = "longgate.cli:main"
+longgate = "longgate.cli:main"\nlonggate-mcp = "longgate.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/longgate"]
