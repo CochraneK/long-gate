@@ -10,6 +10,9 @@
 
 ## Using Long Gate
 
+- [Getting Started](getting-started.md)
+- [Troubleshooting](troubleshooting.md)
+
 - [Examples](../examples/README.md)
 - [Agent boundary](agent-boundary.md)
 - [Unstructured data](unstructured.md)
