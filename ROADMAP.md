@@ -21,7 +21,7 @@ Long Gate is developed in layers. **Implemented does not mean privacy-certified.
 - rare quasi-identifier overlap checks
 - identifier stripping
 - final outbound PII rescan
-- CodeQL / Bandit / pip-audit / Trivy / SBOM / Dependabot
+- private-compatible security CI: Bandit / Ruff security rules / pip-audit / Trivy / SBOM / Dependabot
 
 **Release posture:** row-level synthetic egress remains blocked by default, but the workflow now continues through a guarded aggregate fallback instead of ending at a dead-end `BLOCKED` state.
 
@@ -38,9 +38,11 @@ Long Gate is developed in layers. **Implemented does not mean privacy-certified.
 - aggregate PII guard
 - SHA-256 run provenance + verification
 
+Implemented:
+- optional Ed25519 key-backed provenance signatures + verification
+
 Still open:
 - broader reviewed statistical model adapters
-- key-backed signatures for provenance
 
 ## v0.4 — agent capability boundary baseline ✅
 
@@ -52,10 +54,11 @@ Still open:
 - separate model-setup capability zone
 - private worker Model Vault read-only mount
 
-Still open:
-- explicit request / approval contracts ✅
-- outbound call ledger ✅
-- stronger process-level adversarial tests
+Implemented:
+- explicit request / approval contracts
+- outbound call ledger
+- capability-based deployment contract validator
+- adversarial mutation tests for dangerous process/mount combinations
 
 ## v0.5 — unstructured privacy baseline ✅ / semantic path active
 
@@ -71,11 +74,16 @@ Implemented:
 - one-command local model setup
 - copyable AI setup prompt
 
+Implemented:
+- fail-closed semantic release-evidence criteria for manual review
+- distinctive long-token reuse diagnostic as an additional semantic copy/identity proxy
+- scanned-PDF local OCR privacy path
+- image metadata + local OCR privacy path
+- WAV audio metadata privacy path
+
 Still open:
-- semantic-safe release criteria
-- stronger semantic identity / rare-event attacks
-- scanned-PDF OCR privacy path
-- image / audio privacy paths
+- larger semantic identity / rare-event attack corpus
+- local speech-content de-identification path
 
 ## v0.6 — adversarial evaluation & release hardening (active)
 
@@ -93,23 +101,26 @@ Implemented:
 - wheel / sdist / clean-venv smoke installation
 - curated model supply-chain pins: immutable upstream revision + SHA-256
 
-Still open:
-- stronger membership-inference attacks
-- attribute inference ✅
-- longitudinal linkage ✅
-- organization-defined policy files ✅
+Implemented:
+- bounded ensemble membership-inference diagnostics
+- attribute inference
+- exact + fuzzy longitudinal linkage
+- organization-defined policy files
 - key-backed manifest signatures
-- release benchmark comparison tables
-- production criteria for any row-level synthetic egress
+- machine-readable + Markdown cross-attack comparison tables
+- executable production evidence criteria for row-level synthetic egress
+- pre-1.0 hard lock: criteria can pass, but row-level release remains disabled
+
+Still open:
+- shadow-model membership inference where justified
+- stronger DP-backend evaluation
 
 ## v0.7 — production trust research
 
 Planned:
-- formal release profiles and policy-as-code
+- formal release profiles and policy-as-code beyond the current JSON profile baseline
 - stronger DP backend evaluation
-- signed provenance / attestation
-- semantic privacy attack corpus
-- approved network-agent request protocol
+- larger semantic privacy attack corpus
 - reproducible end-to-end red-team scenarios
 
 ## Guiding rule

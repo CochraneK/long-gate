@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from itertools import combinations
 
 import numpy as np
 import pandas as pd
@@ -535,5 +536,225 @@ def longitudinal_linkage_diagnostic(
         correct_unique_links=correct,
         unique_link_precision=None if precision is None else round(float(precision), 6),
         quasi_columns=quasi_columns,
+        interpretation=interpretation,
+    )
+
+
+
+@dataclass(frozen=True)
+class EnsembleMembershipDiagnostic:
+    attacks_run: int
+    max_auc: float
+    median_auc: float
+    best_columns: list[str]
+    attack_results: list[dict[str, object]]
+    interpretation: str
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class FuzzyLongitudinalLinkageDiagnostic:
+    source_rows: int
+    later_rows: int
+    uniquely_linkable_rows: int
+    unique_linkage_rate: float
+    correct_unique_links: int
+    unique_link_precision: float | None
+    categorical_columns: list[str]
+    numeric_tolerances: dict[str, float]
+    interpretation: str
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+def ensemble_membership_diagnostic(
+    members: pd.DataFrame,
+    holdout: pd.DataFrame,
+    synthetic: pd.DataFrame,
+    columns: list[str],
+    max_subset_size: int = 2,
+    max_attacks: int = 32,
+) -> EnsembleMembershipDiagnostic:
+    """Run a bounded ensemble of nearest-distance membership attacks.
+
+    The ensemble evaluates single-column and small-subset attacks plus the full
+    supplied column set. Reporting the strongest observed AUC is deliberately
+    conservative; it is still not a general membership-privacy guarantee.
+    """
+    unique_columns = list(dict.fromkeys(columns))
+    if not unique_columns:
+        raise ValueError("At least one numeric column is required.")
+    if max_subset_size < 1:
+        raise ValueError("max_subset_size must be at least 1.")
+    if max_attacks < 1:
+        raise ValueError("max_attacks must be at least 1.")
+
+    missing = [
+        column
+        for column in unique_columns
+        if column not in members.columns
+        or column not in holdout.columns
+        or column not in synthetic.columns
+    ]
+    if missing:
+        raise KeyError(f"Missing membership columns: {missing}")
+
+    candidates: list[tuple[str, ...]] = []
+    upper = min(max_subset_size, len(unique_columns))
+    for size in range(1, upper + 1):
+        candidates.extend(combinations(unique_columns, size))
+    full = tuple(unique_columns)
+    if full not in candidates:
+        candidates.append(full)
+    if len(candidates) > max_attacks:
+        # Always preserve the full-column attack. Use the remaining budget
+        # for deterministic smaller attacks without silently dropping the
+        # strongest joint feature surface.
+        if max_attacks == 1:
+            candidates = [full]
+        else:
+            non_full = [item for item in candidates if item != full]
+            candidates = [
+                *non_full[: max_attacks - 1],
+                full,
+            ]
+
+    results: list[dict[str, object]] = []
+    for subset in candidates:
+        result = distance_membership_diagnostic(
+            members,
+            holdout,
+            synthetic,
+            list(subset),
+        )
+        results.append(
+            {
+                "columns": list(subset),
+                "auc": result.auc,
+                "interpretation": result.interpretation,
+            }
+        )
+
+    aucs = np.asarray([float(item["auc"]) for item in results], dtype=float)
+    best_index = int(np.argmax(aucs))
+    max_auc = float(aucs[best_index])
+    if max_auc >= 0.7:
+        interpretation = "elevated signal in at least one ensemble attack"
+    elif max_auc >= 0.6:
+        interpretation = "above-chance signal in at least one ensemble attack"
+    else:
+        interpretation = "all evaluated ensemble attacks are near chance"
+
+    return EnsembleMembershipDiagnostic(
+        attacks_run=len(results),
+        max_auc=round(max_auc, 6),
+        median_auc=round(float(np.median(aucs)), 6),
+        best_columns=list(results[best_index]["columns"]),
+        attack_results=results,
+        interpretation=interpretation,
+    )
+
+
+def fuzzy_longitudinal_linkage_diagnostic(
+    earlier: pd.DataFrame,
+    later: pd.DataFrame,
+    categorical_columns: list[str],
+    numeric_tolerances: dict[str, float],
+    entity_column: str,
+) -> FuzzyLongitudinalLinkageDiagnostic:
+    """Test bounded fuzzy cross-time linkage without emitting entity values.
+
+    Categorical quasi-identifiers must match exactly after string
+    normalization. Numeric quasi-identifiers may drift within explicit
+    per-column tolerances.
+    """
+    if not categorical_columns and not numeric_tolerances:
+        raise ValueError(
+            "At least one categorical or numeric quasi-identifier is required."
+        )
+    for column, tolerance in numeric_tolerances.items():
+        if isinstance(tolerance, bool) or float(tolerance) < 0:
+            raise ValueError(
+                f"Tolerance for {column!r} must be a non-negative number."
+            )
+
+    required = [
+        *categorical_columns,
+        *numeric_tolerances.keys(),
+        entity_column,
+    ]
+    missing = [
+        column
+        for column in required
+        if column not in earlier.columns or column not in later.columns
+    ]
+    if missing:
+        raise KeyError(
+            "Missing fuzzy longitudinal-linkage columns: "
+            f"{sorted(set(missing))}"
+        )
+    if len(earlier) == 0 or len(later) == 0:
+        raise ValueError("Fuzzy longitudinal linkage requires non-empty snapshots.")
+
+    later_categorical = {
+        column: later[column].fillna("<NA>").astype(str)
+        for column in categorical_columns
+    }
+    later_numeric = {
+        column: pd.to_numeric(later[column], errors="coerce")
+        for column in numeric_tolerances
+    }
+
+    unique = 0
+    correct = 0
+    for _, row in earlier[required].iterrows():
+        mask = pd.Series(True, index=later.index)
+        for column in categorical_columns:
+            value = "<NA>" if pd.isna(row[column]) else str(row[column])
+            mask &= later_categorical[column] == value
+        for column, tolerance in numeric_tolerances.items():
+            value = pd.to_numeric(
+                pd.Series([row[column]]),
+                errors="coerce",
+            ).iloc[0]
+            if pd.isna(value):
+                mask &= False
+                continue
+            mask &= (later_numeric[column] - float(value)).abs() <= float(tolerance)
+
+        candidates = later.loc[mask, entity_column]
+        if len(candidates) != 1:
+            continue
+        unique += 1
+        candidate = candidates.iloc[0]
+        if str(candidate) == str(row[entity_column]):
+            correct += 1
+
+    linkage_rate = unique / len(earlier)
+    precision = correct / unique if unique else None
+    if precision is not None and precision >= 0.8 and linkage_rate >= 0.2:
+        interpretation = "elevated cross-time linkage for this fuzzy attack"
+    elif unique:
+        interpretation = "some cross-time linkage for this fuzzy attack"
+    else:
+        interpretation = "no unique cross-time linkage for this fuzzy attack"
+
+    return FuzzyLongitudinalLinkageDiagnostic(
+        source_rows=len(earlier),
+        later_rows=len(later),
+        uniquely_linkable_rows=unique,
+        unique_linkage_rate=round(float(linkage_rate), 6),
+        correct_unique_links=correct,
+        unique_link_precision=(
+            None if precision is None else round(float(precision), 6)
+        ),
+        categorical_columns=categorical_columns,
+        numeric_tolerances={
+            column: float(value)
+            for column, value in numeric_tolerances.items()
+        },
         interpretation=interpretation,
     )

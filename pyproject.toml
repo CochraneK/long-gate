@@ -56,6 +56,8 @@ documents = ["python-docx>=1.1", "pypdf>=5"]
 local-llm = ["llama-cpp-python>=0.3"]
 models = ["huggingface-hub>=0.27"]
 attestation = ["cryptography>=50.0.1,<51"]
+media = ["Pillow>=10"]
+ocr = ["Pillow>=10", "pytesseract>=0.3.10", "pypdfium2>=4"]
 dev = ["pytest>=8.0", "ruff>=0.6", "bandit>=1.7", "pip-audit>=2.7"]
 
 [project.scripts]

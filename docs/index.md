@@ -17,6 +17,8 @@
 - [Examples](../examples/README.md)
 - [Agent boundary](agent-boundary.md)
 - [Unstructured data](unstructured.md)
+- [Local image / OCR / audio privacy paths](unstructured-media.md)
+- [Release evidence gates](release-criteria.md)
 - [Benchmarks](benchmarks.md)
 - [Local Model Guide](models.md)
 - [AI setup prompt](ai-setup-prompt.md)

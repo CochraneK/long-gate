@@ -80,7 +80,8 @@ def main() -> None:
     )
     required_phrases = [
         "row-level synthetic egress remains fail-closed",
-        "not a digital signature",
+        "optional ed25519",
+        "independently trusting the public key",
         "not certifications",
     ]
     missing = [

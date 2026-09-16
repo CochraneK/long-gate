@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from longgate.deployment_contract import validate_compose_capability_contract
+
 ROOT = Path(__file__).parents[1]
 
 
@@ -90,3 +92,52 @@ def test_private_and_setup_workers_never_share_capability_sets():
     assert "/private" not in setup_block
     assert ":/models" in setup_block
     assert ":/models:ro" not in setup_block
+
+
+
+def test_capability_validator_accepts_hardened_compose():
+    text = (
+        ROOT
+        / "docker-compose.hardened.yml"
+    ).read_text(encoding="utf-8")
+    result = validate_compose_capability_contract(text)
+    assert result.valid is True
+    assert result.violations == []
+
+
+def test_capability_validator_rejects_mutated_cloud_private_mount():
+    text = (
+        ROOT
+        / "docker-compose.hardened.yml"
+    ).read_text(encoding="utf-8")
+    safe_mount = (
+        "      - ${LONGGATE_EGRESS_DIR:?set LONGGATE_EGRESS_DIR}:/safe:ro"
+    )
+    assert safe_mount in text
+    mutated = text.replace(
+        safe_mount,
+        safe_mount + "\n      - ./private:/private:ro",
+        1,
+    )
+    result = validate_compose_capability_contract(mutated)
+    assert result.valid is False
+    assert any(
+        item["code"] == "private_data_with_network"
+        for item in result.violations
+    )
+
+
+def test_capability_validator_rejects_private_model_write_combo():
+    text = """services:
+  worker:
+    network_mode: none
+    volumes:
+      - ./private:/private:ro
+      - ./models:/models
+"""
+    result = validate_compose_capability_contract(text)
+    assert result.valid is False
+    assert any(
+        item["code"] == "private_data_with_model_vault_write"
+        for item in result.violations
+    )

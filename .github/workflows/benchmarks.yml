@@ -25,12 +25,18 @@ jobs:
         run: python benchmarks/run_k_anonymity_benchmark.py > benchmark-k.json
       - name: Run membership diagnostic
         run: python benchmarks/run_membership_benchmark.py > benchmark-membership.json
+      - name: Run ensemble membership diagnostic
+        run: python benchmarks/run_ensemble_membership_benchmark.py > benchmark-membership-ensemble.json
       - name: Run auxiliary linkage diagnostic
         run: python benchmarks/run_linkage_benchmark.py > benchmark-linkage.json
       - name: Run attribute inference diagnostic
         run: python benchmarks/run_attribute_benchmark.py > benchmark-attribute.json
       - name: Run longitudinal linkage diagnostic
         run: python benchmarks/run_longitudinal_benchmark.py > benchmark-longitudinal.json
+      - name: Run fuzzy longitudinal linkage diagnostic
+        run: python benchmarks/run_fuzzy_longitudinal_benchmark.py > benchmark-longitudinal-fuzzy.json
+      - name: Build comparison tables
+        run: python benchmarks/build_comparison_table.py
       - name: Confirm machine-readable output
         run: |
           python - <<'PY'
@@ -39,10 +45,17 @@ jobs:
 
           for path in sorted(Path(".").glob("benchmark-*.json")):
               data = json.loads(path.read_text())
+              if path.name == "benchmark-summary.json":
+                  assert data.get("schema_version") == 1
+                  assert isinstance(data.get("benchmarks"), list)
+                  print(path, "comparison-summary")
+                  continue
               assert "benchmark" in data
               print(path, data["benchmark"])
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: long-gate-synthetic-benchmark-results
-          path: benchmark-*.json
+          path: |
+            benchmark-*.json
+            benchmark-summary.md

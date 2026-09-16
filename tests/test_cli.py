@@ -95,3 +95,31 @@ def test_verify_run_public_key_parser():
     )
     assert args.command == "verify-run"
     assert args.public_key == "verification-key.pem"
+
+
+
+def test_media_privacy_parsers():
+    parser = build_parser()
+
+    image = parser.parse_args(["image-inspect", "photo.jpg"])
+    assert image.command == "image-inspect"
+
+    image_ocr = parser.parse_args(["image-ocr-local", "scan.png"])
+    assert image_ocr.command == "image-ocr-local"
+
+    pdf_ocr = parser.parse_args(
+        ["pdf-ocr-local", "scan.pdf", "--max-pages", "3"]
+    )
+    assert pdf_ocr.command == "pdf-ocr-local"
+    assert pdf_ocr.max_pages == 3
+
+    audio = parser.parse_args(["audio-inspect", "voice.wav"])
+    assert audio.command == "audio-inspect"
+
+
+def test_row_release_check_parser():
+    args = build_parser().parse_args(
+        ["row-release-check", "evidence.json"]
+    )
+    assert args.command == "row-release-check"
+    assert args.evidence_json == "evidence.json"

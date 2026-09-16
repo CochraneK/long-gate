@@ -59,7 +59,8 @@ Every transformed preview is checked for:
 
 - direct PII patterns;
 - exact numeric tokens reused from the source;
-- long normalized character n-grams reused from the source.
+- long normalized character n-grams reused from the source;
+- distinctive long source tokens reused in the transformed text.
 
 An audit sidecar is written next to the preview:
 
@@ -76,9 +77,29 @@ release_allowed = false
 
 Even zero direct PII and zero copy overlap do not prove semantic anonymity.
 
-## Future release criteria
+## Release-evidence criteria
 
-Before unstructured output could ever become network-eligible, Long Gate would need stronger evidence such as:
+The audit now records `semantic-release-evidence-v1`. Current thresholds for becoming eligible for **manual review** are:
+
+- direct PII hits = 0;
+- reused exact numeric tokens = 0;
+- normalized character n-gram reuse ≤ 1%;
+- distinctive long-token reuse ≤ 5%;
+- transformed output length ≥ 80 characters.
+
+Passing all five still produces:
+
+```text
+manual_review_required = true
+automatic_release_allowed = false
+release_allowed = false
+```
+
+See [Release evidence gates](release-criteria.md).
+
+## Remaining semantic research
+
+Before unstructured output could ever become network-eligible, Long Gate would still need stronger evidence such as:
 
 - local semantic entity/risk models;
 - rare-event and relationship leakage tests;
