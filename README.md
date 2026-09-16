@@ -8,12 +8,14 @@
 
 **A local-first privacy gateway and capability boundary for AI agents.**
 
+[![Tests](https://github.com/CochraneK/long-gate/actions/workflows/test.yml/badge.svg)](https://github.com/CochraneK/long-gate/actions/workflows/test.yml)
+[![Security boundary](https://github.com/CochraneK/long-gate/actions/workflows/security.yml/badge.svg)](https://github.com/CochraneK/long-gate/actions/workflows/security.yml)
+[![Security audit](https://github.com/CochraneK/long-gate/actions/workflows/security-audit.yml/badge.svg)](https://github.com/CochraneK/long-gate/actions/workflows/security-audit.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-7ee2a8)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-86a7ff)](pyproject.toml)
 [![Status](https://img.shields.io/badge/status-pre--1.0-ffd479)](ROADMAP.md)
-[![Security model](https://img.shields.io/badge/security-fail--closed-ff7d8b)](docs/security-invariants.md)
 
-**[Quick start](#quick-start) · [Architecture](#architecture) · [Threat model](docs/threat-model.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)**
+**[Quick start](#quick-start) · [Architecture](#architecture) · [Threat model](docs/threat-model.md) · [Benchmarks](docs/benchmarks.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)**
 
 </div>
 
@@ -112,6 +114,7 @@ flowchart LR
     PURPOSE["Purpose Router"]
     SYNTH["Synthetic Twin Backend"]
     EXACT["Local Exact Executor"]
+    TEXT["Free-text Local Inspector"]
     AUDIT["Privacy Audit"]
     REPORT["Offline Trust Report"]
   end
@@ -131,6 +134,7 @@ flowchart LR
   RAW --> INSPECT --> PURPOSE
   PURPOSE -->|exploration| SYNTH --> AUDIT --> POLICY
   PURPOSE -->|exact statistics| EXACT --> POLICY
+  PURPOSE -->|free text| TEXT -->|local-only baseline| POLICY
   PURPOSE -->|unknown purpose| POLICY
   POLICY --> STRIP --> RESCAN --> SAFE --> MCP --> AI
 
@@ -258,11 +262,12 @@ Long Gate currently includes adapters for:
 | Capability | Integration | Default row-level egress |
 |---|---|---|
 | Demo synthesis | built-in | **BLOCKED** |
-| Synthetic data | SynthCity | **BLOCKED in v0.2** |
-| Synthetic data | MOSTLY AI local mode | **BLOCKED in v0.2** |
+| Synthetic data | SynthCity | **BLOCKED in pre-1.0 baseline** |
+| Synthetic data | MOSTLY AI local mode | **BLOCKED in pre-1.0 baseline** |
 | PII analysis | built-in local scanner | local only |
 | PII analysis | Microsoft Presidio | local only |
 | Exact statistics | pandas / statsmodels | guarded aggregate only |
+| Free text | TXT / Markdown local inspection | **local only** |
 | Agent access | FastMCP | SafeWorkspace only |
 
 ---
@@ -283,6 +288,7 @@ Current routing philosophy:
 | “Help me prototype an analysis” | synthetic path |
 | “Show distributions” | synthetic path / safe summaries |
 | “Compute the real regression” | exact local executor |
+| free-text narrative | local-only inspection baseline |
 | unknown / ambiguous purpose | **BLOCK** |
 
 Exact local examples:
@@ -309,6 +315,25 @@ Exact-stat release guards include:
 - small-group suppression;
 - rare categorical-level blocking;
 - final aggregate PII scanning.
+
+---
+
+## Free text: local first, still fail-closed
+
+Narratives can identify a person through **meaning**, even when names and phone numbers are removed.
+
+Long Gate therefore refuses to call regex redaction “anonymous”.
+
+```bash
+longgate text-inspect interview.txt
+
+longgate text-redact-local interview.txt \
+  --out redacted-preview.txt
+```
+
+The second command is deliberately named `-local`: it creates a local preview, **not** a network-safe artifact.
+
+See [Unstructured data](docs/unstructured.md).
 
 ---
 
@@ -390,6 +415,7 @@ PSEUDONYMIZED rows       → NEVER network eligible
 UNKNOWN purpose          → BLOCK
 PII found at final scan  → BLOCK
 demo backend             → BLOCK
+free text                → LOCAL ONLY baseline
 small unsafe group       → SUPPRESS / BLOCK
 path escapes safe root   → BLOCK
 ```
@@ -407,6 +433,32 @@ CI includes:
 See the full [Security invariants](docs/security-invariants.md) and [Threat model](docs/threat-model.md).
 
 If you find a vulnerability, **do not attach real sensitive data to a public issue**. Follow [SECURITY.md](SECURITY.md).
+
+---
+
+## Adversarial benchmarks
+
+Long Gate ships a synthetic benchmark fixture so privacy checks can be tested against deliberate failures rather than only happy paths.
+
+```bash
+python benchmarks/generate_adversarial.py
+python benchmarks/run_privacy_benchmark.py
+```
+
+The benchmark framework is designed to grow toward:
+
+- exact-copy attacks;
+- direct-identifier reuse;
+- rare-combination linkage;
+- near-copy attacks;
+- deterministic pseudonymization;
+- small-group disclosure;
+- membership inference;
+- auxiliary-dataset linkage.
+
+A benchmark pass is **evidence for a defined test**, not an anonymity certificate.
+
+See [Benchmarks](docs/benchmarks.md).
 
 ---
 
@@ -431,8 +483,10 @@ Long Gate is deliberately conservative.
 - [x] aggregate guard
 - [x] SafeWorkspace boundary
 - [x] minimal FastMCP surface
+- [x] local-only free-text inspection/redaction preview
+- [x] adversarial benchmark scaffold
 - [x] offline Trust Report
-- [x] security CI and SBOM
+- [x] security CI, SBOM, and tag-build workflow
 
 ### Still being hardened
 
@@ -441,7 +495,8 @@ Long Gate is deliberately conservative.
 - [ ] explicit privacy profiles and threshold configuration
 - [ ] signed manifests and stronger provenance
 - [ ] local R execution
-- [ ] unstructured interview / document privacy path
+- [ ] semantic privacy / synthetic narrative generation for free text
+- [ ] DOCX / PDF / image / audio privacy paths
 - [ ] broader adversarial test corpus
 
 See the [Roadmap](ROADMAP.md).
@@ -473,7 +528,6 @@ from longgate import LongGate
 gate = LongGate()
 
 inspection = gate.inspect("study.csv")
-
 decision = gate.route("regression")
 
 result = gate.exact(
@@ -529,7 +583,22 @@ For a privacy design concern, use the dedicated **Privacy / threat-model review*
 
 If you use Long Gate in research, please cite the repository using [CITATION.cff](CITATION.cff).
 
-Long Gate also records input hashes, policy decisions, backend names, audit outcomes, and run provenance so privacy processing can become part of the reproducible research record.
+Long Gate records input hashes, policy decisions, backend names, audit outcomes, and run provenance so privacy processing can become part of the reproducible research record.
+
+---
+
+## Documentation
+
+Start with [docs/index.md](docs/index.md).
+
+- [Vision](docs/vision.md)
+- [Architecture](docs/architecture.md)
+- [Comparison](docs/comparison.md)
+- [Threat model](docs/threat-model.md)
+- [Security invariants](docs/security-invariants.md)
+- [Agent boundary](docs/agent-boundary.md)
+- [Unstructured data](docs/unstructured.md)
+- [Benchmarks](docs/benchmarks.md)
 
 ---
 
