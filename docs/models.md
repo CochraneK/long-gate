@@ -67,9 +67,12 @@ Long Gate downloads these catalog entries from the official Qwen organization on
 - https://huggingface.co/Qwen/Qwen3-8B-GGUF
 - https://huggingface.co/Qwen/Qwen3-14B-GGUF
 
-The catalog snapshot currently pins the expected SHA-256 for each Q4_K_M file.
+The catalog snapshot pins **two independent supply-chain anchors** for each Q4_K_M file:
 
-If the upstream file changes and the checksum no longer matches, Long Gate **fails closed** instead of silently trusting the new file.
+1. an immutable Hugging Face revision;
+2. the expected file SHA-256.
+
+Long Gate downloads the pinned revision rather than tracking the repository's moving `main` branch. If the downloaded bytes do not match the catalog SHA-256, installation **fails closed**.
 
 ## Model Vault
 

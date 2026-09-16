@@ -18,7 +18,7 @@ h2{font-size:26px;margin:0 0 8px}.sub{color:var(--muted)}.flow{display:grid;grid
 </style>
 </head>
 <body><div class="wrap">
-<nav class="nav"><div class="brand">LONG GATE</div><div class="navlinks"><a href="#how">How it works</a><a href="#boundary">Boundary</a><a href="report.html">Trust Report</a><a href="https://github.com/CochraneK/long-gate">GitHub ↗</a></div></nav>
+<nav class="nav"><div class="brand">LONG GATE</div><div class="navlinks"><a href="#how">How it works</a><a href="#setup">Local AI setup</a><a href="#boundary">Boundary</a><a href="report.html">Trust Report</a><a href="https://github.com/CochraneK/long-gate">GitHub ↗</a></div></nav>
 <header class="hero">
 <span class="kicker">Public safe demo</span>
 <h1>Let AI reason about sensitive data<br>without giving AI the sensitive data.</h1>
@@ -36,6 +36,29 @@ h2{font-size:26px;margin:0 0 8px}.sub{color:var(--muted)}.flow{display:grid;grid
 <div class="step"><b>Local processing</b><span>Synthetic twin or exact compute</span></div><div class="arrow">→</div>
 <div class="step"><b>Long Gate</b><span>Audit · policy · rescan</span></div>
 </div>
+</section>
+
+<section class="section" id="setup">
+<h2>Local AI, one setup command.</h2>
+<p class="sub">You do not need to choose a GGUF filename or learn quantization first.</p>
+<pre class="code">pip install -e '.[models,local-llm]'
+longgate model setup
+
+# Later, in private/offline processing:
+longgate semantic-transform-local interview.txt \
+  --model auto \
+  --out preview.txt</pre>
+<div class="grid">
+<div class="card"><strong>~8 GB RAM</strong><p><code>qwen3-4b</code> · Q4_K_M · ~2.5 GB</p></div>
+<div class="card"><strong>~16 GB RAM</strong><p><code>qwen3-8b</code> · Q4_K_M · ~5.03 GB</p></div>
+<div class="card"><strong>~24 GB+ RAM</strong><p><code>qwen3-14b</code> · Q4_K_M · ~9 GB</p></div>
+</div>
+<p class="sub" style="margin-top:16px">Setup mode may use the Internet and can write the Model Vault, but it must not mount private data. Private processing uses the verified local model with network access disabled.</p>
+<pre class="code">MODEL SETUP MODE                 PRIVATE PROCESSING MODE
+Internet: YES                    Internet: NO
+Private data: NO                 Private data: YES
+Model Vault: WRITE               Model Vault: READ ONLY</pre>
+<p><a href="https://github.com/CochraneK/long-gate/blob/main/docs/getting-started.md">5-minute guide ↗</a> · <a href="https://github.com/CochraneK/long-gate/blob/main/docs/ai-setup-prompt.md">Give this to your AI ↗</a></p>
 </section>
 
 <section class="section" id="boundary">
