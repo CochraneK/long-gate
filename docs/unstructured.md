@@ -45,7 +45,7 @@ longgate document-inspect transcript.pdf
 
 DOCX extraction reads paragraph and table-cell text.
 
-PDF extraction uses the PDF text layer only. Long Gate does **not** OCR scanned/image-only PDFs in this baseline. A PDF with zero extracted PII hits can therefore still contain visible private information.
+PDF text-layer extraction remains available through `document-inspect`. For scanned/image-only PDFs, Long Gate now also has an **optional local OCR path** (`pdf-ocr-local`) using PDFium + a local Tesseract executable. OCR text remains local-only and zero hits still do not grant egress permission.
 
 Every document result remains:
 
@@ -66,9 +66,23 @@ Pattern detection cannot reliably identify:
 
 Therefore a zero-hit local scan is evidence about the detector, not permission to upload the document.
 
-## Future semantic path
+## Local image / scanned-PDF / audio paths
 
-The intended higher-assurance design is:
+See [Local unstructured media privacy paths](unstructured-media.md).
+
+The baseline can:
+- inspect image dimensions/EXIF presence without returning EXIF values;
+- OCR images locally and return aggregate PII counts only;
+- render + OCR scanned PDFs locally with an explicit page cap;
+- inspect WAV metadata locally.
+
+All of these paths remain `release_allowed = false`.
+
+## Semantic release evidence
+
+Semantic transformation now records a conservative mechanical evidence gate (direct PII, exact number reuse, character n-gram reuse, distinctive long-token reuse, and minimum output length). Passing it means **eligible for manual review**, not safe to upload. See [Release evidence gates](release-criteria.md).
+
+The longer-term higher-assurance design remains:
 
 ```text
 raw narrative / document
