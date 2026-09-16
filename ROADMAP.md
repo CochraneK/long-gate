@@ -95,8 +95,8 @@ Implemented:
 
 Still open:
 - stronger membership-inference attacks
-- attribute inference
-- longitudinal linkage
+- attribute inference ✅
+- longitudinal linkage ✅
 - organization-defined policy files ✅
 - key-backed manifest signatures
 - release benchmark comparison tables
