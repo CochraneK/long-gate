@@ -73,3 +73,32 @@ def test_evidence_mapping_rejects_schema_drift():
     data["mystery"] = True
     with pytest.raises(ValueError, match="unknown fields"):
         evidence_from_mapping(data)
+
+
+
+def test_evidence_mapping_rejects_string_boolean():
+    data = _passing_evidence().to_dict()
+    data["backend_approved"] = "false"
+    with pytest.raises(ValueError, match="must be boolean"):
+        evidence_from_mapping(data)
+
+
+def test_evidence_mapping_rejects_negative_count():
+    data = _passing_evidence().to_dict()
+    data["direct_pii_hits"] = -1
+    with pytest.raises(ValueError, match="non-negative integer"):
+        evidence_from_mapping(data)
+
+
+def test_evidence_mapping_rejects_out_of_range_auc():
+    data = _passing_evidence().to_dict()
+    data["membership_max_auc"] = 1.2
+    with pytest.raises(ValueError, match="between 0.0 and 1.0"):
+        evidence_from_mapping(data)
+
+
+def test_evidence_mapping_allows_negative_attribute_uplift():
+    data = _passing_evidence().to_dict()
+    data["attribute_inference_uplift"] = -0.2
+    evidence = evidence_from_mapping(data)
+    assert evidence.attribute_inference_uplift == pytest.approx(-0.2)
