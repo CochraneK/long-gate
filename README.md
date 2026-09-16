@@ -15,7 +15,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-86a7ff)](pyproject.toml)
 [![Status](https://img.shields.io/badge/status-pre--1.0-ffd479)](ROADMAP.md)
 
-**[Quick start](#quick-start) · [Architecture](#architecture) · [Threat model](docs/threat-model.md) · [Benchmarks](docs/benchmarks.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)**
+**[Safe Demo](https://long-gate-demo-production.up.railway.app) · [Quick start](#quick-start) · [Architecture](#architecture) · [Threat model](docs/threat-model.md) · [Benchmarks](docs/benchmarks.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)**
 
 </div>
 
@@ -241,7 +241,7 @@ longgate run examples/demo.csv --backend auto
 
 `auto` prefers an installed mature local backend and otherwise falls back to the demo backend.
 
-The demo backend is intentionally **never eligible for row-level egress**. A `BLOCKED` result is expected and demonstrates fail-closed behavior.
+The demo backend is intentionally **never eligible for row-level egress**. A `BLOCKED` result is expected and demonstrates fail-closed behavior.\n\nWant to see the product without installing anything? Open the **[public Safe Demo](https://long-gate-demo-production.up.railway.app)**. It is deliberately static: no upload endpoint, no API key, no private-data worker.
 
 ---
 
@@ -365,7 +365,15 @@ The report answers:
 
 It is deliberately offline: no CDN, analytics, remote fonts, or external assets.
 
-Open the committed [Trust Report example](examples/trust-report-demo.html) to see the current direction.
+Open the committed [Trust Report example](examples/trust-report-demo.html) or the **[public Safe Demo](https://long-gate-demo-production.up.railway.app)**.
+
+Each run also writes an integrity-verifiable `provenance.json` containing SHA-256 hashes of key artifacts.
+
+```bash
+longgate verify-run longgate-runs/LG-...
+```
+
+This detects post-run modification. It is intentionally described as **integrity verification, not a digital signature**. See [Provenance](docs/provenance.md).
 
 ---
 
@@ -443,18 +451,21 @@ Long Gate ships a synthetic benchmark fixture so privacy checks can be tested ag
 ```bash
 python benchmarks/generate_adversarial.py
 python benchmarks/run_privacy_benchmark.py
+python benchmarks/run_k_anonymity_benchmark.py
+python benchmarks/run_membership_benchmark.py
+python benchmarks/run_linkage_benchmark.py
 ```
 
-The benchmark framework is designed to grow toward:
+The current adversarial suite now includes:
 
-- exact-copy attacks;
-- direct-identifier reuse;
-- rare-combination linkage;
-- near-copy attacks;
-- deterministic pseudonymization;
-- small-group disclosure;
-- membership inference;
-- auxiliary-dataset linkage.
+- exact-copy and identifier-overlap checks;
+- numeric near-copy diagnostics;
+- rare quasi-identifier overlap checks;
+- k-anonymity-style equivalence-class summaries;
+- a transparent distance-based membership diagnostic;
+- exact auxiliary-data linkage diagnostics.
+
+The project deliberately does **not** collapse these into a single magic “privacy score”.
 
 A benchmark pass is **evidence for a defined test**, not an anonymity certificate.
 
@@ -598,7 +609,7 @@ Start with [docs/index.md](docs/index.md).
 - [Security invariants](docs/security-invariants.md)
 - [Agent boundary](docs/agent-boundary.md)
 - [Unstructured data](docs/unstructured.md)
-- [Benchmarks](docs/benchmarks.md)
+- [Benchmarks](docs/benchmarks.md)\n- [Privacy profiles](docs/privacy-profiles.md)\n- [Provenance](docs/provenance.md)
 
 ---
 

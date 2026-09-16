@@ -18,6 +18,20 @@ All committed/generated benchmark source records are synthetic.
 python benchmarks/run_privacy_benchmark.py
 ```
 
+## Quasi-identifier equivalence classes
+
+```bash
+python benchmarks/run_k_anonymity_benchmark.py
+```
+
+This reports:
+
+- minimum equivalence-class size;
+- number/rate of unique records for selected quasi-identifiers;
+- number/rate of records in classes smaller than a chosen `k`.
+
+This is a **k-anonymity-style diagnostic**, not a declaration that the data is anonymous. It does not by itself address sensitive-attribute disclosure, auxiliary data, semantic linkage, or membership inference.
+
 ## Distance-based membership diagnostic
 
 ```bash
@@ -27,6 +41,7 @@ python benchmarks/run_membership_benchmark.py
 This test asks whether rows used to generate a synthetic table are systematically closer to synthetic records than a holdout set.
 
 It reports ROC-style AUC for this defined distance attack:
+
 - ~0.5: attack is near chance;
 - higher values: this attack distinguishes members more successfully.
 
