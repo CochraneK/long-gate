@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "long-gate"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first privacy orchestration for safe AI data access."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,7 +21,9 @@ dependencies = [
 [project.optional-dependencies]
 parquet = ["pyarrow>=16"]
 synthcity = ["synthcity>=0.2.12"]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+mostlyai = ["mostlyai[local]>=4.0"]
+stats = ["statsmodels>=0.14"]
+dev = ["pytest>=8.0", "ruff>=0.6", "bandit>=1.7", "pip-audit>=2.7"]
 
 [project.scripts]
 longgate = "longgate.cli:main"
