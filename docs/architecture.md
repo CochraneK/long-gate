@@ -1,37 +1,54 @@
 # Architecture
 
-## Trust zones
-
-Long Gate is designed around two separate trust zones.
+## Two trust zones
 
 ```text
 TRUSTED LOCAL ZONE
 
-Raw data → Inspector → Synthetic backend → Privacy audit → Policy → Egress staging
-                                                          |
-                                                          v
-                                                   Trust Report
+Raw data
+  ↓
+Schema + value-level PII inspection
+  ↓
+Purpose router
+  ├──────── exploration ───────→ synthetic backend → privacy audit
+  └──────── exact inference ───→ local exact executor
+                                      ↓
+                               aggregate guard
+                                      ↓
+                             deny-by-default policy
+                                      ↓
+                          remove direct identifiers
+                                      ↓
+                           final egress PII rescan
+                                      ↓
+                               safe workspace
 
-=========================== NETWORK BOUNDARY ===========================
+==================== LONG GATE / NETWORK BOUNDARY ====================
 
-NETWORK AI ZONE (future)
+NETWORK AI ZONE
 
-Only a policy-approved payload is mounted or transmitted here.
+SafeWorkspace / MCP tools only
+No raw filesystem capability
 ```
+
+The diagram source is also available in [architecture.mmd](architecture.mmd).
 
 ## Core invariants
 
-1. Raw and pseudonymized row-level data are never network-eligible.
+1. Raw and pseudonymized row-level data are never network eligible.
 2. The cloud worker must not receive a filesystem mount containing raw data.
-3. The local worker should run without network access in hardened deployments.
-4. A synthetic backend must be explicitly marked egress-eligible; demo/fallback algorithms are blocked.
-5. Audit failure is fail-closed.
-6. The Trust Report never embeds source row values.
-7. Long Gate v0.1 stages but does not transmit network payloads.
+3. The local worker runs with `network_mode: none` in the hardened deployment.
+4. Row-level synthetic backends remain fail-closed in v0.2.
+5. Direct identifiers are excluded from supported synthetic-model training and removed from outbound row views.
+6. Exact statistics run locally; identifier variables, small samples, and unsafe aggregate payloads are blocked.
+7. Policy approval is followed by a final egress PII rescan.
+8. Audit/scanner failures are fail-closed.
+9. Trust Reports never embed source row values.
+10. Long Gate v0.2 performs no cloud API transmission.
 
 ## Adapter boundary
 
-Synthetic engines implement one interface:
+Synthetic engines implement a stable interface:
 
 ```python
 class SyntheticBackend:
@@ -40,14 +57,22 @@ class SyntheticBackend:
     def generate(df, profiles, seed): ...
 ```
 
-This avoids coupling Long Gate to one third-party generator.
+Third-party generators are plugins, not Long Gate's identity.
 
-## Future exact-computation path
+## Programmatic API
 
-Formal statistics should not be silently run on synthetic data and presented as source-data results. The target architecture is:
+```python
+from longgate import LongGate
 
-```text
-Cloud AI → analysis plan/code → local executor → safe aggregate result → Cloud AI explanation
+gate = LongGate()
+inspection = gate.inspect("study.csv")
+decision = gate.route("regression")
+result = gate.exact(
+    "study.csv",
+    "ols",
+    outcome="score",
+    predictors=["age", "group"],
+)
 ```
 
-The network model can help reason about the analysis without receiving source rows.
+The API is intended to be shared by AI-Ques, AI-persona, research tools, and future agents without giving those projects direct cloud access to raw data.
