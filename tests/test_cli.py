@@ -68,3 +68,30 @@ def test_approve_egress_parser():
     )
     assert args.command == "approve-egress"
     assert args.purpose == "interpret aggregate statistics"
+
+
+
+def test_sign_run_parser():
+    args = build_parser().parse_args(
+        [
+            "sign-run",
+            "longgate-runs/LG-demo",
+            "--signing-key",
+            "signing-key.pem",
+        ]
+    )
+    assert args.command == "sign-run"
+    assert args.signing_key == "signing-key.pem"
+
+
+def test_verify_run_public_key_parser():
+    args = build_parser().parse_args(
+        [
+            "verify-run",
+            "longgate-runs/LG-demo",
+            "--public-key",
+            "verification-key.pem",
+        ]
+    )
+    assert args.command == "verify-run"
+    assert args.public_key == "verification-key.pem"
