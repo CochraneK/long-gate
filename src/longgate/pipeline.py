@@ -51,6 +51,18 @@ def run_pipeline(
         privacy_profile,
         profile_file,
     )
+    policy_source = (
+        {
+            "type": "file",
+            "filename": Path(profile_file).name,
+            "sha256": sha256_file(Path(profile_file).expanduser().resolve()),
+        }
+        if profile_file is not None
+        else {
+            "type": "builtin",
+            "name": policy_profile.name,
+        }
+    )
     run_id = (
         f"LG-{uuid.uuid4().hex[:12]}"
     )
@@ -278,6 +290,7 @@ def run_pipeline(
         "privacy_profile": (
             policy_profile.to_dict()
         ),
+        "policy_source": policy_source,
         "input": {
             "filename": input_path.name,
             "sha256": input_hash,
