@@ -99,7 +99,7 @@ table{{width:100%;border-collapse:collapse}} th,td{{text-align:left;padding:11px
 <div class="card"><div class="label">Quasi-combo overlap</div><div class="metric">{audit['quasi_combo_overlap']}</div></div>
 <div class="card"><div class="label">Near-copy rate</div><div class="metric">{near_text}</div></div>
 </div><ul>{reason_html}</ul>
-<p class="note">These are v0.1 engineering checks, not a formal guarantee of anonymity or differential privacy. A backend marked demonstration-only can never pass the egress gate.</p>
+<p class="note">These are v0.2 engineering checks, not a formal guarantee of anonymity or differential privacy. A backend marked demonstration-only can never pass the egress gate.</p>
 </section>
 
 <section><h2>Column treatment</h2><div style="overflow:auto"><table><thead><tr><th>Column</th><th>Type</th><th>Class</th><th>Strategy</th><th>Unique</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div></section>
@@ -107,7 +107,7 @@ table{{width:100%;border-collapse:collapse}} th,td{{text-align:left;padding:11px
 <section><h2>Provenance</h2><table><tbody>
 <tr><th>Run ID</th><td><code>{escape(data['run_id'])}</code></td></tr>
 <tr><th>Input SHA-256</th><td><code>{escape(data['input_sha256'])}</code></td></tr>
-<tr><th>Policy</th><td><code>deny-by-default / v0.1</code></td></tr>
+<tr><th>Policy</th><td><code>deny-by-default / v0.2</code></td></tr>
 <tr><th>Long Gate version</th><td><code>{escape(data['version'])}</code></td></tr>
 </tbody></table></section>
 <div class="footer">Long Gate · self-contained offline report · no remote fonts, scripts, analytics, or network assets.</div>
