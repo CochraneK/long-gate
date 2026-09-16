@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
+from .aggregate_guard import validate_aggregate_payload
 from .doctor import capabilities
 from .executor import correlation, describe_numeric, group_summary, ols
 from .inspect import profile_dataframe
@@ -156,7 +157,7 @@ def main() -> None:
                 args.outcome,
                 args.predictor,
             )
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        result = validate_aggregate_payload(result)\n        print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
