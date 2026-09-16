@@ -33,7 +33,7 @@ from .profiles import (
     list_profiles,
     resolve_profile,
 )
-from .provenance import verify_provenance
+from .provenance import sign_provenance, verify_provenance
 from .purpose import route_purpose
 from .r_executor import (
     r_describe,
@@ -317,15 +317,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Exact purpose string the network consumer must declare.",
     )
 
+    sign = sub.add_parser(
+        "sign-run",
+        help=(
+            "Sign an already-valid run provenance with an existing "
+            "Ed25519 signing key."
+        ),
+    )
+    sign.add_argument("run_dir")
+    sign.add_argument(
+        "--signing-key",
+        required=True,
+        help=(
+            "Path to an existing PEM Ed25519 signing key. "
+            "Long Gate does not generate or copy key material."
+        ),
+    )
+
     verify = sub.add_parser(
         "verify-run",
         help=(
-            "Verify SHA-256 provenance "
-            "for a completed run directory."
+            "Verify SHA-256 provenance and optionally an Ed25519 signature."
         ),
     )
+    verify.add_argument("run_dir")
     verify.add_argument(
-        "run_dir"
+        "--public-key",
+        default=None,
+        help=(
+            "Optional PEM Ed25519 public key. When supplied, "
+            "a valid signature is required."
+        ),
     )
 
     document_inspect = sub.add_parser(
@@ -571,11 +593,32 @@ def main() -> None:
         )
         return
 
+    if args.command == "sign-run":
+        signature_path = sign_provenance(
+            args.run_dir,
+            args.signing_key,
+        )
+        print(
+            json.dumps(
+                {
+                    "signature": str(signature_path),
+                    "note": (
+                        "Keep signing keys outside Long Gate run directories; "
+                        "trust/distribute the public key independently."
+                    ),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
     if args.command == "verify-run":
         print(
             json.dumps(
                 verify_provenance(
-                    args.run_dir
+                    args.run_dir,
+                    args.public_key,
                 ),
                 indent=2,
                 ensure_ascii=False,
