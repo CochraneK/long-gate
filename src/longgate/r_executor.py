@@ -180,7 +180,7 @@ def _run_fixed_r(
             str(output_path),
             str(meta_path),
         ]
-        subprocess.run(  # nosec B603
+        subprocess.run(  # noqa: S603  # nosec B603 -- argv is fixed-template + temp paths
             command,
             check=True,
             capture_output=True,
