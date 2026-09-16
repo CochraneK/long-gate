@@ -27,6 +27,10 @@ jobs:
         run: python benchmarks/run_membership_benchmark.py > benchmark-membership.json
       - name: Run auxiliary linkage diagnostic
         run: python benchmarks/run_linkage_benchmark.py > benchmark-linkage.json
+      - name: Run attribute inference diagnostic
+        run: python benchmarks/run_attribute_benchmark.py > benchmark-attribute.json
+      - name: Run longitudinal linkage diagnostic
+        run: python benchmarks/run_longitudinal_benchmark.py > benchmark-longitudinal.json
       - name: Confirm machine-readable output
         run: |
           python - <<'PY'

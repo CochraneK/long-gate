@@ -2,8 +2,10 @@ import pandas as pd
 import pytest
 
 from longgate.privacy_attacks import (
+    attribute_inference_diagnostic,
     distance_membership_diagnostic,
     k_anonymity_diagnostic,
+    longitudinal_linkage_diagnostic,
     unique_linkage_diagnostic,
 )
 
@@ -91,3 +93,104 @@ def test_k_anonymity_diagnostic_rejects_invalid_k():
             ["age"],
             k=1,
         )
+
+
+def test_attribute_inference_reports_uplift():
+    synthetic = pd.DataFrame(
+        {
+            "age_band": ["20s", "20s", "30s", "30s", "40s", "40s"],
+            "city": ["A", "A", "B", "B", "C", "C"],
+            "diagnosis": ["x", "x", "y", "y", "z", "z"],
+        }
+    )
+    target = pd.DataFrame(
+        {
+            "age_band": ["20s", "30s", "40s", "20s", "30s", "40s"],
+            "city": ["A", "B", "C", "A", "B", "C"],
+            "diagnosis": ["x", "y", "z", "x", "y", "z"],
+        }
+    )
+    result = attribute_inference_diagnostic(
+        synthetic,
+        target,
+        ["age_band", "city"],
+        "diagnosis",
+    )
+    assert result.coverage == 1.0
+    assert result.attack_accuracy == 1.0
+    assert result.accuracy_uplift is not None
+    assert result.accuracy_uplift > 0.5
+
+
+def test_attribute_inference_reports_no_coverage():
+    synthetic = pd.DataFrame(
+        {
+            "city": ["A", "A"],
+            "condition": ["x", "x"],
+        }
+    )
+    target = pd.DataFrame(
+        {
+            "city": ["B", "C"],
+            "condition": ["x", "y"],
+        }
+    )
+    result = attribute_inference_diagnostic(
+        synthetic,
+        target,
+        ["city"],
+        "condition",
+    )
+    assert result.coverage == 0.0
+    assert result.attack_accuracy is None
+
+
+def test_longitudinal_linkage_uses_ground_truth_without_returning_ids():
+    earlier = pd.DataFrame(
+        {
+            "person_id": ["p1", "p2", "p3", "p4"],
+            "birth_year": [1990, 1991, 1992, 1993],
+            "city": ["A", "B", "C", "D"],
+        }
+    )
+    later = pd.DataFrame(
+        {
+            "person_id": ["p1", "p2", "p3", "p4"],
+            "birth_year": [1990, 1991, 1992, 1993],
+            "city": ["A", "B", "C", "D"],
+        }
+    )
+    result = longitudinal_linkage_diagnostic(
+        earlier,
+        later,
+        ["birth_year", "city"],
+        "person_id",
+    )
+    assert result.unique_linkage_rate == 1.0
+    assert result.unique_link_precision == 1.0
+    payload = str(result.to_dict())
+    assert "p1" not in payload
+    assert "p2" not in payload
+
+
+def test_longitudinal_linkage_requires_unique_match():
+    earlier = pd.DataFrame(
+        {
+            "person_id": ["p1", "p2"],
+            "city": ["A", "A"],
+        }
+    )
+    later = pd.DataFrame(
+        {
+            "person_id": ["p1", "p2"],
+            "city": ["A", "A"],
+        }
+    )
+    result = longitudinal_linkage_diagnostic(
+        earlier,
+        later,
+        ["city"],
+        "person_id",
+    )
+    assert result.unique_linkage_rate == 0.0
+    assert result.unique_link_precision is None

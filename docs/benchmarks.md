@@ -57,6 +57,31 @@ This test performs exact matching on selected quasi-identifiers against an auxil
 
 Again, it is one explicit attack, not a universal privacy score.
 
+## Attribute inference diagnostic
+
+```bash
+python benchmarks/run_attribute_benchmark.py
+```
+
+This attack learns the modal categorical sensitive value for each observed quasi-identifier combination in the synthetic dataset, then measures:
+
+- coverage on target rows;
+- attack accuracy among covered rows;
+- modal-baseline accuracy;
+- accuracy uplift over that baseline.
+
+Coverage and accuracy remain separate. A narrow attack with high accuracy is not averaged into a misleading single privacy score.
+
+## Longitudinal linkage diagnostic
+
+```bash
+python benchmarks/run_longitudinal_benchmark.py
+```
+
+This attack asks whether records can be uniquely linked across two time points using stable quasi-identifiers. A local ground-truth entity column is used only to calculate precision; entity values are never emitted in results.
+
+It reports unique-linkage rate and precision for this defined exact-matching attack.
+
 ## Benchmark rules
 
 1. Benchmark data committed to this repository must be synthetic.
@@ -70,8 +95,8 @@ Again, it is one explicit attack, not a universal privacy score.
 
 - shadow-model membership inference where justified;
 - nearest-neighbor / DCR variants;
-- attribute inference;
+- richer attribute-inference variants;
 - auxiliary-dataset linkage variants;
-- longitudinal linkage;
+- probabilistic / fuzzy longitudinal linkage;
 - DP-backend evaluation;
 - machine-readable release comparison tables.

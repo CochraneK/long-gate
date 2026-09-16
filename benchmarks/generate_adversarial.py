@@ -9,18 +9,33 @@ import pandas as pd
 def build_dataset(n: int = 200, seed: int = 42) -> pd.DataFrame:
     rng = random.Random(seed)
     rows = []
+    cities = ["Northbridge", "Eastmere", "Westhaven", "Southfield"]
+    condition_by_city = {
+        "Northbridge": "C1",
+        "Eastmere": "C2",
+        "Westhaven": "C3",
+        "Southfield": "C4",
+    }
     for i in range(n):
+        city = rng.choice(cities)
+        group = rng.choice(["A", "B"])
+        condition = (
+            condition_by_city[city]
+            if rng.random() < 0.82
+            else rng.choice(["C1", "C2", "C3", "C4"])
+        )
         rows.append(
             {
                 "participant_id": 100000 + i,
                 "name": f"Synthetic Person {i:04d}",
                 "email": f"synthetic-{i}@example.invalid",
                 "age": rng.randint(18, 70),
-                "city": rng.choice(["Northbridge", "Eastmere", "Westhaven", "Southfield"]),
+                "city": city,
                 "PHQ": rng.randint(0, 27),
                 "GAD": rng.randint(0, 21),
                 "reaction_time": int(rng.gauss(650, 80)),
-                "group": rng.choice(["A", "B"]),
+                "group": group,
+                "condition": condition,
             }
         )
     return pd.DataFrame(rows)

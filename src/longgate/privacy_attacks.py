@@ -47,6 +47,38 @@ class KAnonymityDiagnostic:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class AttributeInferenceDiagnostic:
+    target_rows: int
+    covered_rows: int
+    coverage: float
+    correct_predictions: int
+    attack_accuracy: float | None
+    baseline_accuracy: float
+    accuracy_uplift: float | None
+    quasi_columns: list[str]
+    sensitive_column: str
+    interpretation: str
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class LongitudinalLinkageDiagnostic:
+    source_rows: int
+    later_rows: int
+    uniquely_linkable_rows: int
+    unique_linkage_rate: float
+    correct_unique_links: int
+    unique_link_precision: float | None
+    quasi_columns: list[str]
+    interpretation: str
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
 def _numeric_matrix(
     df: pd.DataFrame,
     columns: list[str],
@@ -343,4 +375,165 @@ def k_anonymity_diagnostic(
         ),
         equivalence_classes=len(counts),
         quasi_columns=quasi_columns,
+    )
+
+
+def attribute_inference_diagnostic(
+    synthetic: pd.DataFrame,
+    target: pd.DataFrame,
+    quasi_columns: list[str],
+    sensitive_column: str,
+) -> AttributeInferenceDiagnostic:
+    """Infer a categorical sensitive value from quasi identifiers."""
+    if not quasi_columns:
+        raise ValueError("At least one quasi-identifier column is required.")
+    required = [*quasi_columns, sensitive_column]
+    missing = [
+        column
+        for column in required
+        if column not in synthetic.columns
+        or column not in target.columns
+    ]
+    if missing:
+        raise KeyError(
+            "Missing attribute-inference columns: "
+            f"{sorted(set(missing))}"
+        )
+    if len(target) == 0:
+        raise ValueError("Attribute inference requires a non-empty target dataset.")
+
+    syn = synthetic[required].copy()
+    tgt = target[required].copy()
+    for column in required:
+        syn[column] = syn[column].fillna("<NA>").astype(str)
+        tgt[column] = tgt[column].fillna("<NA>").astype(str)
+
+    global_counts = syn[sensitive_column].value_counts()
+    if global_counts.empty:
+        raise ValueError("Synthetic sensitive column has no usable values.")
+    baseline_label = str(global_counts.index[0])
+    baseline_accuracy = float(
+        (tgt[sensitive_column] == baseline_label).mean()
+    )
+
+    mapping: dict[tuple[str, ...], str] = {}
+    grouped = syn.groupby(quasi_columns, dropna=False, sort=False)
+    for key, part in grouped:
+        key_tuple = key if isinstance(key, tuple) else (key,)
+        counts = part[sensitive_column].value_counts()
+        if not counts.empty:
+            mapping[tuple(str(v) for v in key_tuple)] = str(counts.index[0])
+
+    covered = 0
+    correct = 0
+    for row in tgt.itertuples(index=False, name=None):
+        row_map = dict(zip(required, row))
+        key = tuple(str(row_map[column]) for column in quasi_columns)
+        prediction = mapping.get(key)
+        if prediction is None:
+            continue
+        covered += 1
+        if prediction == str(row_map[sensitive_column]):
+            correct += 1
+
+    coverage = covered / len(tgt)
+    accuracy = correct / covered if covered else None
+    uplift = (
+        accuracy - baseline_accuracy
+        if accuracy is not None
+        else None
+    )
+    if accuracy is None:
+        interpretation = "no covered target rows"
+    elif uplift >= 0.2 and coverage >= 0.2:
+        interpretation = "material attribute-inference signal for this attack"
+    elif uplift > 0:
+        interpretation = "some attribute-inference signal for this attack"
+    else:
+        interpretation = "no improvement over the modal baseline for this attack"
+
+    return AttributeInferenceDiagnostic(
+        target_rows=len(tgt),
+        covered_rows=covered,
+        coverage=round(float(coverage), 6),
+        correct_predictions=correct,
+        attack_accuracy=None if accuracy is None else round(float(accuracy), 6),
+        baseline_accuracy=round(baseline_accuracy, 6),
+        accuracy_uplift=None if uplift is None else round(float(uplift), 6),
+        quasi_columns=quasi_columns,
+        sensitive_column=sensitive_column,
+        interpretation=interpretation,
+    )
+
+
+def longitudinal_linkage_diagnostic(
+    earlier: pd.DataFrame,
+    later: pd.DataFrame,
+    quasi_columns: list[str],
+    entity_column: str,
+) -> LongitudinalLinkageDiagnostic:
+    """Test exact cross-time linkage on quasi identifiers."""
+    if not quasi_columns:
+        raise ValueError("At least one quasi-identifier column is required.")
+    required = [*quasi_columns, entity_column]
+    missing = [
+        column
+        for column in required
+        if column not in earlier.columns
+        or column not in later.columns
+    ]
+    if missing:
+        raise KeyError(
+            "Missing longitudinal-linkage columns: "
+            f"{sorted(set(missing))}"
+        )
+    if len(earlier) == 0 or len(later) == 0:
+        raise ValueError("Longitudinal linkage requires non-empty snapshots.")
+
+    later_lookup: dict[tuple[str, ...], list[str]] = {}
+    for row in (
+        later[required]
+        .fillna("<NA>")
+        .astype(str)
+        .itertuples(index=False, name=None)
+    ):
+        row_map = dict(zip(required, row))
+        key = tuple(row_map[column] for column in quasi_columns)
+        later_lookup.setdefault(key, []).append(row_map[entity_column])
+
+    unique = 0
+    correct = 0
+    for row in (
+        earlier[required]
+        .fillna("<NA>")
+        .astype(str)
+        .itertuples(index=False, name=None)
+    ):
+        row_map = dict(zip(required, row))
+        key = tuple(row_map[column] for column in quasi_columns)
+        candidates = later_lookup.get(key, [])
+        if len(candidates) != 1:
+            continue
+        unique += 1
+        if candidates[0] == row_map[entity_column]:
+            correct += 1
+
+    linkage_rate = unique / len(earlier)
+    precision = correct / unique if unique else None
+    if precision is not None and precision >= 0.8 and linkage_rate >= 0.2:
+        interpretation = "elevated cross-time linkage for this exact attack"
+    elif unique:
+        interpretation = "some cross-time linkage for this exact attack"
+    else:
+        interpretation = "no unique cross-time linkage for this exact attack"
+
+    return LongitudinalLinkageDiagnostic(
+        source_rows=len(earlier),
+        later_rows=len(later),
+        uniquely_linkable_rows=unique,
+        unique_linkage_rate=round(float(linkage_rate), 6),
+        correct_unique_links=correct,
+        unique_link_precision=None if precision is None else round(float(precision), 6),
+        quasi_columns=quasi_columns,
+        interpretation=interpretation,
     )
