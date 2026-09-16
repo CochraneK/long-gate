@@ -110,9 +110,13 @@ def test_capability_validator_rejects_mutated_cloud_private_mount():
         ROOT
         / "docker-compose.hardened.yml"
     ).read_text(encoding="utf-8")
+    safe_mount = (
+        "      - ${LONGGATE_EGRESS_DIR:?set LONGGATE_EGRESS_DIR}:/safe:ro"
+    )
+    assert safe_mount in text
     mutated = text.replace(
-        "      - ./safe:/safe:ro",
-        "      - ./safe:/safe:ro\n      - ./private:/private:ro",
+        safe_mount,
+        safe_mount + "\n      - ./private:/private:ro",
         1,
     )
     result = validate_compose_capability_contract(mutated)
