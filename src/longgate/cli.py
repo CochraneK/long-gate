@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--seed", type=int, default=42)
 
-    doctor = sub.add_parser("doctor", help="Show local Long Gate capabilities and optional engines.")\n\n    inspect = sub.add_parser("inspect", help="Local schema and PII-count inspection only.")
+    sub.add_parser("doctor", help="Show local Long Gate capabilities and optional engines.")\n\n    inspect = sub.add_parser("inspect", help="Local schema and PII-count inspection only.")
     inspect.add_argument("input")
 
     purpose = sub.add_parser("purpose", help="Show the disclosure mode for a requested purpose.")
