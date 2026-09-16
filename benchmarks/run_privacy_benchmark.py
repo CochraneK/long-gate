@@ -12,9 +12,7 @@ from longgate.io import load_table
 def main() -> None:
     source = Path("benchmarks/data/adversarial_source.csv")
     if not source.exists():
-        raise SystemExit(
-            "Generate benchmark data first: python benchmarks/generate_adversarial.py"
-        )
+        raise SystemExit("Generate benchmark data first: python benchmarks/generate_adversarial.py")
 
     raw = load_table(source)
     profiles = profile_dataframe(raw)

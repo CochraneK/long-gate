@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 from faker import Faker
 
-from .base import SyntheticBackend
 from ..types import ColumnProfile, DataClass
+from .base import SyntheticBackend
 
 
 class DemoBackend(SyntheticBackend):

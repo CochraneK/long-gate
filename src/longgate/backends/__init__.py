@@ -1,7 +1,7 @@
 from .base import SyntheticBackend
 from .demo import DemoBackend
-from .synthcity import SynthCityBackend
 from .mostlyai import MostlyAIBackend
+from .synthcity import SynthCityBackend
 
 
 def get_backend(name: str) -> SyntheticBackend:
@@ -17,9 +17,9 @@ def get_backend(name: str) -> SyntheticBackend:
 
 
 __all__ = [
-    "SyntheticBackend",
     "DemoBackend",
-    "SynthCityBackend",
     "MostlyAIBackend",
+    "SynthCityBackend",
+    "SyntheticBackend",
     "get_backend",
 ]

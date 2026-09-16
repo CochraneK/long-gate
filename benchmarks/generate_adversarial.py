@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import random
+from pathlib import Path
 
 import pandas as pd
 
@@ -16,9 +16,7 @@ def build_dataset(n: int = 200, seed: int = 42) -> pd.DataFrame:
                 "name": f"Synthetic Person {i:04d}",
                 "email": f"synthetic-{i}@example.invalid",
                 "age": rng.randint(18, 70),
-                "city": rng.choice(
-                    ["Northbridge", "Eastmere", "Westhaven", "Southfield"]
-                ),
+                "city": rng.choice(["Northbridge", "Eastmere", "Westhaven", "Southfield"]),
                 "PHQ": rng.randint(0, 27),
                 "GAD": rng.randint(0, 21),
                 "reaction_time": int(rng.gauss(650, 80)),

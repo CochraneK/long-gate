@@ -6,17 +6,12 @@ import pandas as pd
 
 from .types import ColumnProfile, DataClass
 
-
 MIN_GROUP_SIZE = 5
 MIN_DATASET_SIZE = 10
 
 
 def _identifier_columns(profiles: list[ColumnProfile]) -> set[str]:
-    return {
-        p.name
-        for p in profiles
-        if p.data_class == DataClass.IDENTIFIER
-    }
+    return {p.name for p in profiles if p.data_class == DataClass.IDENTIFIER}
 
 
 def _safe_numeric_columns(
@@ -24,11 +19,7 @@ def _safe_numeric_columns(
     profiles: list[ColumnProfile],
 ) -> list[str]:
     ids = _identifier_columns(profiles)
-    return [
-        c
-        for c in df.columns
-        if c not in ids and pd.api.types.is_numeric_dtype(df[c])
-    ]
+    return [c for c in df.columns if c not in ids and pd.api.types.is_numeric_dtype(df[c])]
 
 
 def describe_numeric(
@@ -36,13 +27,11 @@ def describe_numeric(
     profiles: list[ColumnProfile],
 ) -> dict[str, Any]:
     if len(df) < MIN_DATASET_SIZE:
-        raise ValueError(
-            "Dataset is too small for released descriptive statistics."
-        )
+        raise ValueError("Dataset is too small for released descriptive statistics.")
 
     cols = _safe_numeric_columns(df, profiles)
     out: dict[str, Any] = {
-        "n_rows": int(len(df)),
+        "n_rows": len(df),
         "columns": {},
     }
     for col in cols:
@@ -62,25 +51,20 @@ def correlation(
     profiles: list[ColumnProfile],
 ) -> dict[str, Any]:
     if len(df) < MIN_DATASET_SIZE:
-        raise ValueError(
-            "Dataset is too small for released correlation statistics."
-        )
+        raise ValueError("Dataset is too small for released correlation statistics.")
 
     cols = _safe_numeric_columns(df, profiles)
     if len(cols) < 2:
         return {
-            "n_rows": int(len(df)),
+            "n_rows": len(df),
             "correlation": {},
         }
 
     corr = df[cols].corr(numeric_only=True)
     return {
-        "n_rows": int(len(df)),
+        "n_rows": len(df),
         "correlation": {
-            str(row): {
-                str(col): None if pd.isna(v) else float(v)
-                for col, v in values.items()
-            }
+            str(row): {str(col): None if pd.isna(v) else float(v) for col, v in values.items()}
             for row, values in corr.to_dict(orient="index").items()
         },
     }
@@ -95,9 +79,7 @@ def group_summary(
 ) -> dict[str, Any]:
     ids = _identifier_columns(profiles)
     if group_by in ids or value in ids:
-        raise ValueError(
-            "Identifier columns cannot be used in released group summaries."
-        )
+        raise ValueError("Identifier columns cannot be used in released group summaries.")
     if group_by not in df.columns or value not in df.columns:
         raise KeyError("Unknown group/value column.")
     if not pd.api.types.is_numeric_dtype(df[value]):
@@ -105,7 +87,7 @@ def group_summary(
 
     groups = []
     for key, part in df.groupby(group_by, dropna=False):
-        n = int(len(part))
+        n = len(part)
         if n < min_group_size:
             continue
         s = pd.to_numeric(part[value], errors="coerce")
@@ -136,13 +118,8 @@ def ols(
     selected = [outcome, *predictors]
 
     if any(c in ids for c in selected):
-        raise ValueError(
-            "Identifier columns cannot be used in released regression models."
-        )
-    if outcome not in df.columns or any(
-        c not in df.columns
-        for c in predictors
-    ):
+        raise ValueError("Identifier columns cannot be used in released regression models.")
+    if outcome not in df.columns or any(c not in df.columns for c in predictors):
         raise KeyError("Unknown regression column.")
     if not pd.api.types.is_numeric_dtype(df[outcome]):
         raise TypeError("OLS outcome must be numeric.")
@@ -151,8 +128,7 @@ def ols(
         import statsmodels.api as sm
     except ImportError as exc:
         raise RuntimeError(
-            "OLS requires the optional stats dependency: "
-            "pip install 'long-gate[stats]'"
+            "OLS requires the optional stats dependency: pip install 'long-gate[stats]'"
         ) from exc
 
     X = pd.DataFrame(index=df.index)
@@ -164,17 +140,9 @@ def ols(
                 errors="coerce",
             )
         else:
-            counts = s.astype("string").value_counts(
-                dropna=False
-            )
-            if (
-                len(counts) > 50
-                or (counts < MIN_GROUP_SIZE).any()
-            ):
-                raise ValueError(
-                    f"Categorical predictor {col!r} "
-                    "has rare/high-cardinality levels."
-                )
+            counts = s.astype("string").value_counts(dropna=False)
+            if len(counts) > 50 or (counts < MIN_GROUP_SIZE).any():
+                raise ValueError(f"Categorical predictor {col!r} has rare/high-cardinality levels.")
             dummies = pd.get_dummies(
                 s.astype("string"),
                 prefix=col,
@@ -199,9 +167,7 @@ def ols(
         MIN_DATASET_SIZE,
         len(X.columns) + 3,
     ):
-        raise ValueError(
-            "Too few complete observations for safe released OLS summary."
-        )
+        raise ValueError("Too few complete observations for safe released OLS summary.")
 
     X2 = sm.add_constant(
         model_df.drop(columns="__y__"),

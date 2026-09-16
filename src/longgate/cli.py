@@ -17,10 +17,7 @@ from .unstructured import inspect_text_file, redact_text_file_local
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="longgate",
-        description=(
-            "Long Gate — local-first privacy orchestration "
-            "for safe AI data access."
-        ),
+        description=("Long Gate — local-first privacy orchestration for safe AI data access."),
     )
     sub = p.add_subparsers(
         dest="command",
@@ -42,10 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--backend",
         default="auto",
-        help=(
-            "auto, demo, synthcity[:plugin], or mostlyai. "
-            "Row-level egress remains fail-closed."
-        ),
+        help=("auto, demo, synthcity[:plugin], or mostlyai. Row-level egress remains fail-closed."),
     )
     run.add_argument(
         "--seed",
@@ -102,8 +96,7 @@ def build_parser() -> argparse.ArgumentParser:
     text_redact = sub.add_parser(
         "text-redact-local",
         help=(
-            "Create a local preview redaction. "
-            "The output is not granted network-egress permission."
+            "Create a local preview redaction. The output is not granted network-egress permission."
         ),
     )
     text_redact.add_argument("input")
@@ -121,10 +114,7 @@ def main() -> None:
     if args.command == "doctor":
         print(
             json.dumps(
-                [
-                    capability.to_dict()
-                    for capability in capabilities()
-                ],
+                [capability.to_dict() for capability in capabilities()],
                 indent=2,
                 ensure_ascii=False,
             )
@@ -146,11 +136,7 @@ def main() -> None:
                     "output": str(result.out_dir),
                     "report": str(result.report_path),
                     "synthetic": str(result.synthetic_path),
-                    "safe_payload": (
-                        str(result.staged_payload)
-                        if result.staged_payload
-                        else None
-                    ),
+                    "safe_payload": (str(result.staged_payload) if result.staged_payload else None),
                 },
                 indent=2,
                 ensure_ascii=False,
@@ -166,10 +152,7 @@ def main() -> None:
             json.dumps(
                 {
                     "rows": len(df),
-                    "columns": [
-                        profile.to_dict()
-                        for profile in profiles
-                    ],
+                    "columns": [profile.to_dict() for profile in profiles],
                     "pii_counts": pii.to_dict(),
                 },
                 indent=2,
@@ -213,10 +196,7 @@ def main() -> None:
                 {
                     "output": str(output),
                     "release_allowed": False,
-                    "note": (
-                        "Local preview redaction only; "
-                        "not a semantic privacy guarantee."
-                    ),
+                    "note": ("Local preview redaction only; not a semantic privacy guarantee."),
                 },
                 indent=2,
                 ensure_ascii=False,
@@ -240,9 +220,7 @@ def main() -> None:
             )
         elif args.analysis == "group-summary":
             if not args.group_by or not args.value:
-                raise SystemExit(
-                    "--group-by and --value are required"
-                )
+                raise SystemExit("--group-by and --value are required")
             result = group_summary(
                 df,
                 profiles,
@@ -251,9 +229,7 @@ def main() -> None:
             )
         else:
             if not args.outcome or not args.predictor:
-                raise SystemExit(
-                    "--outcome and at least one --predictor are required"
-                )
+                raise SystemExit("--outcome and at least one --predictor are required")
             result = ols(
                 df,
                 profiles,
@@ -261,9 +237,7 @@ def main() -> None:
                 args.predictor,
             )
 
-        result = validate_aggregate_payload(
-            result
-        )
+        result = validate_aggregate_payload(result)
         print(
             json.dumps(
                 result,

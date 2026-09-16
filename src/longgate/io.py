@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import pandas as pd
 
 SUPPORTED = {".csv", ".xlsx", ".xls", ".json", ".parquet"}

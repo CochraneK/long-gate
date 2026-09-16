@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
-import uuid
 
 from . import __version__
 from .audit import audit_dataset
@@ -112,21 +112,14 @@ def run_pipeline(
         f"allow={decision.allow}; {decision.reason}",
     )
 
-    identifier_columns = [
-        p.name
-        for p in profiles
-        if p.data_class == DataClass.IDENTIFIER
-    ]
+    identifier_columns = [p.name for p in profiles if p.data_class == DataClass.IDENTIFIER]
     outbound = syn.drop(
         columns=identifier_columns,
         errors="ignore",
     )
     event(
         "Direct identifiers removed from outbound view",
-        (
-            f"Dropped {len(identifier_columns)} identifier column(s) "
-            "before final egress scan."
-        ),
+        (f"Dropped {len(identifier_columns)} identifier column(s) before final egress scan."),
     )
 
     staged_payload, egress_scan = stage_egress(
@@ -145,10 +138,7 @@ def run_pipeline(
     elif decision.allow and not egress_scan["passed"]:
         event(
             "Final egress scan blocked release",
-            (
-                f"Detected {egress_scan['pii_hits']} direct-PII pattern hit(s); "
-                "no payload created."
-            ),
+            (f"Detected {egress_scan['pii_hits']} direct-PII pattern hit(s); no payload created."),
         )
     else:
         event(

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import re
+
 import pandas as pd
+
 from .types import ColumnProfile, DataClass
 
 IDENTIFIER_PATTERNS = [
@@ -66,5 +68,16 @@ def profile_dataframe(df: pd.DataFrame) -> list[ColumnProfile]:
             cls = DataClass.GENERAL
             strategy = "joint_synthesis"
             notes = "General field; source values still remain local under Long Gate's strict mode."
-        profiles.append(ColumnProfile(name=str(col), dtype=str(s.dtype), data_class=cls, strategy=strategy, non_null=int(s.notna().sum()), unique=unique, unique_ratio=round(ratio, 6), notes=notes))
+        profiles.append(
+            ColumnProfile(
+                name=str(col),
+                dtype=str(s.dtype),
+                data_class=cls,
+                strategy=strategy,
+                non_null=int(s.notna().sum()),
+                unique=unique,
+                unique_ratio=round(ratio, 6),
+                notes=notes,
+            )
+        )
     return profiles

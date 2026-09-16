@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
-import re
 
 from .pii import CN_ID_RE, EMAIL_RE, PHONE_RE, UK_POSTCODE_RE, scan_text
-
 
 SUPPORTED_TEXT = {".txt", ".md", ".markdown"}
 
@@ -27,10 +26,7 @@ class TextInspection:
 def load_text_file(path: str | Path) -> str:
     p = Path(path)
     if p.suffix.lower() not in SUPPORTED_TEXT:
-        raise ValueError(
-            f"Unsupported text type: {p.suffix}. "
-            f"Supported: {sorted(SUPPORTED_TEXT)}"
-        )
+        raise ValueError(f"Unsupported text type: {p.suffix}. Supported: {sorted(SUPPORTED_TEXT)}")
     return p.read_text(encoding="utf-8")
 
 

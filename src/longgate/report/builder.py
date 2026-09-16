@@ -25,7 +25,8 @@ def build_report(data: dict[str, Any], path: Path) -> None:
         cls = p["data_class"]
         emphasis = (
             "warn"
-            if cls in {
+            if cls
+            in {
                 "identifier",
                 "quasi_identifier",
                 "sensitive",
@@ -46,27 +47,20 @@ def build_report(data: dict[str, Any], path: Path) -> None:
     timeline = "".join(
         (
             f'<div class="event"><span>{escape(e["time"])}</span>'
-            f'<b>{escape(e["name"])}</b>'
-            f'<small>{escape(e["detail"])}</small></div>'
+            f"<b>{escape(e['name'])}</b>"
+            f"<small>{escape(e['detail'])}</small></div>"
         )
         for e in events
     )
     reasons = audit.get("reasons") or ["No blocking reason recorded."]
-    reason_html = "".join(
-        f"<li>{escape(r)}</li>"
-        for r in reasons
-    )
+    reason_html = "".join(f"<li>{escape(r)}</li>" for r in reasons)
     near = audit.get("near_copy_rate")
     near_text = "n/a" if near is None else f"{near:.2%}"
     source_pii_hits = int(source_pii.get("total_hits", 0))
     egress_hits = int(egress_scan.get("pii_hits", 0))
-    egress_text = (
-        "PASS"
-        if egress_scan.get("passed")
-        else "BLOCKED"
-    )
+    egress_text = "PASS" if egress_scan.get("passed") else "BLOCKED"
 
-    html = f'''<!doctype html>
+    html = f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -93,11 +87,11 @@ table{{width:100%;border-collapse:collapse}} th,td{{text-align:left;padding:11px
   <div class="brand">LONG GATE · TRUST REPORT</div>
   <h1>Privacy processing, made visible.</h1>
   <div class="sub">No source row values are embedded in this report. It records transformations, privacy checks, policy decisions, and egress facts.</div>
-  <div class="status"><span class="dot"></span><div><div class="label">Gate status</div><strong>{escape(status)}</strong> · {escape(decision['reason'])}</div></div>
+  <div class="status"><span class="dot"></span><div><div class="label">Gate status</div><strong>{escape(status)}</strong> · {escape(decision["reason"])}</div></div>
   <div class="grid">
-    <div class="card"><div class="label">Rows</div><div class="metric">{data['rows']:,}</div></div>
-    <div class="card"><div class="label">Columns</div><div class="metric">{data['columns']}</div></div>
-    <div class="card"><div class="label">Backend</div><div class="metric" style="font-size:20px">{escape(data['backend'])}</div></div>
+    <div class="card"><div class="label">Rows</div><div class="metric">{data["rows"]:,}</div></div>
+    <div class="card"><div class="label">Columns</div><div class="metric">{data["columns"]}</div></div>
+    <div class="card"><div class="label">Backend</div><div class="metric" style="font-size:20px">{escape(data["backend"])}</div></div>
     <div class="card"><div class="label">Network transmission</div><div class="metric" style="font-size:20px">NONE</div></div>
   </div>
 </div>
@@ -121,9 +115,9 @@ table{{width:100%;border-collapse:collapse}} th,td{{text-align:left;padding:11px
 
 <section><h2>Privacy audit</h2>
 <div class="grid">
-<div class="card"><div class="label">Exact row overlap</div><div class="metric">{audit['exact_row_overlap']}</div></div>
-<div class="card"><div class="label">Identifier overlap</div><div class="metric">{audit['identifier_overlap']}</div></div>
-<div class="card"><div class="label">Rare quasi overlap</div><div class="metric">{audit.get('rare_quasi_overlap', 0)}</div></div>
+<div class="card"><div class="label">Exact row overlap</div><div class="metric">{audit["exact_row_overlap"]}</div></div>
+<div class="card"><div class="label">Identifier overlap</div><div class="metric">{audit["identifier_overlap"]}</div></div>
+<div class="card"><div class="label">Rare quasi overlap</div><div class="metric">{audit.get("rare_quasi_overlap", 0)}</div></div>
 <div class="card"><div class="label">Near-copy rate</div><div class="metric">{near_text}</div></div>
 </div><ul>{reason_html}</ul>
 <p class="note">Engineering safeguards are not a formal anonymity or differential-privacy proof. Row-level egress remains fail-closed in v0.2.</p>
@@ -137,16 +131,16 @@ table{{width:100%;border-collapse:collapse}} th,td{{text-align:left;padding:11px
 <div class="card"><div class="label">Final scan</div><div class="metric" style="font-size:20px">{egress_text}</div></div>
 </div></section>
 
-<section><h2>Column treatment</h2><div style="overflow:auto"><table><thead><tr><th>Column</th><th>Type</th><th>Class</th><th>Strategy</th><th>Unique</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div></section>
+<section><h2>Column treatment</h2><div style="overflow:auto"><table><thead><tr><th>Column</th><th>Type</th><th>Class</th><th>Strategy</th><th>Unique</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div></section>
 <section><h2>Run timeline</h2>{timeline}</section>
 <section><h2>Provenance</h2><table><tbody>
-<tr><th>Run ID</th><td><code>{escape(data['run_id'])}</code></td></tr>
-<tr><th>Input SHA-256</th><td><code>{escape(data['input_sha256'])}</code></td></tr>
+<tr><th>Run ID</th><td><code>{escape(data["run_id"])}</code></td></tr>
+<tr><th>Input SHA-256</th><td><code>{escape(data["input_sha256"])}</code></td></tr>
 <tr><th>Policy</th><td><code>deny-by-default / v0.2</code></td></tr>
-<tr><th>Long Gate version</th><td><code>{escape(data['version'])}</code></td></tr>
+<tr><th>Long Gate version</th><td><code>{escape(data["version"])}</code></td></tr>
 </tbody></table></section>
 <div class="footer">Long Gate · self-contained offline report · no remote fonts, scripts, analytics, or network assets.</div>
-</div></body></html>'''
+</div></body></html>"""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(html, encoding="utf-8")

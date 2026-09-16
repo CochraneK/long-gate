@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
 import importlib.util
 import sys
+from dataclasses import asdict, dataclass
 
 
 @dataclass(frozen=True)

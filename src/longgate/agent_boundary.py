@@ -34,11 +34,7 @@ class SafeWorkspace:
     def list_files(self) -> list[str]:
         if not self.root.exists():
             return []
-        return sorted(
-            str(p.relative_to(self.root))
-            for p in self.root.rglob("*")
-            if p.is_file()
-        )
+        return sorted(str(p.relative_to(self.root)) for p in self.root.rglob("*") if p.is_file())
 
     def read_text(self, relative: str | Path) -> str:
         path = self._resolve(relative)

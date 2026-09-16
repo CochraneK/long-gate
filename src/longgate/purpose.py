@@ -28,7 +28,13 @@ def route_purpose(purpose: str) -> PurposeDecision:
     if p in _SCHEMA:
         return PurposeDecision(p, DisclosureMode.SCHEMA_ONLY, "Schema metadata is sufficient.")
     if p in _SYNTHETIC:
-        return PurposeDecision(p, DisclosureMode.SYNTHETIC, "Use synthetic rows after privacy audit.")
+        return PurposeDecision(
+            p, DisclosureMode.SYNTHETIC, "Use synthetic rows after privacy audit."
+        )
     if p in _LOCAL_EXACT:
-        return PurposeDecision(p, DisclosureMode.LOCAL_EXACT, "Run exact computation locally and disclose aggregates only.")
+        return PurposeDecision(
+            p,
+            DisclosureMode.LOCAL_EXACT,
+            "Run exact computation locally and disclose aggregates only.",
+        )
     return PurposeDecision(p, DisclosureMode.BLOCK, "Unknown purpose; default deny.")

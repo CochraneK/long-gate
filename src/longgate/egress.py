@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
 import json
+from pathlib import Path
+
 import pandas as pd
 
 from .pii import scan_text
 from .policy import PolicyDecision
 
 
-def stage_egress(df: pd.DataFrame, out_dir: Path, decision: PolicyDecision) -> tuple[Path | None, dict[str, object]]:
+def stage_egress(
+    df: pd.DataFrame, out_dir: Path, decision: PolicyDecision
+) -> tuple[Path | None, dict[str, object]]:
     """Stage a safe payload after a final local PII rescan. No network request is made."""
     egress_dir = out_dir / "egress"
     egress_dir.mkdir(parents=True, exist_ok=True)

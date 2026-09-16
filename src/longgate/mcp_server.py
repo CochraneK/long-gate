@@ -10,9 +10,7 @@ from .agent_boundary import SafeWorkspace
 def _workspace() -> SafeWorkspace:
     raw = os.environ.get("LONGGATE_SAFE_WORKSPACE")
     if not raw:
-        raise RuntimeError(
-            "LONGGATE_SAFE_WORKSPACE must point to an approved egress directory."
-        )
+        raise RuntimeError("LONGGATE_SAFE_WORKSPACE must point to an approved egress directory.")
     return SafeWorkspace(Path(raw))
 
 
@@ -21,8 +19,7 @@ def main() -> None:
         from fastmcp import FastMCP
     except ImportError as exc:
         raise RuntimeError(
-            "MCP server requires the optional dependency: "
-            "pip install 'long-gate[mcp]'"
+            "MCP server requires the optional dependency: pip install 'long-gate[mcp]'"
         ) from exc
 
     mcp = FastMCP(

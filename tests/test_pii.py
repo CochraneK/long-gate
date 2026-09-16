@@ -4,10 +4,12 @@ from longgate.pii import scan_dataframe_values, scan_text
 
 
 def test_value_scanner_counts_without_returning_values():
-    df = pd.DataFrame({
-        "notes": ["contact test@example.com", "call +44 7700 900123", None],
-        "x": [1, 2, 3],
-    })
+    df = pd.DataFrame(
+        {
+            "notes": ["contact test@example.com", "call +44 7700 900123", None],
+            "x": [1, 2, 3],
+        }
+    )
     result = scan_dataframe_values(df)
     assert result.total_hits >= 2
     payload = str(result.to_dict())

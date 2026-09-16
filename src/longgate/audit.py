@@ -9,7 +9,6 @@ import pandas as pd
 
 from .types import AuditResult, ColumnProfile, DataClass
 
-
 K_RARE = 5
 
 
@@ -39,8 +38,7 @@ def _identifier_overlap(
         ):
             continue
         overlap += len(
-            set(raw[p.name].dropna().astype(str))
-            & set(syn[p.name].dropna().astype(str))
+            set(raw[p.name].dropna().astype(str)) & set(syn[p.name].dropna().astype(str))
         )
     return overlap
 
@@ -67,12 +65,8 @@ def _quasi_combo_overlap(
     cols = _quasi_columns(raw, syn, profiles)
     if not cols:
         return 0
-    raw_combos = set(
-        map(tuple, raw[cols].fillna("<NA>").astype(str).to_numpy())
-    )
-    syn_combos = set(
-        map(tuple, syn[cols].fillna("<NA>").astype(str).to_numpy())
-    )
+    raw_combos = set(map(tuple, raw[cols].fillna("<NA>").astype(str).to_numpy()))
+    syn_combos = set(map(tuple, syn[cols].fillna("<NA>").astype(str).to_numpy()))
     return len(raw_combos & syn_combos)
 
 
@@ -86,19 +80,13 @@ def _rare_quasi_overlap(
     if not cols:
         return 0
 
-    raw_tuples = [
-        tuple(row)
-        for row in raw[cols].fillna("<NA>").astype(str).to_numpy()
-    ]
+    raw_tuples = [tuple(row) for row in raw[cols].fillna("<NA>").astype(str).to_numpy()]
     counts: dict[tuple[str, ...], int] = {}
     for combo in raw_tuples:
         counts[combo] = counts.get(combo, 0) + 1
 
     rare = {combo for combo, n in counts.items() if n < k}
-    syn_combos = {
-        tuple(row)
-        for row in syn[cols].fillna("<NA>").astype(str).to_numpy()
-    }
+    syn_combos = {tuple(row) for row in syn[cols].fillna("<NA>").astype(str).to_numpy()}
     return len(rare & syn_combos)
 
 
@@ -163,17 +151,11 @@ def audit_dataset(
     quasi_overlap = _quasi_combo_overlap(raw, syn, profiles)
     rare_overlap = _rare_quasi_overlap(raw, syn, profiles)
     near_rate = _near_copy_rate(raw, syn, profiles)
-    free_text = [
-        p.name
-        for p in profiles
-        if p.data_class == DataClass.FREE_TEXT
-    ]
+    free_text = [p.name for p in profiles if p.data_class == DataClass.FREE_TEXT]
 
     reasons: list[str] = []
     if not backend_certified:
-        reasons.append(
-            "Selected backend is not approved for row-level egress."
-        )
+        reasons.append("Selected backend is not approved for row-level egress.")
     if exact_rows > 0:
         reasons.append(
             f"Detected {exact_rows} exact row overlap(s) between source and synthetic data."
@@ -189,13 +171,10 @@ def audit_dataset(
         )
     if free_text:
         reasons.append(
-            "Free-text columns are blocked from network release in v0.2: "
-            + ", ".join(free_text)
+            "Free-text columns are blocked from network release in v0.2: " + ", ".join(free_text)
         )
     if near_rate is not None and near_rate > 0.02:
-        reasons.append(
-            f"Near-copy rate {near_rate:.3%} exceeds the v0.2 threshold of 2%."
-        )
+        reasons.append(f"Near-copy rate {near_rate:.3%} exceeds the v0.2 threshold of 2%.")
 
     return AuditResult(
         passed=not reasons,

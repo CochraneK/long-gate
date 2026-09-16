@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
 import ipaddress
 import re
-from typing import Iterable
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
 
 import pandas as pd
 
-
-EMAIL_RE = re.compile(r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![\w.-])", re.I)
+EMAIL_RE = re.compile(r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![\w.-])", re.IGNORECASE)
 PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\d ()-]{7,}\d)(?!\d)")
 CN_ID_RE = re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)")
-UK_POSTCODE_RE = re.compile(r"\b(?:GIR ?0AA|[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2})\b", re.I)
+UK_POSTCODE_RE = re.compile(r"\b(?:GIR ?0AA|[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2})\b", re.IGNORECASE)
 
 
 @dataclass
@@ -69,7 +68,9 @@ def scan_dataframe_values(df: pd.DataFrame) -> PiiFindingSummary:
 
 def scan_text(text: str) -> PiiFindingSummary:
     counts = {k: v for k, v in _count_text(text).items() if v}
-    return PiiFindingSummary(sum(counts.values()), counts, {"payload": sum(counts.values())} if counts else {})
+    return PiiFindingSummary(
+        sum(counts.values()), counts, {"payload": sum(counts.values())} if counts else {}
+    )
 
 
 def scan_dataframe_values_presidio(
@@ -81,8 +82,7 @@ def scan_dataframe_values_presidio(
         from presidio_analyzer import AnalyzerEngine
     except ImportError as exc:
         raise RuntimeError(
-            "Presidio scanner requested but not installed. "
-            "Run: pip install 'long-gate[presidio]'"
+            "Presidio scanner requested but not installed. Run: pip install 'long-gate[presidio]'"
         ) from exc
 
     analyzer = AnalyzerEngine()

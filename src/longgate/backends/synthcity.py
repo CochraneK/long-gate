@@ -3,8 +3,8 @@ from __future__ import annotations
 import pandas as pd
 from faker import Faker
 
-from .base import SyntheticBackend
 from ..types import ColumnProfile, DataClass
+from .base import SyntheticBackend
 
 
 class SynthCityBackend(SyntheticBackend):
@@ -55,12 +55,13 @@ class SynthCityBackend(SyntheticBackend):
                 syn[p.name] = [f"synthetic-{seed}-{i}@example.invalid" for i in range(len(syn))]
             elif any(k in n for k in ["phone", "mobile", "tel", "手机号", "电话"]):
                 syn[p.name] = [
-                    f"+00-000-{(seed + i) % 10000:04d}-{i % 10000:04d}"
-                    for i in range(len(syn))
+                    f"+00-000-{(seed + i) % 10000:04d}-{i % 10000:04d}" for i in range(len(syn))
                 ]
             elif any(k in n for k in ["name", "姓名"]):
                 syn[p.name] = [faker.name() for _ in range(len(syn))]
-            elif any(k in n for k in ["address", "postcode", "postal", "zip", "地址", "住址", "邮编"]):
+            elif any(
+                k in n for k in ["address", "postcode", "postal", "zip", "地址", "住址", "邮编"]
+            ):
                 syn[p.name] = [f"Synthetic Address {i + 1}" for i in range(len(syn))]
             else:
                 syn[p.name] = [f"SYN-{seed:04d}-{i + 1:06d}" for i in range(len(syn))]
