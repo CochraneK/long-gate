@@ -45,6 +45,11 @@ jobs:
 
           for path in sorted(Path(".").glob("benchmark-*.json")):
               data = json.loads(path.read_text())
+              if path.name == "benchmark-summary.json":
+                  assert data.get("schema_version") == 1
+                  assert isinstance(data.get("benchmarks"), list)
+                  print(path, "comparison-summary")
+                  continue
               assert "benchmark" in data
               print(path, data["benchmark"])
           PY
