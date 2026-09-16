@@ -78,8 +78,8 @@ class LongGate:
         input_path: str | Path,
         analysis: str,
         privacy_profile: str = "research",
-        profile_file: str | Path | None = None,
         engine: str = "python",
+        profile_file: str | Path | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         df = load_table(input_path)
