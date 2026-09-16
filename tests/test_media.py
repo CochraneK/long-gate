@@ -103,3 +103,22 @@ def test_wav_metadata_path_never_marks_content_safe(tmp_path: Path):
     assert result.duration_seconds == pytest.approx(0.1)
     assert result.content_inspected is False
     assert result.release_allowed is False
+
+
+
+def test_giant_image_is_rejected_before_privacy_processing(
+    monkeypatch,
+    tmp_path: Path,
+):
+    class GiantImage(_FakeImage):
+        size = (200_000, 200_000)
+
+    path = tmp_path / "huge.jpg"
+    path.write_bytes(b"not-used")
+    monkeypatch.setattr(
+        media,
+        "_pillow_image",
+        lambda _path: GiantImage(),
+    )
+    with pytest.raises(ValueError, match="pixel safety limit"):
+        media.inspect_image_file(path)
