@@ -31,14 +31,13 @@ D. Install:
    pip install -e '.[models,local-llm,documents,stats]'
 E. Run:
    longgate doctor
-F. Run:
-   longgate model recommend
-   If automatic RAM detection fails, rerun with --ram-gb using the RAM you detected.
-G. Install the primary recommended model using exactly the alias Long Gate returns:
-   longgate model install <alias>
-H. Verify it:
-   longgate model verify <alias>
-I. Run:
+F. Run the one-command setup:
+   longgate model setup
+   If automatic RAM detection fails, rerun:
+   longgate model setup --ram-gb <detected RAM>
+G. Verify the selected default:
+   longgate model verify auto
+H. Run:
    longgate model list
 J. Do NOT test with a real sensitive document. If a smoke test is useful, create a
    tiny synthetic text file containing invented information only.

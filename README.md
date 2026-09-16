@@ -241,30 +241,32 @@ longgate run examples/demo.csv --backend auto
 
 `auto` prefers an installed mature local backend and otherwise falls back to the demo backend.
 
-The demo backend is intentionally **never eligible for row-level egress**. A `BLOCKED` result is expected and demonstrates fail-closed behavior.\n\nWant to see the product without installing anything? Open the **[public Safe Demo](https://long-gate-demo-production.up.railway.app)**. It is deliberately static: no upload endpoint, no API key, no private-data worker.
+The demo backend is intentionally **never eligible for row-level egress**. A `BLOCKED` result is expected and demonstrates fail-closed behavior.
+
+Want to see the product without installing anything? Open the **[public Safe Demo](https://long-gate-demo-production.up.railway.app)**. It is deliberately static: no upload endpoint, no API key, no private-data worker.
 
 ---
 
-## Local AI in four commands
+## Local AI with one setup command
 
 You do **not** need to understand GGUF quantization before using Long Gate.
 
 ```bash
 pip install -e '.[models,local-llm]'
-
-longgate model recommend
-longgate model install qwen3-4b
-longgate model verify qwen3-4b
-longgate model list
+longgate model setup
 ```
 
-Then use the installed alias directly:
+That one command detects system RAM, picks a curated model, downloads an immutable upstream revision, verifies SHA-256, and stores it as the Model Vault default.
+
+Then private processing is simply:
 
 ```bash
 longgate semantic-transform-local interview.txt \
-  --model qwen3-4b \
+  --model auto \
   --out preview.txt
 ```
+
+`auto` only resolves the already-installed verified default model; it does not download anything.
 
 The built-in catalog starts with official Qwen3 Q4_K_M GGUF releases:
 
@@ -313,7 +315,8 @@ Long Gate currently includes adapters for:
 | PII analysis | built-in local scanner | local only |
 | PII analysis | Microsoft Presidio | local only |
 | Exact statistics | pandas / statsmodels | guarded aggregate only |
-| Free text | TXT / Markdown local inspection | **local only** |\n| Documents | DOCX / PDF text-layer inspection | **local only** |
+| Free text | TXT / Markdown local inspection | **local only** |
+| Documents | DOCX / PDF text-layer inspection | **local only** |
 | Agent access | FastMCP | SafeWorkspace only |
 
 ---
@@ -587,7 +590,8 @@ Long Gate is deliberately conservative.
 - [x] aggregate guard
 - [x] SafeWorkspace boundary
 - [x] minimal FastMCP surface
-- [x] local-only free-text inspection/redaction preview\n- [x] local DOCX / PDF text-layer inspection
+- [x] local-only free-text inspection/redaction preview
+- [x] local DOCX / PDF text-layer inspection
 - [x] adversarial benchmark scaffold
 - [x] offline Trust Report
 - [x] security CI, SBOM, and tag-build workflow
@@ -600,7 +604,9 @@ Long Gate is deliberately conservative.
 - [ ] signed manifests and stronger provenance
 - [x] fixed-template local R describe / OLS engine
 - [ ] semantic privacy / synthetic narrative generation for free text
-- [x] local GGUF semantic preview + copy-risk audit (still network-blocked)\n- [ ] semantic-safe DOCX / PDF release path\n- [ ] image / audio privacy paths
+- [x] local GGUF semantic preview + copy-risk audit (still network-blocked)
+- [ ] semantic-safe DOCX / PDF release path
+- [ ] image / audio privacy paths
 - [ ] broader adversarial test corpus
 
 See the [Roadmap](ROADMAP.md).
@@ -702,7 +708,11 @@ Start with [docs/index.md](docs/index.md).
 - [Security invariants](docs/security-invariants.md)
 - [Agent boundary](docs/agent-boundary.md)
 - [Unstructured data](docs/unstructured.md)
-- [Benchmarks](docs/benchmarks.md)\n- [Privacy profiles](docs/privacy-profiles.md)\n- [Provenance](docs/provenance.md)\n- [Local R executor](docs/r-executor.md)\n- [Local semantic preview](docs/semantic-preview.md)
+- [Benchmarks](docs/benchmarks.md)
+- [Privacy profiles](docs/privacy-profiles.md)
+- [Provenance](docs/provenance.md)
+- [Local R executor](docs/r-executor.md)
+- [Local semantic preview](docs/semantic-preview.md)
 - [Local Model Guide](docs/models.md)
 - [AI setup prompt](docs/ai-setup-prompt.md)
 

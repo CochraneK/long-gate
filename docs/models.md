@@ -10,21 +10,35 @@ Install the setup and local-inference extras:
 pip install -e '.[models,local-llm]'
 ```
 
-Then:
+Then the easiest path is one command:
 
 ```bash
-longgate model recommend
-longgate model install qwen3-4b
-longgate model verify qwen3-4b
+longgate model setup
+```
+
+It detects system RAM, chooses a curated model, downloads the pinned Hugging Face revision, verifies SHA-256, and sets the verified model as the local default.
+
+Check it:
+
+```bash
+longgate model verify auto
 longgate model list
 ```
 
-After the model is installed, private processing can use the alias directly:
+Private processing can then use the verified default without knowing its filename:
 
 ```bash
 longgate semantic-transform-local interview.txt \
-  --model qwen3-4b \
+  --model auto \
   --out preview.txt
+```
+
+If you want control instead of automatic selection:
+
+```bash
+longgate model recommend
+longgate model install qwen3-8b
+longgate model verify qwen3-8b
 ```
 
 The private processing path resolves the alias from the local Model Vault and does **not** download anything.
@@ -91,9 +105,10 @@ Private mount:  NO
 Model Vault:    WRITE
 ```
 
-Used only for:
+Used only for model provisioning commands such as:
 
 ```bash
+longgate model setup
 longgate model install <alias>
 ```
 

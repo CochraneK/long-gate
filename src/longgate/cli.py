@@ -21,6 +21,7 @@ from .model_vault import (
     install_model,
     list_installed,
     recommend_model,
+    setup_model,
     verify_model,
 )
 from .onboarding import AI_SETUP_PROMPT
@@ -136,6 +137,27 @@ def build_parser() -> argparse.ArgumentParser:
     model_sub = model.add_subparsers(
         dest="model_command",
         required=True,
+    )
+
+    setup = model_sub.add_parser(
+        "setup",
+        help=(
+            "Automatically recommend, download, verify, "
+            "and set the default local model."
+        ),
+    )
+    setup.add_argument(
+        "--ram-gb",
+        type=float,
+        default=None,
+        help=(
+            "Override automatic system-RAM detection."
+        ),
+    )
+    setup.add_argument(
+        "--vault",
+        default=None,
+        help="Optional Model Vault directory.",
     )
 
     recommend = model_sub.add_parser(
@@ -372,7 +394,12 @@ def main() -> None:
         return
 
     if args.command == "model":
-        if args.model_command == "recommend":
+        if args.model_command == "setup":
+            result = setup_model(
+                args.ram_gb,
+                args.vault,
+            )
+        elif args.model_command == "recommend":
             result = recommend_model(
                 args.ram_gb
             )

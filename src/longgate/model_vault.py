@@ -129,6 +129,7 @@ def _load_manifest(
     if not path.is_file():
         return {
             "format": "long-gate-model-vault-v1",
+            "default_model": None,
             "models": {},
         }
     data = json.loads(
@@ -375,6 +376,10 @@ def list_installed(
                 **entry,
                 "path": str(path),
                 "exists": path.is_file(),
+                "default": (
+                    manifest.get("default_model")
+                    == alias
+                ),
             }
         )
     return rows
@@ -439,6 +444,7 @@ def install_model(
                     utc_now(),
                 ),
             }
+            manifest["default_model"] = spec.alias
             _write_manifest(
                 manifest,
                 root,
@@ -512,6 +518,7 @@ def install_model(
         "size_gb": spec.size_gb,
         "installed_at": utc_now(),
     }
+    manifest["default_model"] = spec.alias
     _write_manifest(
         manifest,
         root,
@@ -527,6 +534,27 @@ def install_model(
     }
 
 
+def _resolve_alias(
+    alias: str,
+    manifest: dict[str, Any],
+) -> str:
+    normalized = alias.strip().lower()
+    if normalized != "auto":
+        return normalized
+
+    default_model = manifest.get(
+        "default_model"
+    )
+    if not default_model:
+        raise FileNotFoundError(
+            "No default model is configured. "
+            "Run: longgate model setup"
+        )
+    return str(
+        default_model
+    )
+
+
 def verify_model(
     alias: str,
     vault_dir: str | Path | None = None,
@@ -534,14 +562,18 @@ def verify_model(
     manifest = _load_manifest(
         vault_dir
     )
+    resolved_alias = _resolve_alias(
+        alias,
+        manifest,
+    )
     entry = manifest[
         "models"
     ].get(
-        alias
+        resolved_alias
     )
     if not entry:
         raise FileNotFoundError(
-            f"Model {alias!r} is not registered in the Model Vault."
+            f"Model {resolved_alias!r} is not registered in the Model Vault."
         )
 
     root = _manifest_path(
@@ -569,12 +601,62 @@ def verify_model(
         entry["sha256"]
     )
     return {
-        "alias": alias,
+        "alias": resolved_alias,
         "path": str(path),
         "exists": True,
         "verified": actual == expected,
         "expected_sha256": expected,
         "actual_sha256": actual,
+    }
+
+
+def setup_model(
+    ram_gb: float | None = None,
+    vault_dir: str | Path | None = None,
+) -> dict[str, object]:
+    """Recommend, install, verify, and set the local default model."""
+    recommendation = recommend_model(
+        ram_gb
+    )
+    primary = recommendation[
+        "primary"
+    ]
+    alias = str(
+        primary["alias"]
+    )
+    installed = install_model(
+        alias,
+        vault_dir,
+    )
+    verification = verify_model(
+        alias,
+        vault_dir,
+    )
+    if not verification[
+        "verified"
+    ]:
+        raise RuntimeError(
+            "Model setup finished downloading but verification failed."
+        )
+
+    return {
+        "status": "READY",
+        "detected_ram_gb": recommendation[
+            "detected_ram_gb"
+        ],
+        "default_model": alias,
+        "model": primary,
+        "installation": installed,
+        "verification": verification,
+        "private_processing_example": (
+            "longgate semantic-transform-local interview.txt "
+            "--model auto --out preview.txt"
+        ),
+        "security_note": (
+            "Setup mode may use the network. "
+            "Private processing resolves the verified local default "
+            "and performs no model download."
+        ),
     }
 
 
