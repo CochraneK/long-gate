@@ -8,7 +8,7 @@ IDENTIFIER_PATTERNS = [
     r"(^|_)(name|full_name|first_name|last_name)(_|$)",
     r"phone|mobile|telephone|tel",
     r"email|e_mail",
-    r"passport|nhs|ssn|national_id|identity|id_card|身份证|手机号|电话|邮箱|姓名|护照|学号|工号|病历号",
+    r"(^|_)(id|subject_id|participant_id|patient_id|student_id|employee_id|record_id)(_|$)|passport|nhs|ssn|national_id|identity|id_card|身份证|手机号|电话|邮箱|姓名|护照|学号|工号|病历号",
     r"address|postcode|postal|zip|住址|地址|邮编",
 ]
 
