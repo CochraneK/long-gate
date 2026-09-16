@@ -7,6 +7,7 @@ from .aggregate_guard import (
     validate_aggregate_payload,
 )
 from .doctor import capabilities
+from .documents import inspect_document_file
 from .executor import (
     correlation,
     describe_numeric,
@@ -186,6 +187,17 @@ def build_parser() -> argparse.ArgumentParser:
         "run_dir"
     )
 
+    document_inspect = sub.add_parser(
+        "document-inspect",
+        help=(
+            "Extract and inspect TXT/MD/DOCX/PDF locally. "
+            "The result never grants network egress."
+        ),
+    )
+    document_inspect.add_argument(
+        "input"
+    )
+
     text_inspect = sub.add_parser(
         "text-inspect",
         help=(
@@ -332,6 +344,19 @@ def main() -> None:
                 verify_provenance(
                     args.run_dir
                 ),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "document-inspect":
+        result = inspect_document_file(
+            args.input
+        )
+        print(
+            json.dumps(
+                result.to_dict(),
                 indent=2,
                 ensure_ascii=False,
             )

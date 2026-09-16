@@ -62,6 +62,14 @@ def capabilities() -> list[Capability]:
             ),
         ),
         Capability(
+            "documents",
+            (
+                _has("docx")
+                and _has("pypdf")
+            ),
+            "local DOCX/PDF text-layer inspection",
+        ),
+        Capability(
             "pyarrow",
             _has("pyarrow"),
             "Parquet support",

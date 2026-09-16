@@ -255,6 +255,7 @@ pip install -e '.[synthcity]'  # local synthetic backend
 pip install -e '.[presidio]'   # enhanced local PII analysis
 pip install -e '.[stats]'      # local OLS/statistics
 pip install -e '.[mcp]'        # safe-workspace MCP boundary
+pip install -e '.[documents]'  # local DOCX/PDF text extraction
 ```
 
 Long Gate currently includes adapters for:
@@ -267,7 +268,7 @@ Long Gate currently includes adapters for:
 | PII analysis | built-in local scanner | local only |
 | PII analysis | Microsoft Presidio | local only |
 | Exact statistics | pandas / statsmodels | guarded aggregate only |
-| Free text | TXT / Markdown local inspection | **local only** |
+| Free text | TXT / Markdown local inspection | **local only** |\n| Documents | DOCX / PDF text-layer inspection | **local only** |
 | Agent access | FastMCP | SafeWorkspace only |
 
 ---
@@ -339,6 +340,15 @@ longgate text-redact-local interview.txt \
 ```
 
 The second command is deliberately named `-local`: it creates a local preview, **not** a network-safe artifact.
+
+DOCX and PDF text-layer inspection is also available locally:
+
+```bash
+longgate document-inspect report.docx
+longgate document-inspect transcript.pdf
+```
+
+PDF inspection does **not** OCR scanned/image-only pages, so zero extracted hits never means the visible document is safe to upload.
 
 See [Unstructured data](docs/unstructured.md).
 
@@ -501,7 +511,7 @@ Long Gate is deliberately conservative.
 - [x] aggregate guard
 - [x] SafeWorkspace boundary
 - [x] minimal FastMCP surface
-- [x] local-only free-text inspection/redaction preview
+- [x] local-only free-text inspection/redaction preview\n- [x] local DOCX / PDF text-layer inspection
 - [x] adversarial benchmark scaffold
 - [x] offline Trust Report
 - [x] security CI, SBOM, and tag-build workflow
@@ -514,7 +524,7 @@ Long Gate is deliberately conservative.
 - [ ] signed manifests and stronger provenance
 - [x] fixed-template local R describe / OLS engine
 - [ ] semantic privacy / synthetic narrative generation for free text
-- [ ] DOCX / PDF / image / audio privacy paths
+- [ ] semantic-safe DOCX / PDF transformation path\n- [ ] image / audio privacy paths
 - [ ] broader adversarial test corpus
 
 See the [Roadmap](ROADMAP.md).
