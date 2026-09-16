@@ -1,7 +1,6 @@
-from longgate.pii import scan_structured_strings
 import pandas as pd
 
-from longgate.pii import scan_dataframe_values, scan_text
+from longgate.pii import scan_dataframe_values, scan_structured_strings, scan_text
 
 
 def test_value_scanner_counts_without_returning_values():
