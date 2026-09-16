@@ -1,0 +1,23 @@
+# Long Gate documentation
+
+## Start here
+
+- [Vision](vision.md)
+- [Architecture](architecture.md)
+- [How Long Gate differs](comparison.md)
+- [Threat model](threat-model.md)
+- [Security invariants](security-invariants.md)
+
+## Using Long Gate
+
+- [Examples](../examples/README.md)
+- [Agent boundary](agent-boundary.md)
+- [Unstructured data](unstructured.md)
+- [Benchmarks](benchmarks.md)
+
+## Project
+
+- [Roadmap](../ROADMAP.md)
+- [Security policy](../SECURITY.md)
+- [Contributing](../CONTRIBUTING.md)
+- [Changelog](../CHANGELOG.md)
