@@ -38,3 +38,16 @@ def test_setup_prompt_parser():
         ]
     )
     assert args.command == "setup-prompt"
+
+
+def test_profile_file_parser():
+    args = build_parser().parse_args(
+        [
+            "run",
+            "study.csv",
+            "--profile-file",
+            "policy/org.json",
+        ]
+    )
+    assert args.command == "run"
+    assert args.profile_file == "policy/org.json"
