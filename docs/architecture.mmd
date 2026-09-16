@@ -1,0 +1,32 @@
+flowchart LR
+  subgraph LOCAL["Trusted Local Zone"]
+    RAW["Raw Data"]
+    INSPECT["Schema + Value-level PII Inspection"]
+    PURPOSE["Purpose Router"]
+    SYNTH["Synthetic Twin Backends"]
+    EXACT["Local Exact Executor"]
+    AUDIT["Privacy Audit"]
+    REPORT["Offline Trust Report"]
+  end
+
+  subgraph GATE["LONG GATE"]
+    POLICY["Deny-by-default Policy"]
+    RESCAN["Final Egress PII Rescan"]
+    SAFE["Safe Workspace / Manifest"]
+  end
+
+  subgraph NETWORK["Network AI Zone"]
+    AI["Network AI Agent"]
+  end
+
+  RAW --> INSPECT --> PURPOSE
+  PURPOSE -->|exploration| SYNTH --> AUDIT --> POLICY
+  PURPOSE -->|exact statistics| EXACT --> POLICY
+  PURPOSE -->|unknown| POLICY
+  POLICY -->|eligible only| RESCAN --> SAFE --> AI
+
+  RAW -. never crosses .-> GATE
+  INSPECT --> REPORT
+  AUDIT --> REPORT
+  POLICY --> REPORT
+  RESCAN --> REPORT
