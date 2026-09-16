@@ -31,12 +31,22 @@ _SERVICE_RE = re.compile(r"^  ([A-Za-z0-9_.-]+):\s*$", re.MULTILINE)
 
 
 def _service_blocks(text: str) -> dict[str, str]:
-    matches = list(_SERVICE_RE.finditer(text))
+    marker = re.search(r"^services:\s*$", text, re.MULTILINE)
+    if marker is None:
+        return {}
+    tail = text[marker.end():]
+    boundary = re.search(r"^[A-Za-z0-9_.-]+:\s*$", tail, re.MULTILINE)
+    service_text = tail[: boundary.start()] if boundary else tail
+    matches = list(_SERVICE_RE.finditer(service_text))
     blocks: dict[str, str] = {}
     for index, match in enumerate(matches):
         start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        blocks[match.group(1)] = text[start:end]
+        end = (
+            matches[index + 1].start()
+            if index + 1 < len(matches)
+            else len(service_text)
+        )
+        blocks[match.group(1)] = service_text[start:end]
     return blocks
 
 
