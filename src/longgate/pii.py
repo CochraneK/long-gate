@@ -98,3 +98,36 @@ def scan_dataframe_values_presidio(
         if col_hits:
             by_column[str(col)] = col_hits
     return PiiFindingSummary(sum(by_entity.values()), by_entity, by_column)
+
+
+def scan_structured_strings(value: object) -> PiiFindingSummary:
+    """Scan only string leaves in structured data.
+
+    Numeric aggregate values are not text identifiers. Scanning their JSON
+    rendering with phone-number regexes can create false positives on long
+    decimal expansions.
+    """
+    totals: dict[str, int] = {}
+
+    def visit(item: object) -> None:
+        if isinstance(item, str):
+            counts = _count_text(item)
+            for entity, count in counts.items():
+                if count:
+                    totals[entity] = totals.get(entity, 0) + count
+            return
+        if isinstance(item, dict):
+            for child in item.values():
+                visit(child)
+            return
+        if isinstance(item, (list, tuple, set)):
+            for child in item:
+                visit(child)
+
+    visit(value)
+    total = sum(totals.values())
+    return PiiFindingSummary(
+        total,
+        totals,
+        {"payload": total} if total else {},
+    )
