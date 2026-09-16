@@ -65,7 +65,10 @@ def build_provenance(
     return out
 
 
-def verify_provenance(run_dir: str | Path) -> dict[str, object]:
+def verify_provenance(
+    run_dir: str | Path,
+    public_key_path: str | Path | None = None,
+) -> dict[str, object]:
     root = Path(run_dir)
     path = root / "provenance.json"
     document = json.loads(path.read_text(encoding="utf-8"))
@@ -96,11 +99,34 @@ def verify_provenance(run_dir: str | Path) -> dict[str, object]:
             )
 
     digest_matches = expected_digest == document.get("integrity_digest")
+    integrity_valid = digest_matches and not mismatches
+    signature = (
+        verify_provenance_signature(
+            root,
+            public_key_path,
+        )
+        if public_key_path is not None
+        else {
+            "present": (root / "provenance.sig.json").is_file(),
+            "valid": None,
+            "reason": "public_key_not_supplied",
+        }
+    )
+    overall_valid = (
+        integrity_valid
+        and (
+            bool(signature.get("valid"))
+            if public_key_path is not None
+            else True
+        )
+    )
     return {
-        "valid": digest_matches and not mismatches,
+        "valid": overall_valid,
+        "integrity_valid": integrity_valid,
         "integrity_digest_matches": digest_matches,
         "mismatches": mismatches,
         "artifact_count": len(document["artifacts"]),
+        "signature": signature,
     }
 
 
