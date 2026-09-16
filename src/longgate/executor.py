@@ -10,38 +10,74 @@ MIN_GROUP_SIZE = 5
 MIN_DATASET_SIZE = 10
 
 
-def _identifier_columns(profiles: list[ColumnProfile]) -> set[str]:
-    return {p.name for p in profiles if p.data_class == DataClass.IDENTIFIER}
+def _identifier_columns(
+    profiles: list[ColumnProfile],
+) -> set[str]:
+    return {
+        profile.name
+        for profile in profiles
+        if profile.data_class == DataClass.IDENTIFIER
+    }
 
 
 def _safe_numeric_columns(
     df: pd.DataFrame,
     profiles: list[ColumnProfile],
 ) -> list[str]:
-    ids = _identifier_columns(profiles)
-    return [c for c in df.columns if c not in ids and pd.api.types.is_numeric_dtype(df[c])]
+    identifiers = _identifier_columns(profiles)
+    return [
+        column
+        for column in df.columns
+        if column not in identifiers
+        and pd.api.types.is_numeric_dtype(df[column])
+    ]
 
 
 def describe_numeric(
     df: pd.DataFrame,
     profiles: list[ColumnProfile],
+    min_dataset_size: int = MIN_DATASET_SIZE,
 ) -> dict[str, Any]:
-    if len(df) < MIN_DATASET_SIZE:
-        raise ValueError("Dataset is too small for released descriptive statistics.")
+    if len(df) < min_dataset_size:
+        raise ValueError(
+            "Dataset is too small for released descriptive statistics."
+        )
 
-    cols = _safe_numeric_columns(df, profiles)
+    columns = _safe_numeric_columns(
+        df,
+        profiles,
+    )
     out: dict[str, Any] = {
         "n_rows": len(df),
         "columns": {},
     }
-    for col in cols:
-        s = pd.to_numeric(df[col], errors="coerce")
-        out["columns"][str(col)] = {
-            "n": int(s.notna().sum()),
-            "mean": None if s.dropna().empty else float(s.mean()),
-            "std": None if s.dropna().empty else float(s.std(ddof=1)),
-            "min": None if s.dropna().empty else float(s.min()),
-            "max": None if s.dropna().empty else float(s.max()),
+    for column in columns:
+        series = pd.to_numeric(
+            df[column],
+            errors="coerce",
+        )
+        out["columns"][str(column)] = {
+            "n": int(series.notna().sum()),
+            "mean": (
+                None
+                if series.dropna().empty
+                else float(series.mean())
+            ),
+            "std": (
+                None
+                if series.dropna().empty
+                else float(series.std(ddof=1))
+            ),
+            "min": (
+                None
+                if series.dropna().empty
+                else float(series.min())
+            ),
+            "max": (
+                None
+                if series.dropna().empty
+                else float(series.max())
+            ),
         }
     return out
 
@@ -49,23 +85,40 @@ def describe_numeric(
 def correlation(
     df: pd.DataFrame,
     profiles: list[ColumnProfile],
+    min_dataset_size: int = MIN_DATASET_SIZE,
 ) -> dict[str, Any]:
-    if len(df) < MIN_DATASET_SIZE:
-        raise ValueError("Dataset is too small for released correlation statistics.")
+    if len(df) < min_dataset_size:
+        raise ValueError(
+            "Dataset is too small for released correlation statistics."
+        )
 
-    cols = _safe_numeric_columns(df, profiles)
-    if len(cols) < 2:
+    columns = _safe_numeric_columns(
+        df,
+        profiles,
+    )
+    if len(columns) < 2:
         return {
             "n_rows": len(df),
             "correlation": {},
         }
 
-    corr = df[cols].corr(numeric_only=True)
+    corr = df[columns].corr(
+        numeric_only=True
+    )
     return {
         "n_rows": len(df),
         "correlation": {
-            str(row): {str(col): None if pd.isna(v) else float(v) for col, v in values.items()}
-            for row, values in corr.to_dict(orient="index").items()
+            str(row): {
+                str(column): (
+                    None
+                    if pd.isna(value)
+                    else float(value)
+                )
+                for column, value in values.items()
+            }
+            for row, values in corr.to_dict(
+                orient="index"
+            ).items()
         },
     }
 
@@ -77,26 +130,55 @@ def group_summary(
     value: str,
     min_group_size: int = MIN_GROUP_SIZE,
 ) -> dict[str, Any]:
-    ids = _identifier_columns(profiles)
-    if group_by in ids or value in ids:
-        raise ValueError("Identifier columns cannot be used in released group summaries.")
-    if group_by not in df.columns or value not in df.columns:
-        raise KeyError("Unknown group/value column.")
-    if not pd.api.types.is_numeric_dtype(df[value]):
-        raise TypeError("Group summary value must be numeric.")
+    identifiers = _identifier_columns(profiles)
+    if (
+        group_by in identifiers
+        or value in identifiers
+    ):
+        raise ValueError(
+            "Identifier columns cannot be used "
+            "in released group summaries."
+        )
+    if (
+        group_by not in df.columns
+        or value not in df.columns
+    ):
+        raise KeyError(
+            "Unknown group/value column."
+        )
+    if not pd.api.types.is_numeric_dtype(
+        df[value]
+    ):
+        raise TypeError(
+            "Group summary value must be numeric."
+        )
 
     groups = []
-    for key, part in df.groupby(group_by, dropna=False):
+    for key, part in df.groupby(
+        group_by,
+        dropna=False,
+    ):
         n = len(part)
         if n < min_group_size:
             continue
-        s = pd.to_numeric(part[value], errors="coerce")
+        series = pd.to_numeric(
+            part[value],
+            errors="coerce",
+        )
         groups.append(
             {
                 "group": str(key),
                 "n": n,
-                "mean": None if s.dropna().empty else float(s.mean()),
-                "std": None if s.dropna().empty else float(s.std(ddof=1)),
+                "mean": (
+                    None
+                    if series.dropna().empty
+                    else float(series.mean())
+                ),
+                "std": (
+                    None
+                    if series.dropna().empty
+                    else float(series.std(ddof=1))
+                ),
             }
         )
 
@@ -113,88 +195,150 @@ def ols(
     profiles: list[ColumnProfile],
     outcome: str,
     predictors: list[str],
+    min_dataset_size: int = MIN_DATASET_SIZE,
+    min_group_size: int = MIN_GROUP_SIZE,
 ) -> dict[str, Any]:
-    ids = _identifier_columns(profiles)
-    selected = [outcome, *predictors]
+    identifiers = _identifier_columns(profiles)
+    selected = [
+        outcome,
+        *predictors,
+    ]
 
-    if any(c in ids for c in selected):
-        raise ValueError("Identifier columns cannot be used in released regression models.")
-    if outcome not in df.columns or any(c not in df.columns for c in predictors):
-        raise KeyError("Unknown regression column.")
-    if not pd.api.types.is_numeric_dtype(df[outcome]):
-        raise TypeError("OLS outcome must be numeric.")
+    if any(
+        column in identifiers
+        for column in selected
+    ):
+        raise ValueError(
+            "Identifier columns cannot be used "
+            "in released regression models."
+        )
+    if (
+        outcome not in df.columns
+        or any(
+            column not in df.columns
+            for column in predictors
+        )
+    ):
+        raise KeyError(
+            "Unknown regression column."
+        )
+    if not pd.api.types.is_numeric_dtype(
+        df[outcome]
+    ):
+        raise TypeError(
+            "OLS outcome must be numeric."
+        )
 
     try:
         import statsmodels.api as sm
     except ImportError as exc:
         raise RuntimeError(
-            "OLS requires the optional stats dependency: pip install 'long-gate[stats]'"
+            "OLS requires the optional stats dependency: "
+            "pip install 'long-gate[stats]'"
         ) from exc
 
-    X = pd.DataFrame(index=df.index)
-    for col in predictors:
-        s = df[col]
-        if pd.api.types.is_numeric_dtype(s):
-            X[col] = pd.to_numeric(
-                s,
+    features = pd.DataFrame(
+        index=df.index
+    )
+    for column in predictors:
+        series = df[column]
+        if pd.api.types.is_numeric_dtype(
+            series
+        ):
+            features[column] = pd.to_numeric(
+                series,
                 errors="coerce",
             )
         else:
-            counts = s.astype("string").value_counts(dropna=False)
-            if len(counts) > 50 or (counts < MIN_GROUP_SIZE).any():
-                raise ValueError(f"Categorical predictor {col!r} has rare/high-cardinality levels.")
+            counts = (
+                series.astype("string")
+                .value_counts(dropna=False)
+            )
+            if (
+                len(counts) > 50
+                or (counts < min_group_size).any()
+            ):
+                raise ValueError(
+                    f"Categorical predictor {column!r} "
+                    "has rare/high-cardinality levels."
+                )
             dummies = pd.get_dummies(
-                s.astype("string"),
-                prefix=col,
+                series.astype("string"),
+                prefix=column,
                 drop_first=True,
                 dtype=float,
             )
-            X = pd.concat(
-                [X, dummies],
+            features = pd.concat(
+                [
+                    features,
+                    dummies,
+                ],
                 axis=1,
             )
 
-    y = pd.to_numeric(
+    target = pd.to_numeric(
         df[outcome],
         errors="coerce",
     )
     model_df = pd.concat(
-        [y.rename("__y__"), X],
+        [
+            target.rename("__y__"),
+            features,
+        ],
         axis=1,
     ).dropna()
 
     if len(model_df) < max(
-        MIN_DATASET_SIZE,
-        len(X.columns) + 3,
+        min_dataset_size,
+        len(features.columns) + 3,
     ):
-        raise ValueError("Too few complete observations for safe released OLS summary.")
+        raise ValueError(
+            "Too few complete observations "
+            "for safe released OLS summary."
+        )
 
-    X2 = sm.add_constant(
-        model_df.drop(columns="__y__"),
+    design = sm.add_constant(
+        model_df.drop(
+            columns="__y__"
+        ),
         has_constant="add",
     )
-    res = sm.OLS(
+    result = sm.OLS(
         model_df["__y__"],
-        X2,
+        design,
     ).fit()
-    ci = res.conf_int()
+    confidence = result.conf_int()
 
     terms = {}
-    for term in res.params.index:
+    for term in result.params.index:
         terms[str(term)] = {
-            "coef": float(res.params[term]),
-            "se": float(res.bse[term]),
-            "p": float(res.pvalues[term]),
-            "ci_low": float(ci.loc[term, 0]),
-            "ci_high": float(ci.loc[term, 1]),
+            "coef": float(
+                result.params[term]
+            ),
+            "se": float(
+                result.bse[term]
+            ),
+            "p": float(
+                result.pvalues[term]
+            ),
+            "ci_low": float(
+                confidence.loc[term, 0]
+            ),
+            "ci_high": float(
+                confidence.loc[term, 1]
+            ),
         }
 
     return {
         "model": "OLS",
         "outcome": outcome,
         "predictors": predictors,
-        "nobs": int(res.nobs),
-        "r_squared": float(res.rsquared),
-        "adj_r_squared": float(res.rsquared_adj),
+        "nobs": int(result.nobs),
+        "r_squared": float(
+            result.rsquared
+        ),
+        "adj_r_squared": float(
+            result.rsquared_adj
+        ),
         "terms": terms,
     }

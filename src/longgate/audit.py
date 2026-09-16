@@ -7,9 +7,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from .profiles import PrivacyProfile, get_profile
 from .types import AuditResult, ColumnProfile, DataClass
-
-K_RARE = 5
 
 
 def _row_hashes(df: pd.DataFrame) -> set[str]:
@@ -30,15 +29,16 @@ def _identifier_overlap(
     profiles: list[ColumnProfile],
 ) -> int:
     overlap = 0
-    for p in profiles:
+    for profile in profiles:
         if (
-            p.data_class != DataClass.IDENTIFIER
-            or p.name not in raw.columns
-            or p.name not in syn.columns
+            profile.data_class != DataClass.IDENTIFIER
+            or profile.name not in raw.columns
+            or profile.name not in syn.columns
         ):
             continue
         overlap += len(
-            set(raw[p.name].dropna().astype(str)) & set(syn[p.name].dropna().astype(str))
+            set(raw[profile.name].dropna().astype(str))
+            & set(syn[profile.name].dropna().astype(str))
         )
     return overlap
 
@@ -49,11 +49,11 @@ def _quasi_columns(
     profiles: list[ColumnProfile],
 ) -> list[str]:
     return [
-        p.name
-        for p in profiles
-        if p.data_class == DataClass.QUASI_IDENTIFIER
-        and p.name in raw.columns
-        and p.name in syn.columns
+        profile.name
+        for profile in profiles
+        if profile.data_class == DataClass.QUASI_IDENTIFIER
+        and profile.name in raw.columns
+        and profile.name in syn.columns
     ]
 
 
@@ -65,8 +65,18 @@ def _quasi_combo_overlap(
     cols = _quasi_columns(raw, syn, profiles)
     if not cols:
         return 0
-    raw_combos = set(map(tuple, raw[cols].fillna("<NA>").astype(str).to_numpy()))
-    syn_combos = set(map(tuple, syn[cols].fillna("<NA>").astype(str).to_numpy()))
+    raw_combos = set(
+        map(
+            tuple,
+            raw[cols].fillna("<NA>").astype(str).to_numpy(),
+        )
+    )
+    syn_combos = set(
+        map(
+            tuple,
+            syn[cols].fillna("<NA>").astype(str).to_numpy(),
+        )
+    )
     return len(raw_combos & syn_combos)
 
 
@@ -74,19 +84,35 @@ def _rare_quasi_overlap(
     raw: pd.DataFrame,
     syn: pd.DataFrame,
     profiles: list[ColumnProfile],
-    k: int = K_RARE,
+    k: int,
 ) -> int:
     cols = _quasi_columns(raw, syn, profiles)
     if not cols:
         return 0
 
-    raw_tuples = [tuple(row) for row in raw[cols].fillna("<NA>").astype(str).to_numpy()]
+    raw_tuples = [
+        tuple(row)
+        for row in raw[cols]
+        .fillna("<NA>")
+        .astype(str)
+        .to_numpy()
+    ]
     counts: dict[tuple[str, ...], int] = {}
     for combo in raw_tuples:
         counts[combo] = counts.get(combo, 0) + 1
 
-    rare = {combo for combo, n in counts.items() if n < k}
-    syn_combos = {tuple(row) for row in syn[cols].fillna("<NA>").astype(str).to_numpy()}
+    rare = {
+        combo
+        for combo, count in counts.items()
+        if count < k
+    }
+    syn_combos = {
+        tuple(row)
+        for row in syn[cols]
+        .fillna("<NA>")
+        .astype(str)
+        .to_numpy()
+    }
     return len(rare & syn_combos)
 
 
@@ -97,43 +123,50 @@ def _near_copy_rate(
     max_rows: int = 400,
 ) -> float | None:
     cols = [
-        p.name
-        for p in profiles
-        if p.name in raw.columns
-        and p.name in syn.columns
-        and p.data_class != DataClass.IDENTIFIER
-        and pd.api.types.is_numeric_dtype(raw[p.name])
-        and pd.api.types.is_numeric_dtype(syn[p.name])
+        profile.name
+        for profile in profiles
+        if profile.name in raw.columns
+        and profile.name in syn.columns
+        and profile.data_class != DataClass.IDENTIFIER
+        and pd.api.types.is_numeric_dtype(raw[profile.name])
+        and pd.api.types.is_numeric_dtype(syn[profile.name])
     ]
     if not cols:
         return None
 
-    r = raw[cols].apply(pd.to_numeric, errors="coerce")
-    s = syn[cols].apply(pd.to_numeric, errors="coerce")
-    med = r.median(numeric_only=True)
-    r = r.fillna(med)
-    s = s.fillna(med)
-    std = r.std(ddof=0).replace(0, 1.0)
-    mean = r.mean()
-    r = (r - mean) / std
-    s = (s - mean) / std
+    real = raw[cols].apply(pd.to_numeric, errors="coerce")
+    generated = syn[cols].apply(pd.to_numeric, errors="coerce")
+    median = real.median(numeric_only=True)
+    real = real.fillna(median)
+    generated = generated.fillna(median)
+    std = real.std(ddof=0).replace(0, 1.0)
+    mean = real.mean()
+    real = (real - mean) / std
+    generated = (generated - mean) / std
 
-    if len(r) > max_rows:
-        r = r.sample(max_rows, random_state=0)
-    if len(s) > max_rows:
-        s = s.sample(max_rows, random_state=1)
+    if len(real) > max_rows:
+        real = real.sample(max_rows, random_state=0)
+    if len(generated) > max_rows:
+        generated = generated.sample(max_rows, random_state=1)
 
-    ra = r.to_numpy(dtype=float)
-    sa = s.to_numpy(dtype=float)
-    if ra.size == 0 or sa.size == 0:
+    real_array = real.to_numpy(dtype=float)
+    generated_array = generated.to_numpy(dtype=float)
+    if real_array.size == 0 or generated_array.size == 0:
         return None
 
     near = 0
-    threshold = max(math.sqrt(len(cols)) * 0.05, 0.05)
-    for row in sa:
-        if float(np.linalg.norm(ra - row, axis=1).min()) < threshold:
+    threshold = max(
+        math.sqrt(len(cols)) * 0.05,
+        0.05,
+    )
+    for row in generated_array:
+        distance = np.linalg.norm(
+            real_array - row,
+            axis=1,
+        ).min()
+        if float(distance) < threshold:
             near += 1
-    return round(near / len(sa), 6)
+    return round(near / len(generated_array), 6)
 
 
 def audit_dataset(
@@ -141,40 +174,82 @@ def audit_dataset(
     syn: pd.DataFrame,
     profiles: list[ColumnProfile],
     backend_certified: bool,
+    privacy_profile: PrivacyProfile | None = None,
 ) -> AuditResult:
-    common = [c for c in raw.columns if c in syn.columns]
+    policy = privacy_profile or get_profile("research")
+    common = [
+        column
+        for column in raw.columns
+        if column in syn.columns
+    ]
     raw_aligned = raw[common].copy()
     syn_aligned = syn[common].copy()
 
-    exact_rows = len(_row_hashes(raw_aligned) & _row_hashes(syn_aligned))
-    id_overlap = _identifier_overlap(raw, syn, profiles)
-    quasi_overlap = _quasi_combo_overlap(raw, syn, profiles)
-    rare_overlap = _rare_quasi_overlap(raw, syn, profiles)
-    near_rate = _near_copy_rate(raw, syn, profiles)
-    free_text = [p.name for p in profiles if p.data_class == DataClass.FREE_TEXT]
+    exact_rows = len(
+        _row_hashes(raw_aligned)
+        & _row_hashes(syn_aligned)
+    )
+    id_overlap = _identifier_overlap(
+        raw,
+        syn,
+        profiles,
+    )
+    quasi_overlap = _quasi_combo_overlap(
+        raw,
+        syn,
+        profiles,
+    )
+    rare_overlap = _rare_quasi_overlap(
+        raw,
+        syn,
+        profiles,
+        k=policy.rare_k,
+    )
+    near_rate = _near_copy_rate(
+        raw,
+        syn,
+        profiles,
+    )
+    free_text = [
+        profile.name
+        for profile in profiles
+        if profile.data_class == DataClass.FREE_TEXT
+    ]
 
     reasons: list[str] = []
-    if not backend_certified:
-        reasons.append("Selected backend is not approved for row-level egress.")
+    if not backend_certified or not policy.row_level_synthetic_egress:
+        reasons.append(
+            "Row-level synthetic egress is not approved "
+            f"under profile {policy.name!r}."
+        )
     if exact_rows > 0:
         reasons.append(
-            f"Detected {exact_rows} exact row overlap(s) between source and synthetic data."
+            f"Detected {exact_rows} exact row overlap(s) "
+            "between source and synthetic data."
         )
     if id_overlap > 0:
         reasons.append(
-            f"Detected {id_overlap} source identifier value(s) in the synthetic dataset."
+            f"Detected {id_overlap} source identifier value(s) "
+            "in the synthetic dataset."
         )
     if rare_overlap > 0:
         reasons.append(
-            f"Detected {rare_overlap} rare source quasi-identifier combination(s) "
-            "reproduced by the synthetic dataset."
+            f"Detected {rare_overlap} rare source quasi-identifier "
+            "combination(s) reproduced by the synthetic dataset."
         )
     if free_text:
         reasons.append(
-            "Free-text columns are blocked from network release in v0.2: " + ", ".join(free_text)
+            "Free-text columns remain local-only: "
+            + ", ".join(free_text)
         )
-    if near_rate is not None and near_rate > 0.02:
-        reasons.append(f"Near-copy rate {near_rate:.3%} exceeds the v0.2 threshold of 2%.")
+    if (
+        near_rate is not None
+        and near_rate > policy.max_near_copy_rate
+    ):
+        reasons.append(
+            f"Near-copy rate {near_rate:.3%} exceeds "
+            f"profile threshold {policy.max_near_copy_rate:.3%}."
+        )
 
     return AuditResult(
         passed=not reasons,

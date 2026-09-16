@@ -3,30 +3,68 @@ from __future__ import annotations
 import argparse
 import json
 
-from .aggregate_guard import validate_aggregate_payload
+from .aggregate_guard import (
+    validate_aggregate_payload,
+)
 from .doctor import capabilities
-from .executor import correlation, describe_numeric, group_summary, ols
+from .executor import (
+    correlation,
+    describe_numeric,
+    group_summary,
+    ols,
+)
 from .inspect import profile_dataframe
 from .io import load_table
 from .pii import scan_dataframe_values
 from .pipeline import run_pipeline
+from .profiles import (
+    get_profile,
+    list_profiles,
+)
+from .provenance import verify_provenance
 from .purpose import route_purpose
-from .unstructured import inspect_text_file, redact_text_file_local
+from .unstructured import (
+    inspect_text_file,
+    redact_text_file_local,
+)
+
+
+def _add_profile_argument(
+    parser: argparse.ArgumentParser,
+) -> None:
+    parser.add_argument(
+        "--profile",
+        default="research",
+        choices=[
+            profile.name
+            for profile in list_profiles()
+        ],
+        help=(
+            "Engineering privacy preset; "
+            "not a compliance certification."
+        ),
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         prog="longgate",
-        description=("Long Gate — local-first privacy orchestration for safe AI data access."),
+        description=(
+            "Long Gate — local-first privacy "
+            "orchestration for safe AI data access."
+        ),
     )
-    sub = p.add_subparsers(
+    sub = parser.add_subparsers(
         dest="command",
         required=True,
     )
 
     run = sub.add_parser(
         "run",
-        help="Inspect → synthesize → audit → gate → report.",
+        help=(
+            "Inspect → synthesize → audit "
+            "→ gate → report."
+        ),
     )
     run.add_argument(
         "input",
@@ -39,36 +77,63 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--backend",
         default="auto",
-        help=("auto, demo, synthcity[:plugin], or mostlyai. Row-level egress remains fail-closed."),
+        help=(
+            "auto, demo, synthcity[:plugin], or mostlyai. "
+            "Row-level egress remains fail-closed."
+        ),
     )
     run.add_argument(
         "--seed",
         type=int,
         default=42,
     )
+    _add_profile_argument(run)
 
     sub.add_parser(
         "doctor",
-        help="Show local Long Gate capabilities and optional engines.",
+        help=(
+            "Show local Long Gate capabilities "
+            "and optional engines."
+        ),
+    )
+
+    sub.add_parser(
+        "profiles",
+        help=(
+            "Show engineering privacy presets "
+            "and their thresholds."
+        ),
     )
 
     inspect_cmd = sub.add_parser(
         "inspect",
-        help="Local schema and PII-count inspection only.",
+        help=(
+            "Local schema and PII-count "
+            "inspection only."
+        ),
     )
-    inspect_cmd.add_argument("input")
+    inspect_cmd.add_argument(
+        "input"
+    )
 
     purpose_cmd = sub.add_parser(
         "purpose",
-        help="Show the disclosure mode for a requested purpose.",
+        help=(
+            "Show the disclosure mode "
+            "for a requested purpose."
+        ),
     )
-    purpose_cmd.add_argument("name")
+    purpose_cmd.add_argument(
+        "name"
+    )
 
     exact = sub.add_parser(
         "exact",
         help="Run safe exact statistics locally.",
     )
-    exact.add_argument("input")
+    exact.add_argument(
+        "input"
+    )
     exact.add_argument(
         "analysis",
         choices=[
@@ -78,34 +143,61 @@ def build_parser() -> argparse.ArgumentParser:
             "ols",
         ],
     )
-    exact.add_argument("--group-by")
-    exact.add_argument("--value")
-    exact.add_argument("--outcome")
+    exact.add_argument(
+        "--group-by"
+    )
+    exact.add_argument(
+        "--value"
+    )
+    exact.add_argument(
+        "--outcome"
+    )
     exact.add_argument(
         "--predictor",
         action="append",
         default=[],
     )
+    _add_profile_argument(exact)
+
+    verify = sub.add_parser(
+        "verify-run",
+        help=(
+            "Verify SHA-256 provenance "
+            "for a completed run directory."
+        ),
+    )
+    verify.add_argument(
+        "run_dir"
+    )
 
     text_inspect = sub.add_parser(
         "text-inspect",
-        help="Inspect TXT/Markdown locally; free text remains network-blocked.",
+        help=(
+            "Inspect TXT/Markdown locally; "
+            "free text remains network-blocked."
+        ),
     )
-    text_inspect.add_argument("input")
+    text_inspect.add_argument(
+        "input"
+    )
 
     text_redact = sub.add_parser(
         "text-redact-local",
         help=(
-            "Create a local preview redaction. The output is not granted network-egress permission."
+            "Create a local preview redaction. "
+            "The output is not granted "
+            "network-egress permission."
         ),
     )
-    text_redact.add_argument("input")
+    text_redact.add_argument(
+        "input"
+    )
     text_redact.add_argument(
         "--out",
         required=True,
     )
 
-    return p
+    return parser
 
 
 def main() -> None:
@@ -114,7 +206,23 @@ def main() -> None:
     if args.command == "doctor":
         print(
             json.dumps(
-                [capability.to_dict() for capability in capabilities()],
+                [
+                    capability.to_dict()
+                    for capability in capabilities()
+                ],
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "profiles":
+        print(
+            json.dumps(
+                [
+                    profile.to_dict()
+                    for profile in list_profiles()
+                ],
                 indent=2,
                 ensure_ascii=False,
             )
@@ -127,16 +235,32 @@ def main() -> None:
             args.out,
             args.backend,
             args.seed,
+            args.profile,
         )
         print(
             json.dumps(
                 {
                     "run_id": result.run_id,
                     "status": result.status,
-                    "output": str(result.out_dir),
-                    "report": str(result.report_path),
-                    "synthetic": str(result.synthetic_path),
-                    "safe_payload": (str(result.staged_payload) if result.staged_payload else None),
+                    "output": str(
+                        result.out_dir
+                    ),
+                    "report": str(
+                        result.report_path
+                    ),
+                    "synthetic": str(
+                        result.synthetic_path
+                    ),
+                    "provenance": str(
+                        result.provenance_path
+                    ),
+                    "safe_payload": (
+                        str(
+                            result.staged_payload
+                        )
+                        if result.staged_payload
+                        else None
+                    ),
                 },
                 indent=2,
                 ensure_ascii=False,
@@ -145,14 +269,23 @@ def main() -> None:
         return
 
     if args.command == "inspect":
-        df = load_table(args.input)
-        profiles = profile_dataframe(df)
-        pii = scan_dataframe_values(df)
+        df = load_table(
+            args.input
+        )
+        profiles = profile_dataframe(
+            df
+        )
+        pii = scan_dataframe_values(
+            df
+        )
         print(
             json.dumps(
                 {
                     "rows": len(df),
-                    "columns": [profile.to_dict() for profile in profiles],
+                    "columns": [
+                        profile.to_dict()
+                        for profile in profiles
+                    ],
                     "pii_counts": pii.to_dict(),
                 },
                 indent=2,
@@ -162,7 +295,9 @@ def main() -> None:
         return
 
     if args.command == "purpose":
-        decision = route_purpose(args.name)
+        decision = route_purpose(
+            args.name
+        )
         print(
             json.dumps(
                 {
@@ -175,8 +310,22 @@ def main() -> None:
         )
         return
 
+    if args.command == "verify-run":
+        print(
+            json.dumps(
+                verify_provenance(
+                    args.run_dir
+                ),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
     if args.command == "text-inspect":
-        result = inspect_text_file(args.input)
+        result = inspect_text_file(
+            args.input
+        )
         print(
             json.dumps(
                 result.to_dict(),
@@ -196,7 +345,10 @@ def main() -> None:
                 {
                     "output": str(output),
                     "release_allowed": False,
-                    "note": ("Local preview redaction only; not a semantic privacy guarantee."),
+                    "note": (
+                        "Local preview redaction only; "
+                        "not a semantic privacy guarantee."
+                    ),
                 },
                 indent=2,
                 ensure_ascii=False,
@@ -205,39 +357,74 @@ def main() -> None:
         return
 
     if args.command == "exact":
-        df = load_table(args.input)
-        profiles = profile_dataframe(df)
+        df = load_table(
+            args.input
+        )
+        profiles = profile_dataframe(
+            df
+        )
+        policy = get_profile(
+            args.profile
+        )
 
         if args.analysis == "describe":
             result = describe_numeric(
                 df,
                 profiles,
+                min_dataset_size=(
+                    policy.min_dataset_size
+                ),
             )
         elif args.analysis == "correlation":
             result = correlation(
                 df,
                 profiles,
+                min_dataset_size=(
+                    policy.min_dataset_size
+                ),
             )
         elif args.analysis == "group-summary":
-            if not args.group_by or not args.value:
-                raise SystemExit("--group-by and --value are required")
+            if (
+                not args.group_by
+                or not args.value
+            ):
+                raise SystemExit(
+                    "--group-by and --value are required"
+                )
             result = group_summary(
                 df,
                 profiles,
                 args.group_by,
                 args.value,
+                min_group_size=(
+                    policy.min_group_size
+                ),
             )
         else:
-            if not args.outcome or not args.predictor:
-                raise SystemExit("--outcome and at least one --predictor are required")
+            if (
+                not args.outcome
+                or not args.predictor
+            ):
+                raise SystemExit(
+                    "--outcome and at least one "
+                    "--predictor are required"
+                )
             result = ols(
                 df,
                 profiles,
                 args.outcome,
                 args.predictor,
+                min_dataset_size=(
+                    policy.min_dataset_size
+                ),
+                min_group_size=(
+                    policy.min_group_size
+                ),
             )
 
-        result = validate_aggregate_payload(result)
+        result = validate_aggregate_payload(
+            result
+        )
         print(
             json.dumps(
                 result,
