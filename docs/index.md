@@ -12,6 +12,7 @@
 
 - [Getting Started](getting-started.md)
 - [Troubleshooting](troubleshooting.md)
+- [FAQ](faq.md)
 
 - [Examples](../examples/README.md)
 - [Agent boundary](agent-boundary.md)

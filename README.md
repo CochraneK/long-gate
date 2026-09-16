@@ -16,7 +16,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-86a7ff)](pyproject.toml)
 [![Status](https://img.shields.io/badge/status-pre--1.0-ffd479)](ROADMAP.md)
 
-**[Safe Demo](https://long-gate-demo-production.up.railway.app) · [Getting Started](docs/getting-started.md) · [Quick start](#quick-start) · [Architecture](#architecture) · [Threat model](docs/threat-model.md) · [Benchmarks](docs/benchmarks.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)**
+**[简体中文](README.zh-CN.md) · [FAQ](docs/faq.md) · [Safe Demo](https://long-gate-demo-production.up.railway.app) · [Getting Started](docs/getting-started.md) · [Quick start](#quick-start) · [Architecture](#architecture) · [Threat model](docs/threat-model.md) · [Benchmarks](docs/benchmarks.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)**
 
 </div>
 
