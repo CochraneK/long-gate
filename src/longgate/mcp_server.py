@@ -4,14 +4,27 @@ import os
 from pathlib import Path
 
 from . import __version__
-from .agent_boundary import SafeWorkspace
+from .agent_boundary import ApprovedWorkspace
 
 
-def _workspace() -> SafeWorkspace:
+def _workspace() -> ApprovedWorkspace:
     raw = os.environ.get("LONGGATE_SAFE_WORKSPACE")
+    ledger = os.environ.get("LONGGATE_APPROVAL_LEDGER")
+    access_log = os.environ.get("LONGGATE_ACCESS_LOG")
     if not raw:
-        raise RuntimeError("LONGGATE_SAFE_WORKSPACE must point to an approved egress directory.")
-    return SafeWorkspace(Path(raw))
+        raise RuntimeError(
+            "LONGGATE_SAFE_WORKSPACE must point to an egress directory."
+        )
+    if not ledger:
+        raise RuntimeError(
+            "LONGGATE_APPROVAL_LEDGER is required; "
+            "network-facing reads fail closed without local approvals."
+        )
+    return ApprovedWorkspace(
+        Path(raw),
+        Path(ledger),
+        Path(access_log) if access_log else None,
+    )
 
 
 def main() -> None:
@@ -38,17 +51,22 @@ def main() -> None:
             "version": __version__,
             "raw_filesystem_access": False,
             "workspace": "egress-only",
+            "approval_required": True,
+            "approval_binding": "relative_path + sha256 + purpose",
         }
 
     @mcp.tool
-    def list_safe_files() -> list[str]:
-        """List files in the approved egress workspace."""
-        return _workspace().list_files()
+    def list_safe_files(purpose: str) -> list[str]:
+        """List only artifacts approved for the declared purpose."""
+        return _workspace().list_files(purpose)
 
     @mcp.tool
-    def read_safe_text(relative_path: str) -> str:
-        """Read one UTF-8 text artifact from the approved egress workspace."""
-        return _workspace().read_text(relative_path)
+    def read_safe_text(relative_path: str, purpose: str) -> str:
+        """Read one hash-bound artifact approved for the declared purpose."""
+        return _workspace().read_text(
+            relative_path,
+            purpose,
+        )
 
     mcp.run()
 
