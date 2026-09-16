@@ -4,6 +4,8 @@ import pytest
 from longgate.privacy_attacks import (
     attribute_inference_diagnostic,
     distance_membership_diagnostic,
+    ensemble_membership_diagnostic,
+    fuzzy_longitudinal_linkage_diagnostic,
     k_anonymity_diagnostic,
     longitudinal_linkage_diagnostic,
     unique_linkage_diagnostic,
@@ -194,3 +196,81 @@ def test_longitudinal_linkage_requires_unique_match():
     )
     assert result.unique_linkage_rate == 0.0
     assert result.unique_link_precision is None
+
+
+
+def test_ensemble_membership_reports_strongest_attack():
+    members = pd.DataFrame(
+        {
+            "x": [0.0, 1.0, 2.0, 3.0],
+            "y": [0.0, 1.0, 2.0, 3.0],
+            "noise": [50.0, 51.0, 49.0, 50.0],
+        }
+    )
+    holdout = pd.DataFrame(
+        {
+            "x": [10.0, 11.0, 12.0, 13.0],
+            "y": [10.0, 11.0, 12.0, 13.0],
+            "noise": [50.0, 50.0, 51.0, 49.0],
+        }
+    )
+    synthetic = members.copy()
+    result = ensemble_membership_diagnostic(
+        members,
+        holdout,
+        synthetic,
+        ["x", "y", "noise"],
+        max_subset_size=2,
+    )
+    assert result.attacks_run >= 4
+    assert 0.0 <= result.median_auc <= 1.0
+    assert result.max_auc > 0.9
+    assert result.best_columns
+
+
+def test_fuzzy_longitudinal_linkage_handles_numeric_drift():
+    earlier = pd.DataFrame(
+        {
+            "person_id": ["p1", "p2", "p3"],
+            "city": ["A", "B", "C"],
+            "age": [20, 30, 40],
+            "score": [100.0, 200.0, 300.0],
+        }
+    )
+    later = pd.DataFrame(
+        {
+            "person_id": ["p1", "p2", "p3"],
+            "city": ["A", "B", "C"],
+            "age": [21, 31, 41],
+            "score": [102.0, 198.0, 304.0],
+        }
+    )
+    result = fuzzy_longitudinal_linkage_diagnostic(
+        earlier,
+        later,
+        categorical_columns=["city"],
+        numeric_tolerances={"age": 1, "score": 5},
+        entity_column="person_id",
+    )
+    assert result.unique_linkage_rate == 1.0
+    assert result.unique_link_precision == 1.0
+    payload = str(result.to_dict())
+    assert "p1" not in payload
+    assert "p2" not in payload
+
+
+def test_fuzzy_longitudinal_linkage_rejects_negative_tolerance():
+    df = pd.DataFrame(
+        {
+            "person_id": ["p1"],
+            "age": [20],
+        }
+    )
+    with pytest.raises(ValueError):
+        fuzzy_longitudinal_linkage_diagnostic(
+            df,
+            df,
+            categorical_columns=[],
+            numeric_tolerances={"age": -1},
+            entity_column="person_id",
+        )
