@@ -16,7 +16,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-86a7ff)](pyproject.toml)
 [![Status](https://img.shields.io/badge/status-pre--1.0-ffd479)](ROADMAP.md)
 
-**[简体中文](README.zh-CN.md) · [FAQ](docs/faq.md) · [Safe Demo](https://long-gate-demo-production.up.railway.app) · [Getting Started](docs/getting-started.md) · [Quick start](#quick-start) · [Architecture](#architecture) · [Threat model](docs/threat-model.md) · [Benchmarks](docs/benchmarks.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)**
+**[简体中文](README.zh-CN.md) · [FAQ](docs/faq.md) · [Getting Started](docs/getting-started.md) · [Quick start](#quick-start) · [Architecture](#architecture) · [Threat model](docs/threat-model.md) · [Benchmarks](docs/benchmarks.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)**
 
 </div>
 
@@ -244,7 +244,6 @@ longgate run examples/demo.csv --backend auto
 
 The demo backend is intentionally **never eligible for row-level egress**. Long Gate now continues through a release ladder: when row-level synthetic output is rejected, it attempts a guarded aggregate fallback instead of ending at `BLOCKED`. If even aggregate disclosure is not justified, the run stays `LOCAL_ONLY` with explicit next actions.
 
-Want to see the product without installing anything? Open the **[public Safe Demo](https://long-gate-demo-production.up.railway.app)**. It is deliberately static: no upload endpoint, no API key, no private-data worker.
 
 ---
 
@@ -462,7 +461,7 @@ The report answers:
 
 It is deliberately offline: no CDN, analytics, remote fonts, or external assets.
 
-Open the committed [Trust Report example](examples/trust-report-demo.html) or the **[public Safe Demo](https://long-gate-demo-production.up.railway.app)**.
+Open the committed [Trust Report example](examples/trust-report-demo.html).
 
 Each run also writes an integrity-verifiable `provenance.json` containing SHA-256 hashes of key artifacts.
 
@@ -587,6 +586,7 @@ Long Gate is deliberately conservative.
 - [x] SynthCity / MOSTLY AI local adapters
 - [x] exact-row / identifier / near-copy / rare quasi-ID checks
 - [x] k-anonymity-style / membership / auxiliary-linkage diagnostics
+- [x] attribute-inference + longitudinal-linkage diagnostics
 - [x] purpose-bound disclosure
 - [x] local Python exact statistics
 - [x] fixed-template local R describe / OLS
@@ -604,13 +604,12 @@ Long Gate is deliberately conservative.
 - [x] copyable AI setup prompt
 - [x] adversarial benchmark CI
 - [x] offline Trust Report
-- [x] public synthetic-only Safe Demo
 - [x] build / clean-install release readiness
 
 ### Still being hardened
 
 - [ ] production criteria for row-level synthetic egress
-- [ ] stronger membership / attribute / longitudinal linkage attacks
+- [ ] stronger membership-inference / fuzzy-linkage variants
 - [ ] semantic-safe unstructured release criteria
 - [ ] organization-defined policy/profile files
 - [ ] key-backed digital signatures / attestation
