@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 from .aggregate_guard import (
     validate_aggregate_payload,
 )
+from .approval import issue_approval
 from .doctor import capabilities
 from .documents import inspect_document_file
 from .executor import (
@@ -291,6 +293,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_profile_argument(exact)
 
+    approve = sub.add_parser(
+        "approve-egress",
+        help=(
+            "Locally approve one egress artifact for a declared purpose, "
+            "binding approval to its SHA-256."
+        ),
+    )
+    approve.add_argument("artifact")
+    approve.add_argument(
+        "--workspace",
+        required=True,
+        help="Approved egress workspace root.",
+    )
+    approve.add_argument(
+        "--ledger",
+        required=True,
+        help="Append-only local approval ledger path.",
+    )
+    approve.add_argument(
+        "--purpose",
+        required=True,
+        help="Exact purpose string the network consumer must declare.",
+    )
+
     verify = sub.add_parser(
         "verify-run",
         help=(
@@ -517,6 +543,30 @@ def main() -> None:
                     "reason": decision.reason,
                 },
                 indent=2,
+            )
+        )
+        return
+
+    if args.command == "approve-egress":
+        workspace = Path(args.workspace).expanduser().resolve()
+        artifact = Path(args.artifact).expanduser().resolve()
+        try:
+            relative = artifact.relative_to(workspace)
+        except ValueError as exc:
+            raise SystemExit(
+                "Artifact must be inside --workspace."
+            ) from exc
+        record = issue_approval(
+            workspace,
+            relative,
+            args.ledger,
+            args.purpose,
+        )
+        print(
+            json.dumps(
+                record.to_dict(),
+                indent=2,
+                ensure_ascii=False,
             )
         )
         return
