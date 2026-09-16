@@ -7,7 +7,7 @@ import pandas as pd
 from .types import ColumnProfile, DataClass
 
 
-MIN_GROUP_SIZE = 5
+MIN_GROUP_SIZE = 5\nMIN_DATASET_SIZE = 10
 
 
 def _identifier_columns(profiles: list[ColumnProfile]) -> set[str]:
