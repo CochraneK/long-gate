@@ -4,56 +4,53 @@
 
 > Transform locally. Verify completely. Cross safely.
 
-Long Gate is a privacy control plane between sensitive local data and networked AI. It does **not** ask a cloud model to "please ignore" private files. Instead, it is designed around a stronger boundary:
+Long Gate is a privacy control plane between sensitive local data and networked AI. Its core rule is stronger than asking an agent not to inspect private files:
 
-- software that can read source data should run locally;
-- networked AI should never receive raw or pseudonymized row-level data;
-- row-level exports must be synthetic, audited, and explicitly allowed by policy;
-- exact computation can stay local and expose only safe aggregate results;
-- every run produces a self-contained offline **Trust Report** showing what happened.
+> software that can read raw data should not have network access; software that has network access should not receive raw-data capabilities.
 
-## Why Long Gate?
+The name combines a gate with the long defensive boundary of walls, passes, and checkpoints.
 
-The name combines the idea of a gate with the long defensive boundary of walls, passes, and checkpoints. The project is not a new synthetic-data model. It is the gatekeeper and orchestrator around existing privacy technologies.
+## Current status — v0.2 baseline
 
-## v0.2 scope
-
-Long Gate v0.2 focuses on **structured data**: CSV, XLSX, JSON, and Parquet.
+Structured data is the primary supported path: CSV, XLSX, JSON, and Parquet.
 
 ```text
-source file
+raw source
    ↓
-local schema + sensitivity inspection
+local schema + value-level PII inspection
    ↓
-synthetic backend adapter
+local synthetic backend
    ↓
 privacy audit
    ↓
+remove direct identifiers from outbound view
+   ↓
 deny-by-default policy
    ↓
-safe payload staging
+final egress PII rescan
    ↓
-offline Trust Report
+safe workspace + offline Trust Report
 ```
 
-Important: **v0.2 never performs a network request.** Even when a dataset passes, Long Gate only stages `safe_payload.json`. Cloud-agent integration comes after the isolation and egress contracts are hardened.
+**Long Gate v0.2 does not perform cloud/network AI requests.** It may stage an eligible artifact locally, but transmission is intentionally absent.
+
+Row-level synthetic egress remains **fail-closed by default** while stronger privacy validation is still being hardened.
 
 ## Safety model
 
-Long Gate distinguishes four release classes:
-
-| Class | Network AI |
+| Data class | Network AI |
 |---|---|
 | Raw row-level data | **Never** |
 | Pseudonymized row-level data | **Never** |
-| Audited synthetic row-level data | Eligible after policy approval |
-| Safe aggregates | Eligible after egress scan |
+| Synthetic row-level data | **Blocked by default in v0.2** |
+| Exact real-data statistics | Computed locally; aggregate result only after guards |
+| Direct identifiers | Removed from outbound row view |
 
-The policy is deny-by-default. There is intentionally no `--force-release` switch.
+There is intentionally no `--force-release` switch.
 
-### "Every value is synthetic" does not mean "no scalar may ever coincide"
+### Synthetic does not mean every scalar must differ
 
-A generated PHQ score of `7` may coincide with a source score of `7` simply because the domain contains only a small number of possible values. The relevant security goal is to prevent source-record reuse, deterministic identity mappings, and linkable row-level copies. Long Gate therefore audits row overlap, source identifier overlap, near-copy risk, and linkage-related structure rather than requiring every scalar to be numerically unique.
+A generated PHQ score of `7` may coincide with a source score of `7`. The privacy objective is not arbitrary cell inequality; it is preventing source-record reuse, deterministic mappings, linkable rare combinations, identifier reuse, and near-copy records.
 
 ## Quick start
 
@@ -61,27 +58,60 @@ A generated PHQ score of `7` may coincide with a source score of `7` simply beca
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e .
-longgate doctor\nlonggate inspect examples/demo.csv\nlonggate run examples/demo.csv --backend auto
+
+longgate doctor
+longgate inspect examples/demo.csv
+longgate run examples/demo.csv --backend auto
 ```
 
-The default `auto` mode prefers an installed mature local backend and otherwise falls back to `demo`. The `demo` backend exercises the full pipeline but is **never allowed through the egress gate**.
+`auto` prefers an installed mature local backend and falls back to `demo`. The demo backend can exercise the pipeline but can never pass row-level egress.
 
-To use the SynthCity adapter:
+Optional capabilities:
 
 ```bash
+pip install -e '.[mostlyai]'
 pip install -e '.[synthcity]'
-longgate run examples/demo.csv --backend synthcity
+pip install -e '.[presidio]'
+pip install -e '.[stats]'
+pip install -e '.[mcp]'
 ```
 
-You can select another SynthCity plugin:
+## Purpose-bound disclosure
+
+Long Gate separates “help me understand the dataset” from “compute the official result”:
+
+```text
+schema/types         → schema metadata only
+exploration          → synthetic path
+exact statistics     → local executor → guarded aggregate
+unknown purpose      → BLOCK
+```
+
+Examples:
 
 ```bash
-longgate run examples/demo.csv --backend synthcity:ctgan
+longgate purpose regression
+longgate exact study.csv describe
+longgate exact study.csv correlation
+longgate exact study.csv group-summary --group-by group --value score
+longgate exact study.csv ols --outcome score --predictor age --predictor group
 ```
+
+Exact-stat guards include identifier exclusion, minimum dataset size, small-group suppression, rare categorical-level blocking, and a final aggregate PII scan.
+
+## Synthetic backends
+
+Long Gate treats generators as replaceable adapters:
+
+- `demo` — development-only; never egress eligible.
+- `synthcity` — local SynthCity adapter; direct identifiers are removed before training; v0.2 still blocks row-level egress.
+- `mostlyai` — MOSTLY AI local-mode adapter; direct identifiers are removed before training; v0.2 still blocks row-level egress.
+
+Long Gate does not claim that synthetic data is automatically anonymous.
 
 ## Trust Report
 
-Every run creates:
+Every pipeline run creates local provenance artifacts such as:
 
 ```text
 longgate-runs/LG-.../
@@ -95,59 +125,54 @@ longgate-runs/LG-.../
     └── trust-report.html
 ```
 
-If the privacy gate passes, `egress/safe_payload.json` is also staged locally.
+The self-contained HTML report uses no CDN, remote fonts, analytics, or network assets. It shows counts, hashes, decisions, privacy checks, identifier removal, and egress-scan status — not source row values.
 
-The HTML report is deliberately self-contained: no CDN, analytics, remote fonts, or external assets. It contains schema and audit metadata, not source row values.
+## Agent boundary
 
-## Backends
+The future network-facing interface uses a separate `SafeWorkspace` capability. Absolute paths and path traversal are rejected.
 
-Long Gate treats generators as adapters, not project identity.
+An optional FastMCP server exposes only:
 
-- `demo` — lightweight local demonstration backend. **Never eligible for egress.**
-- `synthcity` — adapter to the Apache-2.0 SynthCity project for joint-distribution synthesis.
-- planned adapters — MOSTLY AI, DP/twin backends, and organization-specific generators.
+- `gate_info`
+- `list_safe_files`
+- `read_safe_text(relative_path)`
 
-The orchestration layer remains stable if any one synthetic-data engine changes.
+It deliberately does **not** expose arbitrary shell/Python execution or a raw-file path tool.
 
-## What Long Gate does not claim
-
-Long Gate does not claim that synthetic data is automatically anonymous. The v0.1 audit is an engineering safeguard, not a formal privacy proof. For high-risk datasets, use a privacy backend with explicit guarantees and organization-specific review.
-
-Free-text columns are blocked from network release in v0.1. A future local semantic path will handle interview text and documents separately.
-
-## Architecture
-
-See [docs/architecture.md](docs/architecture.md) and [docs/threat-model.md](docs/threat-model.md).
-
-## License
-
-Long Gate's own code is Apache-2.0. Third-party projects remain under their respective licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-
-## Purpose-bound disclosure
-
-Long Gate separates exploration from official inference:
-
-```text
-schema question      -> schema metadata only
-exploration          -> synthetic twin path
-exact statistics     -> local executor -> aggregate result
-unknown purpose      -> BLOCK
-```
-
-Local exact examples:
-
-```bash
-longgate exact study.csv describe
-longgate exact study.csv correlation
-longgate exact study.csv group-summary --group-by group --value score
-longgate exact study.csv ols --outcome score --predictor age --predictor group
-```
-
-Identifier columns are excluded from released numeric summaries. Small groups are suppressed.
+See [docs/agent-boundary.md](docs/agent-boundary.md) and [docker-compose.hardened.yml](docker-compose.hardened.yml).
 
 ## Security CI
 
-Every push/PR runs a security baseline including CodeQL, Bandit, pip-audit, Trivy, SBOM generation, dependency updates, and Long Gate's own executable privacy invariants.
+Pushes and pull requests are checked with:
+
+- unit + privacy invariant tests;
+- CodeQL;
+- Bandit;
+- pip-audit;
+- Trivy;
+- CycloneDX SBOM generation;
+- Dependabot.
 
 See [docs/security-invariants.md](docs/security-invariants.md).
+
+## Architecture and threat model
+
+- [Architecture](docs/architecture.md)
+- [Threat model](docs/threat-model.md)
+- [Security invariants](docs/security-invariants.md)
+- [Agent boundary](docs/agent-boundary.md)
+- [Roadmap](ROADMAP.md)
+
+## What Long Gate does not yet claim
+
+- no formal anonymity or differential-privacy proof from the orchestration layer;
+- no production certification for row-level synthetic egress;
+- no semantic privacy guarantee for free text, PDFs, images, or audio;
+- no legal/compliance certification;
+- no protection against a compromised host OS or administrator.
+
+Free-text columns remain local-only/block-by-default in the structured pipeline.
+
+## License
+
+Long Gate's own code is Apache-2.0. Third-party projects retain their respective licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
