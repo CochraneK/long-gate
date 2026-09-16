@@ -70,3 +70,31 @@ def scan_dataframe_values(df: pd.DataFrame) -> PiiFindingSummary:
 def scan_text(text: str) -> PiiFindingSummary:
     counts = {k: v for k, v in _count_text(text).items() if v}
     return PiiFindingSummary(sum(counts.values()), counts, {"payload": sum(counts.values())} if counts else {})
+
+
+def scan_dataframe_values_presidio(
+    df: pd.DataFrame,
+    language: str = "en",
+) -> PiiFindingSummary:
+    """Optional local Presidio scan. Only entity counts leave this function."""
+    try:
+        from presidio_analyzer import AnalyzerEngine
+    except ImportError as exc:
+        raise RuntimeError(
+            "Presidio scanner requested but not installed. "
+            "Run: pip install 'long-gate[presidio]'"
+        ) from exc
+
+    analyzer = AnalyzerEngine()
+    by_entity: dict[str, int] = {}
+    by_column: dict[str, int] = {}
+    for col in df.columns:
+        col_hits = 0
+        for text in _iter_text(df[col].tolist()):
+            for result in analyzer.analyze(text=text, language=language):
+                entity = str(result.entity_type).lower()
+                by_entity[entity] = by_entity.get(entity, 0) + 1
+                col_hits += 1
+        if col_hits:
+            by_column[str(col)] = col_hits
+    return PiiFindingSummary(sum(by_entity.values()), by_entity, by_column)
