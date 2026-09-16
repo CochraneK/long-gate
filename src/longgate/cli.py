@@ -11,14 +11,21 @@ from .io import load_table
 from .pii import scan_dataframe_values
 from .pipeline import run_pipeline
 from .purpose import route_purpose
+from .unstructured import inspect_text_file, redact_text_file_local
 
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="longgate",
-        description="Long Gate — local-first privacy orchestration for safe AI data access.",
+        description=(
+            "Long Gate — local-first privacy orchestration "
+            "for safe AI data access."
+        ),
     )
-    sub = p.add_subparsers(dest="command", required=True)
+    sub = p.add_subparsers(
+        dest="command",
+        required=True,
+    )
 
     run = sub.add_parser(
         "run",
@@ -37,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         help=(
             "auto, demo, synthcity[:plugin], or mostlyai. "
-            "v0.2 row-level egress remains fail-closed."
+            "Row-level egress remains fail-closed."
         ),
     )
     run.add_argument(
@@ -86,6 +93,25 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
     )
 
+    text_inspect = sub.add_parser(
+        "text-inspect",
+        help="Inspect TXT/Markdown locally; free text remains network-blocked.",
+    )
+    text_inspect.add_argument("input")
+
+    text_redact = sub.add_parser(
+        "text-redact-local",
+        help=(
+            "Create a local preview redaction. "
+            "The output is not granted network-egress permission."
+        ),
+    )
+    text_redact.add_argument("input")
+    text_redact.add_argument(
+        "--out",
+        required=True,
+    )
+
     return p
 
 
@@ -95,7 +121,10 @@ def main() -> None:
     if args.command == "doctor":
         print(
             json.dumps(
-                [c.to_dict() for c in capabilities()],
+                [
+                    capability.to_dict()
+                    for capability in capabilities()
+                ],
                 indent=2,
                 ensure_ascii=False,
             )
@@ -138,8 +167,8 @@ def main() -> None:
                 {
                     "rows": len(df),
                     "columns": [
-                        p.to_dict()
-                        for p in profiles
+                        profile.to_dict()
+                        for profile in profiles
                     ],
                     "pii_counts": pii.to_dict(),
                 },
@@ -159,6 +188,38 @@ def main() -> None:
                     "reason": decision.reason,
                 },
                 indent=2,
+            )
+        )
+        return
+
+    if args.command == "text-inspect":
+        result = inspect_text_file(args.input)
+        print(
+            json.dumps(
+                result.to_dict(),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "text-redact-local":
+        output = redact_text_file_local(
+            args.input,
+            args.out,
+        )
+        print(
+            json.dumps(
+                {
+                    "output": str(output),
+                    "release_allowed": False,
+                    "note": (
+                        "Local preview redaction only; "
+                        "not a semantic privacy guarantee."
+                    ),
+                },
+                indent=2,
+                ensure_ascii=False,
             )
         )
         return
