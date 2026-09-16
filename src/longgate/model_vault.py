@@ -140,7 +140,7 @@ def _load_manifest(
         data.get("models"),
         dict,
     ):
-        raise RuntimeError(
+        raise TypeError(
             "Invalid Model Vault manifest."
         )
     return data
@@ -241,7 +241,12 @@ def _windows_ram_gb() -> float | None:
             / (1024**3),
             2,
         )
-    except Exception:
+    except (
+        AttributeError,
+        OSError,
+        TypeError,
+        ValueError,
+    ):
         return None
 
 

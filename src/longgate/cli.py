@@ -16,6 +16,14 @@ from .executor import (
 )
 from .inspect import profile_dataframe
 from .io import load_table
+from .model_vault import (
+    catalog as model_catalog,
+    install_model,
+    list_installed,
+    recommend_model,
+    verify_model,
+)
+from .onboarding import AI_SETUP_PROMPT
 from .pii import scan_dataframe_values
 from .pipeline import run_pipeline
 from .profiles import (

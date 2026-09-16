@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 AI_SETUP_PROMPT = """You are configuring Long Gate in MODEL SETUP MODE.
 
 Goal:

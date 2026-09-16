@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from longgate.model_vault import (
     MODEL_CATALOG,
     recommend_model,

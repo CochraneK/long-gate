@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import asdict, dataclass
 from pathlib import Path
-import re
 
 from .documents import extract_document_text
 from .model_vault import resolve_model_path
@@ -177,24 +177,18 @@ def audit_semantic_preview(
     ]
     if pii.total_hits:
         reasons.append(
-            (
-                f"Detected {pii.total_hits} direct-PII "
-                "pattern hit(s) in transformed text."
-            )
+            f"Detected {pii.total_hits} direct-PII "
+            "pattern hit(s) in transformed text."
         )
     if reused_numbers:
         reasons.append(
-            (
-                f"Detected {reused_numbers} exact numeric token(s) "
-                "reused from the source."
-            )
+            f"Detected {reused_numbers} exact numeric token(s) "
+            "reused from the source."
         )
     if reuse_rate > 0.05:
         reasons.append(
-            (
-                f"Character n-gram reuse rate {reuse_rate:.2%} "
-                "exceeds the preview warning threshold of 5%."
-            )
+            f"Character n-gram reuse rate {reuse_rate:.2%} "
+            "exceeds the preview warning threshold of 5%."
         )
 
     return SemanticPreviewAudit(
