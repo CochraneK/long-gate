@@ -28,6 +28,7 @@ from .r_executor import (
     r_describe,
     r_ols,
 )
+from .semantic import semantic_transform_local
 from .unstructured import (
     inspect_text_file,
     redact_text_file_local,
@@ -198,6 +199,30 @@ def build_parser() -> argparse.ArgumentParser:
         "input"
     )
 
+    semantic_preview = sub.add_parser(
+        "semantic-transform-local",
+        help=(
+            "Run an in-process local GGUF privacy transformation. "
+            "The output remains network-blocked."
+        ),
+    )
+    semantic_preview.add_argument(
+        "input"
+    )
+    semantic_preview.add_argument(
+        "--model",
+        required=True,
+    )
+    semantic_preview.add_argument(
+        "--out",
+        required=True,
+    )
+    semantic_preview.add_argument(
+        "--max-tokens",
+        type=int,
+        default=512,
+    )
+
     text_inspect = sub.add_parser(
         "text-inspect",
         help=(
@@ -353,6 +378,22 @@ def main() -> None:
     if args.command == "document-inspect":
         result = inspect_document_file(
             args.input
+        )
+        print(
+            json.dumps(
+                result.to_dict(),
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if args.command == "semantic-transform-local":
+        result = semantic_transform_local(
+            args.input,
+            args.model,
+            args.out,
+            max_tokens=args.max_tokens,
         )
         print(
             json.dumps(

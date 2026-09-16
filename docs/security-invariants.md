@@ -19,6 +19,9 @@ These are executable product requirements, not documentation-only promises.
 15. Free-text inspection/redaction is local-only until semantic privacy validation exists.
 16. No `--force-release` escape hatch is provided.
 17. Benchmark fixtures committed to the repository must be synthetic.
+18. Semantic preview output remains local-only regardless of detector/audit results.
+19. The built-in local LLM path accepts a local model file, not a remote endpoint.
+20. Semantic transformation does not grant network-egress permission.
 
 CI should fail when tests covering these invariants fail.
 

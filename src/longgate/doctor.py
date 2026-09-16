@@ -62,6 +62,14 @@ def capabilities() -> list[Capability]:
             ),
         ),
         Capability(
+            "local_llm",
+            _has("llama_cpp"),
+            (
+                "in-process local GGUF semantic preview; "
+                "output remains local-only"
+            ),
+        ),
+        Capability(
             "documents",
             (
                 _has("docx")

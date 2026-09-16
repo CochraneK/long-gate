@@ -256,6 +256,7 @@ pip install -e '.[presidio]'   # enhanced local PII analysis
 pip install -e '.[stats]'      # local OLS/statistics
 pip install -e '.[mcp]'        # safe-workspace MCP boundary
 pip install -e '.[documents]'  # local DOCX/PDF text extraction
+pip install -e '.[local-llm]'  # in-process local GGUF semantic preview
 ```
 
 Long Gate currently includes adapters for:
@@ -371,7 +372,17 @@ longgate document-inspect transcript.pdf
 
 PDF inspection does **not** OCR scanned/image-only pages, so zero extracted hits never means the visible document is safe to upload.
 
-See [Unstructured data](docs/unstructured.md).
+An experimental local GGUF semantic preview is also available:
+
+```bash
+longgate semantic-transform-local interview.txt \
+  --model /models/local-model.gguf \
+  --out preview.txt
+```
+
+It writes a copy-risk audit sidecar and still records `release_allowed=false`.
+
+See [Unstructured data](docs/unstructured.md) and [Local semantic preview](docs/semantic-preview.md).
 
 ---
 
@@ -545,7 +556,7 @@ Long Gate is deliberately conservative.
 - [ ] signed manifests and stronger provenance
 - [x] fixed-template local R describe / OLS engine
 - [ ] semantic privacy / synthetic narrative generation for free text
-- [ ] semantic-safe DOCX / PDF transformation path\n- [ ] image / audio privacy paths
+- [x] local GGUF semantic preview + copy-risk audit (still network-blocked)\n- [ ] semantic-safe DOCX / PDF release path\n- [ ] image / audio privacy paths
 - [ ] broader adversarial test corpus
 
 See the [Roadmap](ROADMAP.md).
@@ -647,7 +658,7 @@ Start with [docs/index.md](docs/index.md).
 - [Security invariants](docs/security-invariants.md)
 - [Agent boundary](docs/agent-boundary.md)
 - [Unstructured data](docs/unstructured.md)
-- [Benchmarks](docs/benchmarks.md)\n- [Privacy profiles](docs/privacy-profiles.md)\n- [Provenance](docs/provenance.md)\n- [Local R executor](docs/r-executor.md)
+- [Benchmarks](docs/benchmarks.md)\n- [Privacy profiles](docs/privacy-profiles.md)\n- [Provenance](docs/provenance.md)\n- [Local R executor](docs/r-executor.md)\n- [Local semantic preview](docs/semantic-preview.md)
 
 ---
 
