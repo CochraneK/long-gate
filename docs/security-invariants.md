@@ -25,6 +25,14 @@ These are executable product requirements, not documentation-only promises.
 21. Model installation is a separate network-enabled setup capability and accepts no private-data path.
 22. Hardened model setup workers mount the Model Vault but not the private-data directory.
 23. Private semantic processing resolves local Model Vault files and does not download models.
+24. Semantic release evidence may qualify an artifact for manual review but can never auto-authorize network egress.
+25. Row-level synthetic production criteria are evidence-only in pre-1.0; even a satisfied checklist returns `release_allowed = false`.
+26. Image, scanned-PDF OCR, and audio paths are local-only and cannot grant egress permission.
+27. Local OCR has no network fallback and returns aggregate PII counts rather than OCR text.
+28. Image/OCR processing rejects inputs above the configured pixel safety limit.
+29. Deployment validation rejects any service that combines private-data capability with network access.
+30. A private-data service may not receive Model Vault write capability or the network-facing safe workspace.
+31. Provenance signatures are optional and never cause Long Gate to copy or manage long-lived signing keys.
 
 CI should fail when tests covering these invariants fail.
 
