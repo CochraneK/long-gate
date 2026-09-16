@@ -136,7 +136,5 @@ def test_signing_refuses_tampered_provenance(tmp_path: Path):
     signing_key, _ = _write_signing_keys(tmp_path)
 
     artifact.write_text('{"ok": false}', encoding="utf-8")
-    import pytest
-
     with pytest.raises(ValueError, match="Refusing to sign"):
         sign_provenance(tmp_path, signing_key)
