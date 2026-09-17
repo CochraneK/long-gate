@@ -59,9 +59,9 @@ def _attempt_from_audit(round_number: int, audit: SemanticPreviewAudit) -> Deide
 
 def _render_report(
     *,
-    output: Path,
+    output_name: str,
     input_sha256: str,
-    model_path: str,
+    model_file: str,
     attempts: list[DeidentifyAttempt],
     status: str,
     next_actions: list[str],
@@ -102,9 +102,9 @@ table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #d8dee8;padd
 <div class="card">
 <h2>Local processing</h2>
 <p>Input SHA-256: <code>{html.escape(input_sha256)}</code></p>
-<p>Local model: <code>{html.escape(model_path)}</code></p>
-<p>Output: <code>{html.escape(str(output))}</code></p>
-<p>The source text and transformed text are intentionally not embedded in this report.</p>
+<p>Local model file: <code>{html.escape(model_file)}</code></p>
+<p>Output file: <code>{html.escape(output_name)}</code></p>
+<p>Local directory paths, source text, and transformed text are intentionally not embedded in this report.</p>
 </div>
 <div class="card">
 <h2>Remediation rounds</h2>
@@ -173,12 +173,13 @@ def deidentify_local(
 
     audit_path = output.with_name(output.name + ".audit.json")
     report_path = output.with_name(output.name + ".trust-report.html")
+    model_file = Path(transformer.model_path).name
     payload = {
         "format": "long-gate-semantic-deidentify-v1",
         "status": status,
         "input_sha256": sha256_file(input_file),
         "output_sha256": sha256_file(output),
-        "model_path": str(transformer.model_path),
+        "model_file": model_file,
         "attempts": [attempt.to_dict() for attempt in attempts],
         "final_audit": final_audit.to_dict(),
         "eligible_for_manual_review": eligible,
@@ -190,9 +191,9 @@ def deidentify_local(
     write_json(audit_path, payload)
     report_path.write_text(
         _render_report(
-            output=output,
+            output_name=output.name,
             input_sha256=str(payload["input_sha256"]),
-            model_path=str(transformer.model_path),
+            model_file=model_file,
             attempts=attempts,
             status=status,
             next_actions=next_actions,
