@@ -475,13 +475,13 @@ It is deliberately offline: no CDN, analytics, remote fonts, or external assets.
 
 Open the committed [Trust Report example](examples/trust-report-demo.html).
 
-Each run also writes an integrity-verifiable `provenance.json` containing SHA-256 hashes of key artifacts.
+Each run also writes a `provenance.json` containing SHA-256 hashes of key artifacts.
 
 ```bash
 longgate verify-run longgate-runs/LG-...
 ```
 
-This detects post-run modification. Optional Ed25519 signing is also available with `longgate sign-run`; signature verification still depends on independently trusting the public key. See [Provenance](docs/provenance.md).
+Without a trusted public key, this verifies **internal integrity only**: current artifacts must still match the recorded unsigned manifest, but coordinated replacement of both artifacts and the unsigned manifest is outside that guarantee. Optional Ed25519 signing is available with `longgate sign-run`; verification with an independently trusted public key adds authenticated provenance. See [Provenance](docs/provenance.md).
 
 ---
 
