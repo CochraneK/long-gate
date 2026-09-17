@@ -17,7 +17,12 @@ def test_provenance_detects_tampering(tmp_path: Path):
         encoding="utf-8",
     )
     build_provenance(tmp_path)
-    assert verify_provenance(tmp_path)["valid"] is True
+    verification = verify_provenance(tmp_path)
+    assert verification["valid"] is True
+    assert verification["integrity_valid"] is True
+    assert verification["authenticated"] is False
+    assert verification["verification_scope"] == "integrity_only"
+    assert "coordinated artifact + manifest replacement" in verification["note"]
 
     (tmp_path / "manifest.json").write_text(
         '{"ok": false}',
@@ -111,6 +116,9 @@ def test_ed25519_provenance_signature_round_trip(tmp_path: Path):
         public_key,
     )
     assert combined["valid"] is True
+    assert combined["integrity_valid"] is True
+    assert combined["authenticated"] is True
+    assert combined["verification_scope"] == "signed_authenticity"
     assert combined["signature"]["valid"] is True
 
 

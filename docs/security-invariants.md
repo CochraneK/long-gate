@@ -35,6 +35,7 @@ These are executable product requirements, not documentation-only promises.
 31. Deployment validation rejects any service that combines private-data capability with network access.
 32. A private-data service may not receive Model Vault write capability or the network-facing safe workspace.
 33. Provenance signatures are optional and never cause Long Gate to copy or manage long-lived signing keys.
+34. Unsigned provenance may claim integrity consistency only, never authenticated origin or resistance to coordinated artifact + manifest replacement.
 
 CI should fail when tests covering these invariants fail.
 
