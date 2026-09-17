@@ -112,10 +112,15 @@ def verify_provenance(
             "reason": "public_key_not_supplied",
         }
     )
+    signature_verified = (
+        bool(signature.get("valid"))
+        if public_key_path is not None
+        else False
+    )
     overall_valid = (
         integrity_valid
         and (
-            bool(signature.get("valid"))
+            signature_verified
             if public_key_path is not None
             else True
         )
@@ -123,10 +128,22 @@ def verify_provenance(
     return {
         "valid": overall_valid,
         "integrity_valid": integrity_valid,
+        "authenticated": integrity_valid and signature_verified,
+        "verification_scope": (
+            "signed_authenticity"
+            if public_key_path is not None and signature_verified
+            else "integrity_only"
+        ),
         "integrity_digest_matches": digest_matches,
         "mismatches": mismatches,
         "artifact_count": len(document["artifacts"]),
         "signature": signature,
+        "note": (
+            "Unsigned verification checks internal artifact/manifest consistency only; "
+            "it does not authenticate the run or detect coordinated artifact + manifest replacement."
+            if public_key_path is None
+            else "Signed verification additionally authenticates the provenance digest against the supplied trusted public key."
+        ),
     }
 
 
