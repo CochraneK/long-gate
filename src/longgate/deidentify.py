@@ -139,15 +139,21 @@ def deidentify_local(
     attempts: list[DeidentifyAttempt] = []
     final_text = current
     final_audit: SemanticPreviewAudit | None = None
+    risk_focus: list[str] | None = None
 
     for round_number in range(1, max_rounds + 1):
-        final_text = transformer.transform(current, max_tokens=max_tokens)
+        final_text = transformer.transform(
+            current,
+            max_tokens=max_tokens,
+            risk_focus=risk_focus,
+        )
         final_audit = audit_semantic_preview(source, final_text)
         attempt = _attempt_from_audit(round_number, final_audit)
         attempts.append(attempt)
         if attempt.eligible_for_manual_review:
             break
         current = final_text
+        risk_focus = attempt.failed_conditions
 
     if final_audit is None:  # pragma: no cover - defensive
         raise RuntimeError("No semantic de-identification attempt was completed.")
