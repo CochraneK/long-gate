@@ -101,11 +101,12 @@ def scan_dataframe_values_presidio(
 
 
 def scan_structured_strings(value: object) -> PiiFindingSummary:
-    """Scan only string leaves in structured data.
+    """Scan string keys and leaves in structured data.
 
     Numeric aggregate values are not text identifiers. Scanning their JSON
     rendering with phone-number regexes can create false positives on long
-    decimal expansions.
+    decimal expansions. Dictionary keys are scanned because source-derived
+    column names and labels can themselves contain direct identifiers.
     """
     totals: dict[str, int] = {}
 
@@ -117,7 +118,9 @@ def scan_structured_strings(value: object) -> PiiFindingSummary:
                     totals[entity] = totals.get(entity, 0) + count
             return
         if isinstance(item, dict):
-            for child in item.values():
+            for key, child in item.items():
+                if isinstance(key, str):
+                    visit(key)
                 visit(child)
             return
         if isinstance(item, (list, tuple, set)):
