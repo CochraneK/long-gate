@@ -7,7 +7,6 @@ import time
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from research.datasets.prepare_tab import verify_prepared_tab
 from research.datasets.tab_adapter import TabDocument, load_tab_documents, score_candidate
@@ -148,13 +147,24 @@ def run_tab_baselines(
     return records, manifest
 
 
-def _macro_mean(records: list[dict[str, object]], metric: str) -> float | None:
+def _macro_metric_mean(records: list[dict[str, object]], metric: str) -> float | None:
     values = [
         float(record["metrics"][metric])
         for record in records
         if record.get("status") == "success"
         and isinstance(record.get("metrics"), dict)
         and metric in record["metrics"]
+    ]
+    return round(sum(values) / len(values), 6) if values else None
+
+
+def _duration_mean(records: list[dict[str, object]]) -> float | None:
+    values = [
+        float(record["duration_seconds"])
+        for record in records
+        if record.get("status") == "success"
+        and isinstance(record.get("duration_seconds"), (int, float))
+        and not isinstance(record.get("duration_seconds"), bool)
     ]
     return round(sum(values) / len(values), 6) if values else None
 
@@ -212,13 +222,13 @@ def summarize(records: list[dict[str, object]]) -> dict[str, object]:
                 else None,
             },
             "macro": {
-                "sensitive_literal_removal_rate": _macro_mean(
+                "sensitive_literal_removal_rate": _macro_metric_mean(
                     successful, "sensitive_literal_removal_rate"
                 ),
-                "no_mask_literal_retention_rate": _macro_mean(
+                "no_mask_literal_retention_rate": _macro_metric_mean(
                     successful, "no_mask_literal_retention_rate"
                 ),
-                "duration_seconds": _macro_mean(successful, "duration_seconds"),
+                "duration_seconds": _duration_mean(successful),
             },
             "failure_types": sorted(
                 {
