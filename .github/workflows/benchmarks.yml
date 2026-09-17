@@ -64,7 +64,7 @@ jobs:
         env:
           LONGGATE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: make research-smoke
-      - name: Confirm research provenance outputs
+      - name: Confirm research provenance and red-team outputs
         run: |
           python - <<'PY'
           import json
@@ -73,12 +73,26 @@ jobs:
           root = Path("research/results/paper-smoke")
           manifest = json.loads((root / "manifest.json").read_text())
           summary = json.loads((root / "summary.json").read_text())
+          semantic = json.loads((root / "semantic-redteam-summary.json").read_text())
+          boundary = json.loads((root / "release-boundary-summary.json").read_text())
+
           assert manifest["run_count"] == 3
           assert manifest["configuration"]["sha256"]
           assert manifest["environment"]["source_commit"]
           assert manifest["environment"]["git_head_commit"]
           assert summary["run_count"] == 3
           assert (root / "summary.md").is_file()
+
+          identity = semantic["baselines"]["identity"]["by_attack_family"]["direct-pii"]
+          deterministic = semantic["baselines"]["deterministic-regex"]["by_attack_family"]["direct-pii"]
+          assert identity["mean_metrics"]["attack_success"] == 1.0
+          assert deterministic["mean_metrics"]["attack_success"] < 1.0
+
+          gate = boundary["baselines"]["long-gate-approved-workspace"]
+          directory = boundary["baselines"]["directory-only-workspace"]
+          assert gate["attack_success_rate"] == 0.0
+          assert gate["authorized_success_rate"] == 1.0
+          assert directory["attack_success_rate"] == 1.0
           print("research-smoke", manifest["suite"], manifest["run_count"])
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -87,7 +101,4 @@ jobs:
           path: |
             benchmark-*.json
             benchmark-summary.md
-            research/results/paper-smoke/manifest.json
-            research/results/paper-smoke/runs.jsonl
-            research/results/paper-smoke/summary.json
-            research/results/paper-smoke/summary.md
+            research/results/paper-smoke/*
