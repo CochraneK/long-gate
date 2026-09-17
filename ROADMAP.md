@@ -37,8 +37,6 @@ Long Gate is developed in layers. **Implemented does not mean privacy-certified.
 - rare categorical-level blocking
 - aggregate PII guard
 - SHA-256 run provenance + verification
-
-Implemented:
 - optional Ed25519 key-backed provenance signatures + verification
 
 Still open:
@@ -53,36 +51,40 @@ Still open:
 - no arbitrary shell / Python / raw-path tools
 - separate model-setup capability zone
 - private worker Model Vault read-only mount
-
-Implemented:
 - explicit request / approval contracts
 - outbound call ledger
 - capability-based deployment contract validator
 - adversarial mutation tests for dangerous process/mount combinations
+- manifest-backed artifact approval bound to filename + SHA-256 + purpose
 
-## v0.5 — unstructured privacy baseline ✅ / semantic path active
+## v0.5 — local AI privacy workflow ✅ / semantic research active
 
 Implemented:
 - local TXT / Markdown inspection
 - DOCX / PDF text-layer inspection
 - PII-count reporting without matched values
 - local preview redaction
-- in-process local GGUF semantic preview
-- PII / numeric-token / long-copy audit
-- free text remains network-blocked
+- in-process local GGUF semantic transformation
+- PII / numeric-token / long-copy / distinctive-token audit
 - curated Model Vault
-- one-command local model setup
-- copyable AI setup prompt
-
-Implemented:
-- fail-closed semantic release-evidence criteria for manual review
-- distinctive long-token reuse diagnostic as an additional semantic copy/identity proxy
+- pinned model revision + SHA-256 verification
+- local-only hardware advisor: OS / architecture / CPU / RAM / disk + best-effort NVIDIA GPU/VRAM
+- FAST / BALANCED / QUALITY model-fit guidance
+- top-level `longgate setup`, `longgate hardware`, and `longgate deidentify`
+- deterministic pre-scrub before semantic transformation
+- bounded semantic remediation loop (maximum three local model rounds)
+- fail-closed `MANUAL_REVIEW_CANDIDATE` / `LOCAL_ONLY` outcomes
+- offline Semantic Trust Report without source/transformed narrative content
+- free text remains network-blocked; a manual-review candidate is not an egress authorization
 - scanned-PDF local OCR privacy path
 - image metadata + local OCR privacy path
 - WAV audio metadata privacy path
+- copyable AI setup prompt
 
 Still open:
-- larger semantic identity / rare-event attack corpus
+- larger semantic identity / rare-event / relationship attack corpus
+- multilingual semantic privacy evaluation
+- privacy-aware long-document segmentation + cross-chunk consistency audit
 - local speech-content de-identification path
 
 ## v0.6 — adversarial evaluation & release hardening (active)
@@ -100,8 +102,6 @@ Implemented:
 - release-readiness CI
 - wheel / sdist / clean-venv smoke installation
 - curated model supply-chain pins: immutable upstream revision + SHA-256
-
-Implemented:
 - bounded ensemble membership-inference diagnostics
 - attribute inference
 - exact + fuzzy longitudinal linkage
@@ -121,7 +121,31 @@ Planned:
 - formal release profiles and policy-as-code beyond the current JSON profile baseline
 - stronger DP backend evaluation
 - larger semantic privacy attack corpus
-- reproducible end-to-end red-team scenarios
+- reproducible end-to-end semantic red-team scenarios
+- multilingual rare-event / relationship / combination-uniqueness benchmarks
+- evidence for any future transition from manual-review candidate to a separately policy-authorized semantic egress path
+
+## Product stop line
+
+Long Gate should stop adding broad new feature families once this user path is reliable:
+
+```text
+longgate setup
+      ↓
+verified local model ready
+      ↓
+longgate run / longgate deidentify
+      ↓
+privacy audit + bounded remediation
+      ↓
+Trust Report
+      ↓
+LOCAL_ONLY / MANUAL_REVIEW_CANDIDATE / approved structured artifact
+      ↓
+when supported: explicit local approval → narrow MCP → network AI
+```
+
+After that point, development should be driven primarily by real usage, red-team evidence, and clearly scoped adapters rather than feature accumulation.
 
 ## Guiding rule
 
