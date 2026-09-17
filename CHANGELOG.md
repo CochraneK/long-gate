@@ -8,6 +8,8 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 
 ### Added
 - Hash-bound egress approvals and purpose-scoped MCP reads with an observational access log.
+- Versioned egress manifests that bind eligible artifacts to their exact filename and SHA-256 before local approval.
+- End-to-end README user journeys, command chooser, MCP handoff walkthrough, and Mermaid flow diagrams for real-world use.
 - Non-dead-end release ladder: rejected row-level synthetic output falls back to guarded aggregate output or explicit local-only next actions.
 - Machine-readable privacy blocker codes and remediation guidance.
 - Attribute-inference and exact/fuzzy longitudinal-linkage diagnostics.
@@ -17,7 +19,6 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Local image metadata, image OCR, scanned-PDF OCR, and WAV metadata privacy paths.
 - Capability-based deployment contract validation with adversarial mutation tests.
 - Optional Ed25519 provenance signatures and signature-aware verification.
-
 - SafeWorkspace and minimal FastMCP boundary.
 - Purpose-bound disclosure routing.
 - Local exact-statistics path with aggregate guards.
@@ -46,6 +47,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Row-level synthetic egress remains fail-closed by default.
 - Free text, semantic previews, OCR output, images, and audio remain local-only by default.
 - Passing semantic or row-level evidence criteria never auto-authorizes egress.
+- `approve-egress` now rejects arbitrary safe-workspace files unless they are backed by a matching policy-approved Long Gate egress manifest and exact artifact digest.
 - Model setup has network capability but no private-data input path.
 - Private semantic processing resolves an already-local verified model.
 - Curated model downloads are pinned to immutable upstream revisions and file SHA-256.
@@ -55,7 +57,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Retired the public Railway Safe Demo and removed deployable demo assets from the repository.
 - Local model onboarding moved from manual GGUF selection to a curated Model Vault with one-command setup.
 - Model installation now preflights disk space and moves staged GGUF files into place instead of duplicating them.
-- README and docs emphasize capabilities over prompt-only privacy controls.
+- README and Getting Started now lead with concrete user tasks, expected outputs, explicit egress approval, and the network-agent handoff instead of architecture-first documentation.
 
 ## [0.1.0]
 

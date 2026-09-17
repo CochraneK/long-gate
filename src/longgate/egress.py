@@ -8,6 +8,76 @@ import pandas as pd
 
 from .pii import scan_structured_strings, scan_text
 from .policy import PolicyDecision
+from .utils import sha256_file
+
+EGRESS_MANIFEST_FORMAT = "long-gate-egress-manifest-v1"
+
+
+def _manifest_payload(
+    decision: PolicyDecision,
+    scan: dict[str, object],
+    *,
+    effective_allow: bool,
+    artifact_name: str | None = None,
+    artifact_sha256: str | None = None,
+) -> dict[str, object]:
+    return {
+        "format": EGRESS_MANIFEST_FORMAT,
+        **decision.to_dict(),
+        "allow_after_final_scan": effective_allow,
+        "artifact": artifact_name,
+        "artifact_sha256": artifact_sha256,
+        "final_scan": scan,
+    }
+
+
+def _write_manifest(
+    manifest: Path,
+    decision: PolicyDecision,
+    scan: dict[str, object],
+    *,
+    effective_allow: bool,
+    artifact_name: str | None = None,
+    artifact_sha256: str | None = None,
+) -> None:
+    manifest.write_text(
+        json.dumps(
+            _manifest_payload(
+                decision,
+                scan,
+                effective_allow=effective_allow,
+                artifact_name=artifact_name,
+                artifact_sha256=artifact_sha256,
+            ),
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
+def _publish_payload(
+    payload: Path,
+    payload_text: str,
+    manifest: Path,
+    decision: PolicyDecision,
+    scan: dict[str, object],
+) -> Path:
+    payload.write_text(payload_text, encoding="utf-8")
+    try:
+        digest = sha256_file(payload)
+        _write_manifest(
+            manifest,
+            decision,
+            scan,
+            effective_allow=True,
+            artifact_name=payload.name,
+            artifact_sha256=digest,
+        )
+    except Exception:
+        payload.unlink(missing_ok=True)
+        raise
+    return payload
 
 
 def _stage_json_text(
@@ -21,17 +91,19 @@ def _stage_json_text(
     """Stage JSON after a final local PII scan. No network request is made."""
     egress_dir = out_dir / "egress"
     egress_dir.mkdir(parents=True, exist_ok=True)
-    scan = {"passed": False, "pii_hits": 0, "by_entity": {}}
+    scan: dict[str, object] = {
+        "passed": False,
+        "pii_hits": 0,
+        "by_entity": {},
+    }
     manifest = egress_dir / manifest_name
 
     if not decision.allow:
-        manifest.write_text(
-            json.dumps(
-                {**decision.to_dict(), "final_scan": scan},
-                indent=2,
-                ensure_ascii=False,
-            ),
-            encoding="utf-8",
+        _write_manifest(
+            manifest,
+            decision,
+            scan,
+            effective_allow=False,
         )
         return None, scan
 
@@ -42,24 +114,26 @@ def _stage_json_text(
         "by_entity": findings.by_entity,
     }
     effective_allow = decision.allow and bool(scan["passed"])
-    manifest.write_text(
-        json.dumps(
-            {
-                **decision.to_dict(),
-                "allow_after_final_scan": effective_allow,
-                "final_scan": scan,
-            },
-            indent=2,
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
     if not effective_allow:
+        _write_manifest(
+            manifest,
+            decision,
+            scan,
+            effective_allow=False,
+        )
         return None, scan
 
     payload = egress_dir / payload_name
-    payload.write_text(payload_text, encoding="utf-8")
-    return payload, scan
+    return (
+        _publish_payload(
+            payload,
+            payload_text,
+            manifest,
+            decision,
+            scan,
+        ),
+        scan,
+    )
 
 
 def stage_json_egress(
@@ -79,29 +153,34 @@ def stage_json_egress(
     egress_dir = out_dir / "egress"
     egress_dir.mkdir(parents=True, exist_ok=True)
     scan_findings = scan_structured_strings(payload)
-    scan = {
+    scan: dict[str, object] = {
         "passed": scan_findings.total_hits == 0,
         "pii_hits": scan_findings.total_hits,
         "by_entity": scan_findings.by_entity,
     }
     effective_allow = decision.allow and bool(scan["passed"])
-    (egress_dir / manifest_name).write_text(
-        json.dumps(
-            {
-                **decision.to_dict(),
-                "allow_after_final_scan": effective_allow,
-                "final_scan": scan,
-            },
-            indent=2,
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
+    manifest = egress_dir / manifest_name
+
     if not effective_allow:
+        _write_manifest(
+            manifest,
+            decision,
+            scan,
+            effective_allow=False,
+        )
         return None, scan
+
     path = egress_dir / payload_name
-    path.write_text(payload_text, encoding="utf-8")
-    return path, scan
+    return (
+        _publish_payload(
+            path,
+            payload_text,
+            manifest,
+            decision,
+            scan,
+        ),
+        scan,
+    )
 
 
 def stage_egress(

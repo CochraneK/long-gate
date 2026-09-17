@@ -77,22 +77,31 @@ def main() -> None:
         ROOT / "README.md"
     ).read_text(
         encoding="utf-8"
-    )
-    required_phrases = [
-        "row-level synthetic egress remains fail-closed",
-        "optional ed25519",
-        "independently trusting the public key",
-        "not certifications",
-    ]
+    ).lower()
+    required_concepts = {
+        "row-level synthetic egress remains fail-closed": [
+            "row-level synthetic",
+            "hard-lock",
+        ],
+        "optional Ed25519 provenance": [
+            "optional ed25519",
+        ],
+        "public-key trust is explicit": [
+            "authenticated origin",
+            "trusted public key",
+        ],
+        "privacy profiles are not certifications": [
+            "not certifications",
+        ],
+    }
     missing = [
-        phrase
-        for phrase in required_phrases
-        if phrase.lower()
-        not in readme.lower()
+        label
+        for label, phrases in required_concepts.items()
+        if not all(phrase in readme for phrase in phrases)
     ]
     if missing:
         raise SystemExit(
-            "README is missing release-safety language: "
+            "README is missing release-safety concepts: "
             + ", ".join(missing)
         )
 

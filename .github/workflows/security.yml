@@ -19,6 +19,7 @@ jobs:
             tests/test_policy.py \
             tests/test_pipeline.py \
             tests/test_agent_boundary.py \
+            tests/test_approval.py \
             tests/test_deployment_contract.py \
             tests/test_egress.py \
             tests/test_model_vault.py
