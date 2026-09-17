@@ -1,42 +1,27 @@
 # Getting Started — 5 minutes
 
-This guide is for a first-time user who wants to process a real private dataset safely.
-
-The shortest mental model is:
+Long Gate has two first-class paths:
 
 ```text
-inspect locally
-    ↓
-run Long Gate
-    ↓
-review Trust Report
-    ↓
-if a safe egress artifact exists:
-approve exact artifact locally
-    ↓
-network AI reads only that approved artifact
+PRIVATE TABLE                         PRIVATE TEXT / DOCUMENT
+     │                                        │
+     ▼                                        ▼
+longgate run                         longgate deidentify
+     │                                        │
+     ▼                                        ▼
+structured Trust Report             Semantic Trust Report
+     │                                        │
+     ▼                                        ▼
+approved aggregate or LOCAL_ONLY    MANUAL_REVIEW_CANDIDATE or LOCAL_ONLY
 ```
 
-For unstructured text, PDFs, images, OCR, and audio, the current baseline remains local-only.
+The semantic path is deliberately stricter: **a manual-review candidate is still local-only and is not automatically eligible for network egress.**
 
 ---
 
-## 0. Choose your path
+## 1. Install
 
-| Goal | Path |
-|---|---|
-| Inspect a private table | `inspect` |
-| Run full privacy workflow | `run` |
-| Compute real statistics | `exact` |
-| Let a network AI interpret a safe result | `run` → review → `approve-egress` → `longgate-mcp` |
-| Process private text with a local LLM | `model setup` → `semantic-transform-local` |
-| Inspect DOCX/PDF/image/audio locally | document/media commands |
-
----
-
-# 1. Install
-
-## Windows PowerShell
+### Windows PowerShell
 
 ```powershell
 git clone https://github.com/CochraneK/long-gate.git
@@ -44,17 +29,10 @@ cd long-gate
 
 py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -e .
-.\.venv\Scripts\longgate.exe doctor
+.\.venv\Scripts\python.exe -m pip install -e ".[models,local-llm,documents]"
 ```
 
-Or:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
-```
-
-## macOS / Linux
+### macOS / Linux
 
 ```bash
 git clone https://github.com/CochraneK/long-gate.git
@@ -62,61 +40,106 @@ cd long-gate
 
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -e .
-.venv/bin/longgate doctor
+.venv/bin/python -m pip install -e '.[models,local-llm,documents]'
 ```
 
-Or:
+Existing bootstrap scripts remain available:
 
 ```bash
 bash scripts/bootstrap.sh
 ```
 
+or on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
+```
+
 ---
 
-# 2. Inspect your private table
+# 2. Start with `longgate setup`
+
+```bash
+longgate setup --recommend-only
+```
+
+This performs **local-only** hardware inspection and reports:
+
+- operating system and architecture;
+- logical CPU count;
+- system RAM;
+- free disk space for the Model Vault;
+- NVIDIA GPU / VRAM when local `nvidia-smi` is available;
+- FAST / BALANCED / QUALITY model-fit guidance.
+
+GPU detection is advisory only. Failure to detect a GPU does not block CPU-only use and does not trigger a remote hardware-detection service.
+
+Example model tiers:
+
+| Tier | Current catalog choice | Typical role |
+|---|---|---|
+| FAST | Qwen3-4B Q4_K_M | lighter / faster local transform |
+| BALANCED | Qwen3-8B Q4_K_M | default balance on mid-memory machines |
+| QUALITY | Qwen3-14B Q4_K_M | higher-capacity local semantic transform |
+
+The selected model remains RAM-led and conservative because actual GPU offload depends on the local llama.cpp build.
+
+To install the recommended model:
+
+```bash
+longgate setup
+```
+
+Long Gate then:
+
+```text
+local hardware inspection
+        ↓
+model recommendation
+        ↓
+pinned Hugging Face revision download
+        ↓
+SHA-256 verification
+        ↓
+Model Vault default
+        ↓
+READY
+```
+
+**Setup mode may use the network but should not have private data mounted or opened.**
+
+If you only want the hardware report later:
+
+```bash
+longgate hardware
+```
+
+The advanced model commands still exist:
+
+```bash
+longgate model recommend
+longgate model setup
+longgate model verify auto
+longgate model list
+```
+
+---
+
+# 3A. Private structured data
+
+Inspect a table locally:
 
 ```bash
 longgate inspect study.csv
 ```
 
-This is local-only inspection.
-
-Check whether important columns are classified sensibly:
-
-- direct identifiers;
-- quasi-identifiers;
-- sensitive variables;
-- free text;
-- general variables.
-
-The inspection output reports counts/classifications rather than matched private values.
-
----
-
-# 3. Run the structured privacy workflow
+Run the full structured privacy workflow:
 
 ```bash
 longgate run study.csv --profile research --backend auto
 ```
 
-The result includes fields such as:
-
-```json
-{
-  "run_id": "LG-...",
-  "status": "...",
-  "output": "longgate-runs/LG-...",
-  "report": "longgate-runs/LG-.../report/trust-report.html",
-  "release_class": "aggregate",
-  "next_actions": [],
-  "safe_payload": "longgate-runs/LG-.../egress/safe_aggregate.json"
-}
-```
-
-The exact result depends on your data.
-
-The release ladder is:
+The release ladder remains:
 
 ```text
 row-level synthetic
@@ -126,38 +149,131 @@ disclosure-limited aggregate
 LOCAL_ONLY + next_actions
 ```
 
-A block is not a request to weaken the policy.
+The command returns a run directory and offline Trust Report. If a disclosure-limited aggregate is justified, an egress artifact may be staged. Raw rows, pseudonymized rows, and pre-1.0 row-level synthetic data remain network-ineligible.
+
+For real statistics without uploading the source table:
+
+```bash
+longgate exact study.csv describe
+longgate exact study.csv correlation
+longgate exact study.csv group-summary --group-by group --value score
+longgate exact study.csv ols --outcome score --predictor age --predictor group
+```
 
 ---
 
-# 4. Review the Trust Report
+# 3B. Private text / DOCX / PDF: local semantic de-identification
 
-Open the returned `report` path.
+Use the new product-level command:
+
+```bash
+longgate deidentify interview.txt \
+  --model auto \
+  --out deidentified.txt
+```
+
+Supported extractable-text inputs are TXT, Markdown, DOCX, and PDF text layers.
+
+The pipeline is:
+
+```text
+private document
+      ↓
+deterministic local pre-scrub
+      ↓
+verified local GGUF model
+      ↓
+semantic identity-detaching transform
+      ↓
+compare against original source
+      ↓
+PII / number reuse / n-gram reuse / distinctive-token audit
+      ↓
+PASS? ─ yes ─→ MANUAL_REVIEW_CANDIDATE
+  │
+  no
+  ↓
+run another stronger local transformation pass
+  ↓
+maximum 3 total rounds
+  ↓
+if still not enough → LOCAL_ONLY
+```
+
+Default behavior uses at most two semantic rounds. You may explicitly choose 1–3:
+
+```bash
+longgate deidentify interview.txt \
+  --model auto \
+  --out deidentified.txt \
+  --max-rounds 3
+```
+
+The loop is intentionally bounded. Long Gate never responds to privacy failure by weakening policy or retrying forever.
+
+Outputs:
+
+```text
+deidentified.txt
+├── transformed text (local)
+├── deidentified.txt.audit.json
+└── deidentified.txt.trust-report.html
+```
+
+The Semantic Trust Report records hashes, model metadata, each remediation round, risk metrics, failed conditions, status, and next actions. It intentionally does **not** embed the source narrative or transformed narrative.
+
+Possible final states:
+
+```text
+MANUAL_REVIEW_CANDIDATE
+  mechanical evidence is quiet enough for human review
+  automatic_release_allowed = false
+  release_allowed = false
+
+LOCAL_ONLY
+  bounded remediation did not satisfy the evidence gate
+  automatic_release_allowed = false
+  release_allowed = false
+```
+
+A semantic candidate is therefore **not the same thing as an approved structured egress artifact**.
+
+The older low-level command remains available for experiments:
+
+```bash
+longgate semantic-transform-local interview.txt \
+  --model auto \
+  --out preview.txt
+```
+
+---
+
+# 4. Review before any network use
+
+For structured runs, open:
+
+```text
+longgate-runs/LG-.../report/trust-report.html
+```
 
 Review:
 
-- column classifications;
+- classifications;
 - privacy-audit findings;
-- row-level blockers;
-- aggregate fallback;
-- final egress scan;
 - release class;
+- final egress scan;
 - staged artifact;
 - provenance.
 
-If `safe_payload` is null, there is nothing to approve for network access.
+For semantic de-identification, open the generated `*.trust-report.html` and inspect the transformed text locally yourself. Current semantic output remains local-only even when its mechanical evidence qualifies it for manual review.
 
 ---
 
-# 5. If you need a network AI, approve the exact artifact
+# 5. Structured safe artifact → explicit local approval → MCP
 
-Suppose the run produced:
+This step applies only to a supported Long Gate egress artifact, currently the disclosure-limited aggregate path.
 
-```text
-longgate-runs/LG-123/egress/safe_aggregate.json
-```
-
-Run:
+Example:
 
 ```bash
 longgate approve-egress \
@@ -167,59 +283,36 @@ longgate approve-egress \
   --purpose "interpret aggregate statistics"
 ```
 
-Approval requires a matching Long Gate egress manifest.
-
-The manifest must prove:
+Approval requires a matching Long Gate egress manifest proving:
 
 - policy `allow = true`;
 - final scan passed;
-- release class is currently an allowed aggregate;
-- artifact filename matches;
-- artifact SHA-256 matches.
+- an allowed aggregate release class;
+- exact artifact filename;
+- exact artifact SHA-256.
 
-Then the approval additionally binds:
+The approval then additionally binds:
 
 ```text
 relative path + SHA-256 + exact purpose
 ```
 
-Copying an arbitrary file into the egress directory does not make it approvable.
+An arbitrary file copied into the workspace cannot be approved.
 
-Changing the artifact after approval invalidates the hash match.
-
----
-
-# 6. Start the MCP boundary
-
-Install:
+Start the narrow MCP surface:
 
 ```bash
 pip install -e '.[mcp]'
-```
 
-## macOS / Linux
-
-```bash
 export LONGGATE_SAFE_WORKSPACE=/absolute/path/to/longgate-runs/LG-123/egress
 export LONGGATE_APPROVAL_LEDGER=/absolute/path/to/longgate-policy/approvals.jsonl
 export LONGGATE_ACCESS_LOG=/absolute/path/to/longgate-policy/access.jsonl
-
 longgate-mcp
 ```
 
-## Windows PowerShell
+PowerShell uses the equivalent `$env:...` variables.
 
-```powershell
-$env:LONGGATE_SAFE_WORKSPACE="C:\path\to\longgate-runs\LG-123\egress"
-$env:LONGGATE_APPROVAL_LEDGER="C:\path\to\longgate-policy\approvals.jsonl"
-$env:LONGGATE_ACCESS_LOG="C:\path\to\longgate-policy\access.jsonl"
-
-longgate-mcp
-```
-
-Configure your MCP-compatible AI client to launch that command with those environment variables.
-
-The network-side tools are intentionally narrow:
+The network-facing server exposes only:
 
 ```text
 gate_info()
@@ -227,84 +320,11 @@ list_safe_files(purpose)
 read_safe_text(relative_path, purpose)
 ```
 
-The server cannot create approvals and cannot browse arbitrary local paths.
+It cannot create approvals or browse arbitrary local paths.
 
 ---
 
-# 7. Exact local statistics
-
-For real statistics:
-
-```bash
-longgate exact study.csv describe
-
-longgate exact study.csv correlation
-
-longgate exact study.csv group-summary \
-  --group-by group \
-  --value score
-
-longgate exact study.csv ols \
-  --outcome score \
-  --predictor age \
-  --predictor group
-```
-
-Fixed-template local R:
-
-```bash
-longgate exact study.csv ols \
-  --engine r \
-  --outcome score \
-  --predictor age
-```
-
-The real table stays local.
-
----
-
-# 8. Local LLM setup
-
-Long Gate separates network-enabled model installation from private processing.
-
-```text
-MODEL SETUP MODE
-Internet: YES
-Private data: NO
-Model Vault: WRITE
-        ↓
-PRIVATE PROCESSING MODE
-Internet: NO
-Private data: YES
-Model Vault: READ ONLY
-```
-
-Install:
-
-```bash
-pip install -e '.[models,local-llm]'
-```
-
-Then:
-
-```bash
-longgate model setup
-longgate model verify auto
-```
-
-Private transformation:
-
-```bash
-longgate semantic-transform-local interview.txt \
-  --model auto \
-  --out preview.txt
-```
-
-The semantic output is still local-only in the current baseline.
-
----
-
-# 9. Documents, OCR, images, and audio
+# 6. Other local-only media paths
 
 Install:
 
@@ -317,21 +337,17 @@ Examples:
 ```bash
 longgate document-inspect report.docx
 longgate document-inspect transcript.pdf
-
 longgate image-inspect photo.jpg
 longgate image-ocr-local scan.png
 longgate pdf-ocr-local scanned.pdf --max-pages 50
-
 longgate audio-inspect interview.wav
 ```
 
-No network OCR fallback is used.
-
-These commands do not grant network egress.
+There is no cloud OCR fallback. These commands do not grant network egress.
 
 ---
 
-# 10. Verify provenance
+# 7. Verify structured-run provenance
 
 ```bash
 longgate verify-run longgate-runs/LG-...
@@ -347,48 +363,38 @@ longgate verify-run longgate-runs/LG-... \
   --public-key /trusted/location/public-key.pem
 ```
 
-Unsigned verification proves internal artifact/manifest consistency only.
+Unsigned verification checks internal artifact/manifest consistency only. Authenticated provenance depends on independently trusting the verification public key.
 
 ---
 
-# Let another AI configure Long Gate
-
-Run:
+# Let another AI configure the setup phase
 
 ```bash
 longgate setup-prompt
 ```
 
-Copy the output into a coding assistant or computer-use agent.
-
-The maintained prompt tells it not to open private datasets during setup.
+The maintained prompt tells a coding/computer-use assistant not to open private datasets during setup.
 
 ---
 
-# Before using highly sensitive data
-
-Check:
+# Before highly sensitive use
 
 ```bash
 longgate doctor
-```
-
-If using a local model:
-
-```bash
 longgate model verify auto
 ```
 
-For the strongest deployment boundary, use the hardened Compose pattern:
+For the strongest process boundary:
 
-- private worker: raw-data access + no network;
-- network worker: network + safe read-only workspace;
-- no service receives both capabilities.
+- setup worker: network + Model Vault write, no private mount;
+- private worker: private data + Model Vault read-only, no network;
+- network worker: network + approved safe workspace only.
 
 See:
 
 - [Threat model](threat-model.md)
 - [Security invariants](security-invariants.md)
 - [Agent boundary](agent-boundary.md)
+- [Semantic preview](semantic-preview.md)
 - [Egress approval ledger](approval-ledger.md)
 - [Troubleshooting](troubleshooting.md)

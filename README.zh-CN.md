@@ -6,7 +6,7 @@
 
 **面向 AI Agent 的 local-first 隐私网关与能力边界。**
 
-[English](README.md) · [5 分钟上手](docs/getting-started.md) · [FAQ](docs/faq.md)
+[English](README.md) · [5 分钟上手](docs/getting-started.md) · [Roadmap](ROADMAP.md)
 
 </div>
 
@@ -14,227 +14,256 @@
 
 ## 30 秒看懂
 
-Long Gate 的核心不是“提醒 AI 不要泄露”，而是：
+Long Gate 不依赖一句“请不要泄露”。它的原则是：
 
 > **如果联网 AI 不应该看到原始数据，就不要给它读取原始数据的能力。**
 
-当前 pre-1.0 基线中：
+当前 pre-1.0 基线：
 
 ```text
-原始 row-level 数据          → 不允许联网
-pseudonymized row-level     → 不允许联网
-row-level synthetic         → 硬锁，不自动联网释放
-经过限制的 aggregate        → 通过 policy + final scan + 本地批准后可读
-TXT / PDF / 图片 / OCR / 音频 → 当前默认仅本地
+原始 row-level 数据            → 不允许联网
+pseudonymized row-level       → 不允许联网
+row-level synthetic           → 硬锁
+安全 disclosure-limited aggregate → 可进入明确审批链
+本地 AI 语义脱敏结果             → 当前仍 local-only
 ```
 
 ---
 
-# 普通用户到底怎么用？
+# 现在最简单的用法
 
-```mermaid
-flowchart TD
-    START["你有一份私密数据"] --> KIND{"是什么数据？"}
-
-    KIND -->|"CSV / XLSX / JSON / Parquet"| INSPECT["1 · 本地检查<br/>longgate inspect"]
-    INSPECT --> RUN["2 · 跑完整隐私流程<br/>longgate run"]
-    RUN --> LADDER{"Release ladder"}
-
-    LADDER -->|"得到可释放的 disclosure-limited aggregate"| REPORT["3 · 打开 Trust Report"]
-    REPORT --> NEEDAI{"需要联网 AI 解释吗？"}
-
-    NEEDAI -->|"不需要"| LOCALUSE["直接使用本地结果"]
-    NEEDAI -->|"需要"| APPROVE["4 · 本地批准该工件<br/>manifest + path + SHA-256 + purpose"]
-    APPROVE --> MCP["5 · 启动 longgate-mcp"]
-    MCP --> AI["联网 AI 只能看到<br/>被批准的安全工件"]
-
-    LADDER -->|"没有任何表示适合释放"| ONLY["LOCAL_ONLY<br/>按 next_actions 继续"]
-
-    KIND -->|"TXT / DOCX / PDF / 图片 / 音频"| U["本地检查 / OCR / 本地 GGUF"]
-    U --> HOLD["当前仍保持 local-only"]
-```
-
-最重要的一点：
-
-> **“Long Gate 处理成功”不等于“这个结果已经允许给联网 AI 看”。**
-
-Long Gate 把这几件事拆开：
-
-```text
-本地计算
-  ↓
-隐私 / disclosure gate
-  ↓
-egress 工件
-  ↓
-本地人工批准
-  ↓
-联网 Agent 才能读取
-```
-
----
-
-## 我应该运行哪条命令？
-
-| 你的目的 | 命令 |
-|---|---|
-| 看环境能力 | `longgate doctor` |
-| 看表格里哪些列可能敏感 | `longgate inspect study.csv` |
-| 跑完整 structured-data 流程 | `longgate run study.csv --profile research` |
-| 做真实统计 | `longgate exact study.csv ...` |
-| 把安全结果交给联网 AI | `run` → 看报告 → `approve-egress` → `longgate-mcp` |
-| 检查 DOCX/PDF | `longgate document-inspect ...` |
-| 图片 / 扫描 PDF OCR | `image-ocr-local` / `pdf-ocr-local` |
-| 用本地 LLM 处理访谈文本 | `model setup` → `semantic-transform-local` |
-| 让 coding AI 帮你配置 | `longgate setup-prompt` |
-
----
-
-# 第一次真正使用：处理一份私密表格
-
-假设你有：
-
-```text
-study.csv
-```
-
-里面是研究参与者、员工、学生、临床或其他敏感数据。
-
-## 1. 安装
+安装本地模型与文档处理能力：
 
 ```bash
 git clone https://github.com/CochraneK/long-gate.git
 cd long-gate
-
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-
-pip install -e .
+pip install -e '.[models,local-llm,documents]'
 ```
 
-检查：
+先只看机器适合什么：
 
 ```bash
-longgate doctor
+longgate setup --recommend-only
 ```
 
-## 2. 先只检查，不释放
+Long Gate 会**本地**检测：
+
+- 操作系统 / 架构；
+- CPU 逻辑核心数；
+- RAM；
+- Model Vault 所在磁盘剩余空间；
+- 本机有 `nvidia-smi` 时的 NVIDIA GPU / VRAM；
+- FAST / BALANCED / QUALITY 三档模型适配情况。
+
+不下载时只做推荐；真正配置：
+
+```bash
+longgate setup
+```
+
+会自动完成：
+
+```text
+硬件检查
+  ↓
+RAM-led 模型推荐
+  ↓
+下载固定 revision
+  ↓
+SHA-256 校验
+  ↓
+写入 Model Vault
+  ↓
+READY
+```
+
+Setup Mode 可以联网，但不应该挂载或打开私密数据。
+
+---
+
+# 两条主路径
+
+```mermaid
+flowchart TD
+    START["你有私密数据"] --> SETUP["1 · longgate setup"]
+    SETUP --> KIND{"数据类型？"}
+
+    KIND -->|"表格"| TABLE["2A · longgate run"]
+    TABLE --> TR["Structured Trust Report"]
+    TR --> SAFE{"有可释放 aggregate？"}
+    SAFE -->|"有"| APPROVE["本地 path + SHA-256 + purpose 批准"]
+    APPROVE --> MCP["longgate-mcp"]
+    MCP --> AI["联网 AI 只读被批准工件"]
+    SAFE -->|"没有"| L1["LOCAL_ONLY + next_actions"]
+
+    KIND -->|"TXT / Markdown / DOCX / PDF"| DEID["2B · longgate deidentify"]
+    DEID --> LOOP["本地 AI 脱敏 + 审计 + 有界重试"]
+    LOOP --> SR["Semantic Trust Report"]
+    SR --> RESULT{"结果"}
+    RESULT -->|"机械证据通过"| REVIEW["MANUAL_REVIEW_CANDIDATE"]
+    RESULT -->|"仍有风险"| L2["LOCAL_ONLY"]
+    REVIEW --> HOLD["当前仍然不自动上云"]
+```
+
+最重要的一点：
+
+> **处理成功 ≠ 已获准给联网 AI 看。**
+
+---
+
+# 路线 A：私密表格
 
 ```bash
 longgate inspect study.csv
-```
-
-它会告诉你：
-
-- 行列规模；
-- 哪些列像 identifier；
-- 哪些列像 quasi-identifier / sensitive；
-- PII 命中数量。
-
-默认输出的是**计数和分类**，不是把匹配到的真实隐私值直接打印出来。
-
-## 3. 跑完整流程
-
-```bash
 longgate run study.csv --profile research --backend auto
 ```
 
-会返回类似：
-
-```json
-{
-  "run_id": "LG-...",
-  "status": "...",
-  "output": "longgate-runs/LG-...",
-  "report": "longgate-runs/LG-.../report/trust-report.html",
-  "release_class": "aggregate",
-  "next_actions": [],
-  "safe_payload": "longgate-runs/LG-.../egress/safe_aggregate.json"
-}
-```
-
-实际值取决于你的数据。
-
-Long Gate 会尝试：
+Structured release ladder：
 
 ```text
-本地 synthetic
-   ↓
-privacy audit
-   ↓
-row-level synthetic 仍然 hard-lock
-   ↓
-尝试 disclosure-limited aggregate
-   ↓
-final PII scan
-   ↓
-通过 → 写入 egress/
-失败 → LOCAL_ONLY + next_actions
+row-level synthetic
+   ↓ pre-1.0 hard-lock
+disclosure-limited aggregate
+   ↓ 如果仍不适合
+LOCAL_ONLY + next_actions
 ```
 
-所以 `BLOCKED` 不是死路。系统会继续尝试更安全的表示，但不会降低政策标准。
-
----
-
-# 如果我要做真实统计呢？
-
-真实统计不需要把原始表传给云端 AI。
-
-例如：
+真实统计可以继续留在本机：
 
 ```bash
 longgate exact study.csv describe
-
-longgate exact study.csv ols \
-  --outcome score \
-  --predictor age \
-  --predictor group
+longgate exact study.csv correlation
+longgate exact study.csv ols --outcome score --predictor age --predictor group
 ```
-
-还可以用固定模板 R：
-
-```bash
-longgate exact study.csv ols \
-  --engine r \
-  --outcome score \
-  --predictor age
-```
-
-真实数据留在本地，结果再经过 aggregate guard / disclosure limiting。
 
 ---
 
-# 如果我真的想让 ChatGPT / Claude / Codex 一类联网 AI 解释结果呢？
+# 路线 B：本地 AI 语义脱敏
 
-**不要上传 `study.csv`。**
-
-先跑：
+推荐直接使用产品级入口：
 
 ```bash
-longgate run study.csv --profile research
+longgate deidentify interview.txt \
+  --model auto \
+  --out deidentified.txt
 ```
 
-然后打开命令返回的 Trust Report：
+它不是简单地“让 LLM 改写一下”，而是：
 
 ```text
-longgate-runs/LG-.../report/trust-report.html
+原始私密文档
+  ↓
+deterministic 本地 pre-scrub
+  ↓
+已验证本地 GGUF
+  ↓
+语义级 identity-detaching transform
+  ↓
+和 ORIGINAL source 比较
+  ↓
+PII / 精确数字 / n-gram / distinctive token 审计
+  ↓
+不够安全？
+  ├─ 再做一轮本地语义泛化
+  └─ 最多总共 3 轮
+  ↓
+MANUAL_REVIEW_CANDIDATE 或 LOCAL_ONLY
 ```
 
-确认：
+默认最多 2 轮，也可以明确设为 1–3：
 
-- 哪些列被视为 identifier；
-- row-level 为什么被拦；
-- 是否启用了 aggregate fallback；
-- final egress scan 是否通过；
-- 是否真的生成了 `safe_payload`。
+```bash
+longgate deidentify interview.txt \
+  --model auto \
+  --out deidentified.txt \
+  --max-rounds 3
+```
 
-如果得到：
+失败不会无限循环，也不会自动降低阈值。
+
+输出：
 
 ```text
-longgate-runs/LG-123/egress/safe_aggregate.json
+deidentified.txt
+deidentified.txt.audit.json
+deidentified.txt.trust-report.html
 ```
 
-本地批准：
+Semantic Trust Report 会记录：
+
+- input SHA-256；
+- 本地模型；
+- 每轮风险指标；
+- PII / 数字复用 / n-gram / distinctive-token 风险；
+- failed conditions；
+- 最终状态；
+- next actions。
+
+**它不会把原文或脱敏正文重新嵌入报告。**
+
+当前即使达到：
+
+```text
+MANUAL_REVIEW_CANDIDATE
+```
+
+仍然是：
+
+```text
+manual_review_required = true
+automatic_release_allowed = false
+release_allowed = false
+```
+
+所以“本地 AI 脱敏过”不等于“已经证明匿名”。
+
+---
+
+# 当前 Semantic evidence
+
+`semantic-release-evidence-v1` 进入人工复核候选的机械阈值：
+
+- direct PII = 0；
+- 原文精确数字复用 = 0；
+- character n-gram reuse ≤ 1%；
+- distinctive token reuse ≤ 5%；
+- 输出长度 ≥ 80 字符。
+
+后续仍要继续研究：
+
+- rare-event leakage；
+- relationship leakage；
+- combination uniqueness；
+- 多语言 semantic attacks；
+- 长文档 privacy-aware segmentation + cross-chunk audit。
+
+---
+
+# 硬件推荐
+
+```bash
+longgate hardware
+```
+
+当前 curated tiers：
+
+| 档位 | 模型 | 用途 |
+|---|---|---|
+| FAST | `qwen3-4b` Q4_K_M | 更轻、更快 |
+| BALANCED | `qwen3-8b` Q4_K_M | 中等内存的平衡选择 |
+| QUALITY | `qwen3-14b` Q4_K_M | 更强语义泛化 |
+
+最终默认仍以 RAM 为主要依据，因为 GPU offload 还取决于本机 llama.cpp build。
+
+GPU 探测失败不会联网查询，也不会阻止 CPU-only 使用。
+
+---
+
+# 让联网 AI 读安全结果
+
+当前这条自动批准链适用于 **supported structured egress artifact**，例如 disclosure-limited aggregate，不适用于 semantic text。
 
 ```bash
 longgate approve-egress \
@@ -244,54 +273,20 @@ longgate approve-egress \
   --purpose "interpret aggregate statistics"
 ```
 
-Long Gate 现在要求批准同时满足：
+批准要求同时匹配：
 
 ```text
 Long Gate egress manifest
-+ artifact filename
-+ artifact SHA-256
 + policy allow=true
 + final scan passed
++ artifact filename
++ artifact SHA-256
 + exact purpose
 ```
 
-所以：
+任意复制进 `egress/` 的文件不能被批准；批准后改文件，hash 失效。
 
-> **把任意文件复制进 `egress/` 并不能把它变成“可给 AI 看”的文件。**
-
-如果文件在批准后发生变化，hash 不再匹配，批准自动失效。
-
----
-
-## 启动 MCP 边界
-
-```bash
-pip install -e '.[mcp]'
-```
-
-macOS / Linux：
-
-```bash
-export LONGGATE_SAFE_WORKSPACE=/absolute/path/to/longgate-runs/LG-123/egress
-export LONGGATE_APPROVAL_LEDGER=/absolute/path/to/longgate-policy/approvals.jsonl
-export LONGGATE_ACCESS_LOG=/absolute/path/to/longgate-policy/access.jsonl
-
-longgate-mcp
-```
-
-PowerShell：
-
-```powershell
-$env:LONGGATE_SAFE_WORKSPACE="C:\path\to\longgate-runs\LG-123\egress"
-$env:LONGGATE_APPROVAL_LEDGER="C:\path\to\longgate-policy\approvals.jsonl"
-$env:LONGGATE_ACCESS_LOG="C:\path\to\longgate-policy\access.jsonl"
-
-longgate-mcp
-```
-
-然后让你的 MCP-compatible AI 客户端启动 `longgate-mcp`。
-
-联网侧只有：
+MCP 侧只有：
 
 ```text
 gate_info()
@@ -299,207 +294,97 @@ list_safe_files(purpose)
 read_safe_text(relative_path, purpose)
 ```
 
-它没有：
-
-- 任意 filesystem；
-- 私密目录浏览；
-- approval 创建能力；
-- shell；
-- 任意 Python；
-- `--force-release`。
+没有 arbitrary filesystem、shell、Python、approval creation 或 `--force-release`。
 
 ---
 
-# 私密文本、访谈、PDF、图片、音频
-
-安装：
-
-```bash
-pip install -e '.[documents,media,ocr]'
-```
-
-使用：
-
-```bash
-longgate document-inspect report.docx
-longgate document-inspect transcript.pdf
-
-longgate image-inspect photo.jpg
-longgate image-ocr-local scan.png
-longgate pdf-ocr-local scanned.pdf --max-pages 50
-
-longgate audio-inspect interview.wav
-```
-
-OCR 没有云端 fallback。
-
-这些路径当前**不会自动获得网络 egress 权限**。
-
----
-
-# 本地 LLM 处理私密文本
-
-Long Gate 把两个阶段明确分开：
+# Setup Mode 和 Private Processing 必须分开
 
 ```text
 MODEL SETUP MODE
 网络：YES
 私密数据：NO
 Model Vault：WRITE
-        ↓
+
 PRIVATE PROCESSING MODE
 网络：NO
 私密数据：YES
 Model Vault：READ ONLY
 ```
 
-安装：
+Long Gate 真正要切断的是：
+
+> **同一个进程既能读原始敏感数据，又能自由联网。**
+
+---
+
+# 其他 local-only 能力
 
 ```bash
-pip install -e '.[models,local-llm]'
+longgate document-inspect report.docx
+longgate document-inspect transcript.pdf
+longgate image-inspect photo.jpg
+longgate image-ocr-local scan.png
+longgate pdf-ocr-local scanned.pdf --max-pages 50
+longgate audio-inspect interview.wav
 ```
 
-配置：
+OCR 没有云端 fallback。
 
-```bash
-longgate model setup
-longgate model verify auto
-```
+---
 
-当前内存指导：
-
-| 系统内存 | 默认 |
-|---:|---|
-| ~8 GB | `qwen3-4b` |
-| ~16 GB | `qwen3-8b` |
-| ~24 GB+ | `qwen3-14b` |
-
-本地处理：
-
-```bash
-longgate semantic-transform-local interview.txt \
-  --model auto \
-  --out preview.txt
-```
-
-`auto` 只读取已经安装并验证过的本地模型，不在 private-processing 阶段下载。
-
-当前 semantic output 仍然：
+# 当前硬安全边界
 
 ```text
-release_allowed = false
+RAW rows                         → NEVER network eligible
+PSEUDONYMIZED rows               → NEVER network eligible
+ROW-LEVEL synthetic              → pre-1.0 HARD LOCK
+semantic de-identification       → LOCAL ONLY baseline
+semantic retries                 → 最多 3 轮
+semantic Trust Report            → 不嵌入 narrative content
+UNKNOWN purpose                  → BLOCK
+final structured PII hit         → BLOCK
+任意复制进 egress 的文件           → 不能批准
+批准后 artifact 改变              → hash 不再匹配
+hardware detection failure       → 不使用远程 fallback
 ```
 
-也就是说：可以本地用，但不能把“模型改写过”自动等同于“匿名了”。
-
 ---
 
-# 一个 run 里有哪些文件？
+# Long Gate 不声称什么
 
-```text
-longgate-runs/LG-.../
-├── manifest.json
-├── audit.json
-├── provenance.json
-├── safe/
-│   └── synthetic.csv
-├── egress/
-│   ├── aggregate_egress_manifest.json
-│   └── safe_aggregate.json
-└── report/
-    └── trust-report.html
-```
+目前不声称：
 
-不一定每次都有 `safe_aggregate.json`。如果没有合适的可释放表示，`egress/` 可能只有拒绝/审计信息。
-
----
-
-# Trust Report
-
-Trust Report 是离线、自包含 HTML。
-
-它会告诉你：
-
-- 什么留在本地；
-- 哪些列被识别为 identifier / sensitive；
-- 哪些 privacy attacks 被检查；
-- row-level 为什么被拦；
-- 是否发生 aggregate fallback；
-- final egress scan 是否通过；
-- 哪个工件获得 egress eligibility；
-- 输入 hash、policy、版本、provenance。
-
----
-
-# 当前安全边界
-
-```text
-RAW rows                     → NEVER network eligible
-PSEUDONYMIZED rows           → NEVER network eligible
-ROW-LEVEL synthetic          → pre-1.0 HARD LOCK
-UNKNOWN purpose              → BLOCK
-final PII hit                → BLOCK
-unsafe small group           → SUPPRESS / BLOCK
-任意复制进 egress 的文件       → 不能批准
-批准后 artifact 被修改         → hash 不匹配，访问失败
-free text / OCR / media      → LOCAL ONLY baseline
-path / symlink escape        → BLOCK
-```
-
-Long Gate 没有 `--force-release`。
-
----
-
-# 它不声称什么
-
-Long Gate 当前**不声称**：
-
-- synthetic data 自动等于匿名；
+- synthetic data 自动匿名；
+- semantic de-identification 自动匿名；
 - orchestration layer 自带 formal differential privacy；
-- 已获得 HIPAA / GDPR / NHS 等合规认证；
-- row-level synthetic 已达到 production release 标准；
-- 任意 free text / PDF / image / audio 已证明语义匿名；
-- 能抵御已被攻陷的 host OS / administrator。
+- HIPAA / GDPR / NHS 等合规认证；
+- row-level synthetic 已获 production release certification；
+- 任意文本 / 图片 / 音频 / PDF 已获得语义匿名保证；
+- 能抵御已经被攻陷的 host OS / administrator。
 
 ---
 
 # 核心理念
 
-1. **Capabilities beat prompts**  
-   不该让联网 AI 看到 raw data，就不要给它读 raw data 的能力。
-
-2. **Purpose determines disclosure**  
-   不同问题，只给最小必要表示。
-
-3. **Evidence is not authorization**  
-   隐私测试通过，不等于自动获得网络权限。
-
-4. **Blocked should lead somewhere safer**  
-   被拦后继续向更安全的 disclosure level 降级，而不是直接停死。
-
-5. **安全边界必须可执行**  
-   关键承诺都应该有测试，而不是只写在 README。
+1. **Capabilities beat prompts**：不该读 raw data，就不给读取能力。
+2. **Purpose determines disclosure**：只披露完成任务所需的最小表示。
+3. **Evidence is not authorization**：测试通过不等于自动获得网络权限。
+4. **Blocked should lead somewhere safer**：优先 remediation / 降级，而不是弱化政策。
+5. **Local AI is a transformer, not the privacy authority**：模型输出还要独立审计。
 
 ---
 
 ## 文档
 
-- [Getting Started — 5 minutes](docs/getting-started.md)
-- [FAQ](docs/faq.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Architecture](docs/architecture.md)
-- [Threat model](docs/threat-model.md)
-- [Security invariants](docs/security-invariants.md)
-- [Agent boundary](docs/agent-boundary.md)
-- [Egress approval ledger](docs/approval-ledger.md)
-- [Release ladder](docs/release-ladder.md)
+- [Getting Started](docs/getting-started.md)
+- [Local semantic privacy path](docs/semantic-preview.md)
 - [Local Model Guide](docs/models.md)
-- [Benchmarks](docs/benchmarks.md)
+- [Security invariants](docs/security-invariants.md)
+- [Threat model](docs/threat-model.md)
+- [Agent boundary](docs/agent-boundary.md)
+- [Roadmap](ROADMAP.md)
 
 ---
 
-## License
-
-Long Gate 自身代码使用 **Apache-2.0**。
-
-第三方依赖保留各自许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+Long Gate 自身代码使用 Apache-2.0 License。

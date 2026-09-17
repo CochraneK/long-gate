@@ -62,7 +62,7 @@ ocr = ["Pillow>=10", "pytesseract>=0.3.10", "pypdfium2>=4"]
 dev = ["pytest>=8.0", "ruff>=0.6", "bandit>=1.7", "pip-audit>=2.7"]
 
 [project.scripts]
-longgate = "longgate.cli:main"
+longgate = "longgate.app:main"
 longgate-mcp = "longgate.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]

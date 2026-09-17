@@ -1,31 +1,103 @@
 # Local Model Guide
 
-Long Gate is designed so a new user does not need to learn GGUF naming, quantization jargon, or model-hosting details before getting started.
+Long Gate is designed so a new user does not need to understand GGUF filenames, quantization jargon, GPU-offload details, or model-hosting mechanics before getting started.
 
-## The easiest path
+## Recommended entrypoint
 
-Install the setup and local-inference extras:
+Install:
 
 ```bash
 pip install -e '.[models,local-llm]'
 ```
 
-Then the easiest path is one command:
+Inspect the machine without downloading anything:
 
 ```bash
-longgate model setup
+longgate setup --recommend-only
 ```
 
-It detects system RAM, chooses a curated model, downloads the pinned Hugging Face revision, verifies SHA-256, and sets the verified model as the local default.
-
-Check it:
+or:
 
 ```bash
-longgate model verify auto
+longgate hardware
+```
+
+The local hardware advisor reports, when available:
+
+- OS and architecture;
+- logical CPU count;
+- total system RAM;
+- free disk space for the Model Vault;
+- NVIDIA GPU and VRAM through local `nvidia-smi`;
+- FAST / BALANCED / QUALITY model-fit guidance.
+
+Hardware inventory stays local. GPU detection is best-effort only: failure never triggers a remote fallback and does not block CPU-only use.
+
+To install the selected model:
+
+```bash
+longgate setup
+```
+
+This composes hardware advice with the existing Model Vault workflow:
+
+```text
+hardware inspection
+      ↓
+conservative RAM-led recommendation
+      ↓
+pinned model download
+      ↓
+SHA-256 verification
+      ↓
+default Model Vault alias
+      ↓
+READY
+```
+
+## Current curated tiers
+
+Long Gate deliberately keeps the built-in catalog small and reviewed.
+
+| Tier | Alias | Official model | Quant | File size | Recommended RAM |
+|---|---|---|---|---:|---:|
+| FAST | `qwen3-4b` | Qwen3-4B-GGUF | Q4_K_M | ~2.5 GB | ~8 GB |
+| BALANCED | `qwen3-8b` | Qwen3-8B-GGUF | Q4_K_M | ~5.03 GB | ~16 GB |
+| QUALITY | `qwen3-14b` | Qwen3-14B-GGUF | Q4_K_M | ~9 GB | ~24 GB |
+
+The advisor labels each model fit as approximately:
+
+```text
+COMFORTABLE
+TIGHT
+INSUFFICIENT
+UNKNOWN
+```
+
+The automatically selected default remains RAM-led because GPU offload depends on how `llama-cpp-python` / llama.cpp was built on that machine. Detected GPU/VRAM information is therefore advisory rather than an unsupported promise about acceleration.
+
+Advanced users can still run:
+
+```bash
+longgate model recommend
+longgate model install qwen3-8b
+longgate model verify qwen3-8b
 longgate model list
 ```
 
-Private processing can then use the verified default without knowing its filename:
+## Private processing after setup
+
+The preferred semantic workflow is now:
+
+```bash
+longgate deidentify interview.txt \
+  --model auto \
+  --out deidentified.txt
+```
+
+`auto` resolves the verified Model Vault default. It does **not** download a model during private processing.
+
+The lower-level single-pass interface remains available:
 
 ```bash
 longgate semantic-transform-local interview.txt \
@@ -33,46 +105,20 @@ longgate semantic-transform-local interview.txt \
   --out preview.txt
 ```
 
-If you want control instead of automatic selection:
+See [Local semantic privacy path](semantic-preview.md) for the difference.
 
-```bash
-longgate model recommend
-longgate model install qwen3-8b
-longgate model verify qwen3-8b
-```
+## Why Qwen3 first?
 
-The private processing path resolves the alias from the local Model Vault and does **not** download anything.
+The initial catalog favors a compact multilingual model family with official GGUF releases and Apache-2.0 licensing. The catalog is intentionally curated rather than becoming an unreviewed model marketplace.
 
-## Recommended models
+## Supply-chain anchors
 
-Long Gate's initial built-in catalog deliberately stays small.
-
-| Alias | Official model | Quant | File size | Conservative RAM guidance | License |
-|---|---|---|---:|---:|---|
-| `qwen3-4b` | Qwen3-4B-GGUF | Q4_K_M | ~2.5 GB | ~8 GB | Apache-2.0 |
-| `qwen3-8b` | Qwen3-8B-GGUF | Q4_K_M | ~5.03 GB | ~16 GB | Apache-2.0 |
-| `qwen3-14b` | Qwen3-14B-GGUF | Q4_K_M | ~9 GB | ~24 GB | Apache-2.0 |
-
-The RAM values are practical guidance, not hard guarantees. Context length, GPU offload, the operating system, and other running applications also matter.
-
-### Why Qwen3 first?
-
-The initial catalog favors a compact, multilingual model family with official GGUF releases and a permissive Apache-2.0 license. The catalog is intentionally curated rather than becoming an unreviewed model marketplace.
-
-## Where the files come from
-
-Long Gate downloads these catalog entries from the official Qwen organization on Hugging Face:
-
-- https://huggingface.co/Qwen/Qwen3-4B-GGUF
-- https://huggingface.co/Qwen/Qwen3-8B-GGUF
-- https://huggingface.co/Qwen/Qwen3-14B-GGUF
-
-The catalog snapshot pins **two independent supply-chain anchors** for each Q4_K_M file:
+Long Gate downloads catalog entries from official upstream repositories and pins two anchors per file:
 
 1. an immutable Hugging Face revision;
 2. the expected file SHA-256.
 
-Long Gate downloads the pinned revision rather than tracking the repository's moving `main` branch. If the downloaded bytes do not match the catalog SHA-256, installation **fails closed**.
+The catalog does not track a moving upstream `main` branch for installation. A checksum mismatch causes installation to fail closed.
 
 ## Model Vault
 
@@ -80,7 +126,7 @@ Default location:
 
 ```text
 ~/.longgate/models/
-├── Qwen3-4B-Q4_K_M.gguf
+├── Qwen3-...-Q4_K_M.gguf
 └── manifest.json
 ```
 
@@ -90,17 +136,17 @@ Override it with:
 export LONGGATE_MODEL_VAULT=/path/to/models
 ```
 
-On Windows PowerShell:
+PowerShell:
 
 ```powershell
 $env:LONGGATE_MODEL_VAULT = "D:\LongGate\models"
 ```
 
-The manifest records source, license, SHA-256, size, and install time. It never needs a private dataset path.
+The manifest records source metadata, license, SHA-256, size, and install time. Model provisioning never needs a private dataset path.
 
-## Setup mode vs private mode
+## Setup Mode vs Private Processing Mode
 
-### Model Setup Mode
+### Setup Mode
 
 ```text
 Internet:       YES
@@ -108,10 +154,10 @@ Private mount:  NO
 Model Vault:    WRITE
 ```
 
-Used only for model provisioning commands such as:
+Typical commands:
 
 ```bash
-longgate model setup
+longgate setup
 longgate model install <alias>
 ```
 
@@ -123,36 +169,30 @@ Private mount:  YES
 Model Vault:    READ ONLY
 ```
 
-Used for:
+Typical command:
 
 ```bash
-longgate semantic-transform-local ...
+longgate deidentify ... --model auto
 ```
 
-This separation is more important than whether the model originally came from the Internet. The unsafe combination is a process that can read raw private data **and** has unrestricted network access.
+This separation matters more than the historical fact that a model was originally downloaded from the Internet. The unsafe capability combination is a process that can read raw private data and also has unrestricted network access.
 
-## Let your own AI configure Long Gate
-
-Run:
+## Let another AI configure Setup Mode
 
 ```bash
 longgate setup-prompt
 ```
 
-Copy the resulting prompt into your coding assistant or local computer-use agent.
+The maintained prompt tells a coding/computer-use assistant to configure Long Gate and the Model Vault without opening or ingesting private datasets.
 
-The prompt explicitly tells the AI to configure software and the Model Vault without opening or ingesting any private dataset.
+## Manual model fallback
 
-A copy is also available in [AI setup prompt](ai-setup-prompt.md).
-
-## Manual fallback
-
-If you prefer to download manually, place a GGUF anywhere on disk and pass its path:
+Advanced users may provide an already-local GGUF directly:
 
 ```bash
-longgate semantic-transform-local interview.txt \
+longgate deidentify interview.txt \
   --model /absolute/path/model.gguf \
-  --out preview.txt
+  --out deidentified.txt
 ```
 
-Manual files are supported for advanced users, but the built-in Model Vault path is preferred because it gives you reproducible source and checksum metadata.
+Manual local files are supported, but the curated Model Vault path is preferred because it carries reproducible upstream source and checksum metadata.

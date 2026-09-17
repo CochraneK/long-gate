@@ -80,24 +80,27 @@ def main() -> None:
     ).lower()
     required_concepts = {
         "row-level synthetic egress remains fail-closed": [
-            "row-level synthetic",
-            "hard-lock",
+            ("row-level synthetic",),
+            ("hard-lock", "fail-closed"),
         ],
         "optional Ed25519 provenance": [
-            "optional ed25519",
+            ("optional ed25519",),
         ],
         "public-key trust is explicit": [
-            "authenticated origin",
-            "trusted public key",
+            ("authenticated origin", "authenticated provenance"),
+            ("trusted public key", "independently trusting the public key"),
         ],
         "privacy profiles are not certifications": [
-            "not certifications",
+            ("not certifications",),
         ],
     }
     missing = [
         label
-        for label, phrases in required_concepts.items()
-        if not all(phrase in readme for phrase in phrases)
+        for label, concept_groups in required_concepts.items()
+        if not all(
+            any(phrase in readme for phrase in alternatives)
+            for alternatives in concept_groups
+        )
     ]
     if missing:
         raise SystemExit(

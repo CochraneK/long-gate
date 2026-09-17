@@ -1,7 +1,11 @@
 name: security-boundary
 on:
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -22,4 +26,7 @@ jobs:
             tests/test_approval.py \
             tests/test_deployment_contract.py \
             tests/test_egress.py \
-            tests/test_model_vault.py
+            tests/test_model_vault.py \
+            tests/test_hardware_advisor.py \
+            tests/test_deidentify.py \
+            tests/test_app.py

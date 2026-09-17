@@ -7,6 +7,12 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 ## [Unreleased]
 
 ### Added
+- Top-level `longgate setup` product entrypoint that combines local hardware advice with curated Model Vault installation and verification.
+- Top-level `longgate hardware` local-only advisor for OS/architecture/CPU/RAM/disk plus best-effort NVIDIA GPU/VRAM detection.
+- FAST / BALANCED / QUALITY model-fit guidance while keeping automatic selection conservative and RAM-led.
+- Top-level `longgate deidentify` for deterministic pre-scrub, local GGUF semantic transformation, original-source privacy auditing, bounded remediation, and offline Semantic Trust Reports.
+- Bounded semantic remediation loop with a maximum of three local model rounds and fail-closed `MANUAL_REVIEW_CANDIDATE` / `LOCAL_ONLY` outcomes.
+- Semantic Trust Reports that record hashes, model metadata, per-round privacy evidence, failed conditions, and next actions without embedding source or transformed narrative content.
 - Hash-bound egress approvals and purpose-scoped MCP reads with an observational access log.
 - Versioned egress manifests that bind eligible artifacts to their exact filename and SHA-256 before local approval.
 - End-to-end README user journeys, command chooser, MCP handoff walkthrough, and Mermaid flow diagrams for real-world use.
@@ -45,19 +51,24 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Direct identifier columns are removed from outbound row views.
 - Unknown purposes default to BLOCK.
 - Row-level synthetic egress remains fail-closed by default.
+- Semantic de-identification candidates remain local-only even when mechanical evidence qualifies them for manual review.
+- Semantic remediation is bounded to at most three rounds and never lowers privacy thresholds automatically.
+- Semantic Trust Reports do not copy source or transformed narrative content into the report.
+- Hardware inspection has no remote fallback; GPU detection uses only a fixed local `nvidia-smi` query when available.
 - Free text, semantic previews, OCR output, images, and audio remain local-only by default.
 - Passing semantic or row-level evidence criteria never auto-authorizes egress.
-- `approve-egress` now rejects arbitrary safe-workspace files unless they are backed by a matching policy-approved Long Gate egress manifest and exact artifact digest.
+- `approve-egress` rejects arbitrary safe-workspace files unless they are backed by a matching policy-approved Long Gate egress manifest and exact artifact digest.
 - Model setup has network capability but no private-data input path.
 - Private semantic processing resolves an already-local verified model.
 - Curated model downloads are pinned to immutable upstream revisions and file SHA-256.
 
 ### Changed
+- The installed `longgate` CLI now routes through a product-level entrypoint while preserving all existing advanced commands through the legacy dispatcher.
+- README / Chinese README / Getting Started now lead with `longgate setup`, the structured-data path, and the iterative local semantic de-identification path.
 - Retired CodeQL as a required gate after the repository became private; equivalent available local/static security checks remain blocking in CI.
 - Retired the public Railway Safe Demo and removed deployable demo assets from the repository.
 - Local model onboarding moved from manual GGUF selection to a curated Model Vault with one-command setup.
-- Model installation now preflights disk space and moves staged GGUF files into place instead of duplicating them.
-- README and Getting Started now lead with concrete user tasks, expected outputs, explicit egress approval, and the network-agent handoff instead of architecture-first documentation.
+- Model installation preflights disk space and moves staged GGUF files into place instead of duplicating them.
 
 ## [0.1.0]
 
