@@ -43,6 +43,16 @@ For example, the built-in research profile still disables row-level synthetic eg
 
 The synthetic table remains local. The aggregate artifact is a different representation that passed its own release path.
 
+The fallback is deliberately **less detailed than the local exact describe result**. Before it can be authorized, Long Gate:
+
+- removes exact minima and maxima;
+- replaces exact row/non-missing counts with coarse count buckets;
+- rounds released means and standard deviations;
+- suppresses numeric columns whose non-missing N is below the active profile's minimum dataset size;
+- then runs the aggregate PII guard and final egress scan.
+
+Local exact statistics can remain exact because they stay local. The network-eligible fallback is a separate disclosure-limited representation.
+
 ## Machine-readable blockers
 
 Privacy audits include `reason_codes` such as:
