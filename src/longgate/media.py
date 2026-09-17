@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import wave
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -158,11 +159,16 @@ def _render_pdf_pages(path: Path, max_pages: int) -> list[object]:
         ) from exc
     document = pdfium.PdfDocument(str(path))
     pages: list[object] = []
+    render_scale = 2.0
     try:
         count = min(len(document), max_pages)
         for index in range(count):
             page = document[index]
-            bitmap = page.render(scale=2)
+            width, height = page.get_size()
+            rendered_width = math.ceil(float(width) * render_scale)
+            rendered_height = math.ceil(float(height) * render_scale)
+            _validate_image_dimensions(rendered_width, rendered_height)
+            bitmap = page.render(scale=render_scale)
             pages.append(bitmap.to_pil())
     finally:
         document.close()
