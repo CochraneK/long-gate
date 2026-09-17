@@ -36,6 +36,7 @@ These are executable product requirements, not documentation-only promises.
 32. A private-data service may not receive Model Vault write capability or the network-facing safe workspace.
 33. Provenance signatures are optional and never cause Long Gate to copy or manage long-lived signing keys.
 34. Unsigned provenance may claim integrity consistency only, never authenticated origin or resistance to coordinated artifact + manifest replacement.
+35. The Python `LongGate` API is trusted-local. Values returned by `inspect()` or `exact()` are not egress authorizations; network agents consume only approved egress artifacts through the MCP boundary.
 
 CI should fail when tests covering these invariants fail.
 
