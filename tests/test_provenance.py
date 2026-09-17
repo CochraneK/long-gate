@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -33,6 +34,40 @@ def test_provenance_detects_tampering(tmp_path: Path):
     assert result["mismatches"][0]["reason"] == "sha256_mismatch"
 
 
+def test_provenance_rejects_artifact_path_escape(tmp_path: Path):
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "manifest.json").write_text('{"ok": true}', encoding="utf-8")
+    outside = tmp_path / "secret.txt"
+    outside.write_text("must-not-be-read", encoding="utf-8")
+
+    provenance_path = build_provenance(run)
+    document = json.loads(provenance_path.read_text(encoding="utf-8"))
+    document["artifacts"][0]["path"] = "../secret.txt"
+    core = {
+        "format": document["format"],
+        "artifacts": document["artifacts"],
+    }
+    canonical = json.dumps(
+        core,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    document["integrity_digest"] = hashlib.sha256(canonical).hexdigest()
+    provenance_path.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    result = verify_provenance(run)
+    assert result["valid"] is False
+    assert result["integrity_digest_matches"] is True
+    assert result["mismatches"] == [
+        {"path": "../secret.txt", "reason": "path_outside_run"}
+    ]
+
+
 def test_provenance_document_does_not_claim_signature(tmp_path: Path):
     (tmp_path / "audit.json").write_text(
         "{}",
@@ -44,7 +79,6 @@ def test_provenance_document_does_not_claim_signature(tmp_path: Path):
     )
     assert document["signature"] is None
     assert "not a digital signature" in document["signature_note"]
-
 
 
 def _write_signing_keys(tmp_path: Path) -> tuple[Path, Path]:
