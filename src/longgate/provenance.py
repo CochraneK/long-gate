@@ -29,6 +29,22 @@ def _canonical_digest(value: object) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _artifact_within_run(root: Path, relative: object) -> tuple[str, Path]:
+    """Resolve an artifact path without allowing absolute or parent escape."""
+    if not isinstance(relative, str) or not relative.strip():
+        raise ValueError("artifact path must be a non-empty relative string")
+    rel = Path(relative)
+    if rel.is_absolute():
+        raise ValueError("artifact path must be relative")
+    resolved_root = root.resolve()
+    candidate = (resolved_root / rel).resolve()
+    try:
+        candidate.relative_to(resolved_root)
+    except ValueError as exc:
+        raise ValueError("artifact path escapes the run directory") from exc
+    return relative, candidate
+
+
 def build_provenance(
     run_dir: str | Path,
     artifacts: tuple[str, ...] = DEFAULT_ARTIFACTS,
@@ -36,7 +52,7 @@ def build_provenance(
     root = Path(run_dir)
     records: list[dict[str, object]] = []
     for relative in artifacts:
-        path = root / relative
+        _, path = _artifact_within_run(root, relative)
         if not path.is_file():
             continue
         records.append(
@@ -69,31 +85,85 @@ def verify_provenance(
     run_dir: str | Path,
     public_key_path: str | Path | None = None,
 ) -> dict[str, object]:
-    root = Path(run_dir)
+    root = Path(run_dir).resolve()
     path = root / "provenance.json"
     document = json.loads(path.read_text(encoding="utf-8"))
+    artifacts = document.get("artifacts")
+    if document.get("format") != "long-gate-provenance-v1" or not isinstance(
+        artifacts,
+        list,
+    ):
+        return {
+            "valid": False,
+            "integrity_valid": False,
+            "authenticated": False,
+            "verification_scope": "integrity_only",
+            "integrity_digest_matches": False,
+            "mismatches": [
+                {
+                    "path": "provenance.json",
+                    "reason": "invalid_provenance_format",
+                }
+            ],
+            "artifact_count": 0,
+            "signature": {
+                "present": (root / "provenance.sig.json").is_file(),
+                "valid": None,
+                "reason": "provenance_invalid",
+            },
+            "note": "Provenance document is malformed or uses an unsupported format.",
+        }
+
     core = {
         "format": document["format"],
-        "artifacts": document["artifacts"],
+        "artifacts": artifacts,
     }
     expected_digest = _canonical_digest(core)
     mismatches: list[dict[str, str]] = []
 
-    for item in document["artifacts"]:
-        artifact = root / item["path"]
+    for item in artifacts:
+        if not isinstance(item, dict):
+            mismatches.append(
+                {
+                    "path": "<invalid>",
+                    "reason": "invalid_artifact_record",
+                }
+            )
+            continue
+        relative = item.get("path")
+        expected_sha = item.get("sha256")
+        display_path = relative if isinstance(relative, str) else "<invalid>"
+        if not isinstance(expected_sha, str):
+            mismatches.append(
+                {
+                    "path": display_path,
+                    "reason": "invalid_artifact_record",
+                }
+            )
+            continue
+        try:
+            _, artifact = _artifact_within_run(root, relative)
+        except ValueError:
+            mismatches.append(
+                {
+                    "path": display_path,
+                    "reason": "path_outside_run",
+                }
+            )
+            continue
         if not artifact.is_file():
             mismatches.append(
                 {
-                    "path": item["path"],
+                    "path": display_path,
                     "reason": "missing",
                 }
             )
             continue
         actual = sha256_file(artifact)
-        if actual != item["sha256"]:
+        if actual != expected_sha:
             mismatches.append(
                 {
-                    "path": item["path"],
+                    "path": display_path,
                     "reason": "sha256_mismatch",
                 }
             )
@@ -136,7 +206,7 @@ def verify_provenance(
         ),
         "integrity_digest_matches": digest_matches,
         "mismatches": mismatches,
-        "artifact_count": len(document["artifacts"]),
+        "artifact_count": len(artifacts),
         "signature": signature,
         "note": (
             "Unsigned verification checks internal artifact/manifest consistency only; "
@@ -145,7 +215,6 @@ def verify_provenance(
             else "Signed verification additionally authenticates the provenance digest against the supplied trusted public key."
         ),
     }
-
 
 
 def _signature_message(integrity_digest: str) -> bytes:
