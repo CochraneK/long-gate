@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .hardware import HardwareProfile, detect_hardware
+from .hardware import detect_hardware
 from .model_vault import MODEL_CATALOG, default_vault_dir, recommend_model, setup_model
 
 
@@ -67,7 +67,10 @@ def hardware_advice(
         "selection remains conservative and RAM-led because llama.cpp offload "
         "availability depends on the local build."
         if profile.gpus
-        else "No NVIDIA GPU was detected through local nvidia-smi; CPU-only use remains supported."
+        else (
+            "No NVIDIA GPU was detected through local nvidia-smi; "
+            "CPU-only use remains supported."
+        )
     )
 
     return {
