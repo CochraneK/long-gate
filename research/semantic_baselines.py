@@ -8,11 +8,35 @@ from longgate.pii import CN_ID_RE, EMAIL_RE, PHONE_RE, UK_POSTCODE_RE
 from longgate.semantic import LocalLlamaCppTransformer
 
 _IP_CANDIDATE_RE = re.compile(r"(?<![\w:])(?:[0-9A-Fa-f:.]{3,})(?![\w:])")
+_IP_EDGE_PUNCTUATION = "[](),;."
 
 
 def identity_baseline(text: str) -> str:
     """Negative control: preserve the source exactly."""
     return text
+
+
+def _redact_ip_candidates(text: str) -> str:
+    chunks: list[str] = []
+    cursor = 0
+    found = False
+    for match in _IP_CANDIDATE_RE.finditer(text):
+        raw = match.group(0)
+        candidate = raw.strip(_IP_EDGE_PUNCTUATION)
+        try:
+            ipaddress.ip_address(candidate)
+        except ValueError:
+            continue
+        start = raw.find(candidate)
+        end = start + len(candidate)
+        chunks.append(text[cursor : match.start()])
+        chunks.append(raw[:start] + "[IP_ADDRESS]" + raw[end:])
+        cursor = match.end()
+        found = True
+    if not found:
+        return text
+    chunks.append(text[cursor:])
+    return "".join(chunks)
 
 
 def deterministic_regex_baseline(text: str) -> str:
@@ -26,22 +50,7 @@ def deterministic_regex_baseline(text: str) -> str:
     result = PHONE_RE.sub("[PHONE]", result)
     result = CN_ID_RE.sub("[NATIONAL_ID]", result)
     result = UK_POSTCODE_RE.sub("[POSTCODE]", result)
-
-    chunks: list[str] = []
-    cursor = 0
-    for match in _IP_CANDIDATE_RE.finditer(result):
-        candidate = match.group(0).strip("[](),;")
-        try:
-            ipaddress.ip_address(candidate)
-        except ValueError:
-            continue
-        chunks.append(result[cursor : match.start()])
-        chunks.append("[IP_ADDRESS]")
-        cursor = match.end()
-    if not chunks:
-        return result
-    chunks.append(result[cursor:])
-    return "".join(chunks)
+    return _redact_ip_candidates(result)
 
 
 def presidio_baseline(text: str, language: str = "en") -> str:
