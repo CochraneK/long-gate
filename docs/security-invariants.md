@@ -42,6 +42,11 @@ These are executable product requirements, not documentation-only promises.
 38. Scanned-PDF page dimensions are checked against the pixel limit before allocating or rendering the bitmap.
 39. Privacy-boundary Compose services drop all Linux capabilities and enable `no-new-privileges`; deployment validation parses Compose structurally and fails closed on unresolved external `extends`.
 40. Every staged egress artifact is bound to a versioned egress manifest containing its exact filename and SHA-256. Local approval requires that manifest, `allow=true`, a successful final scan, and an exact digest match; arbitrary files copied into the safe workspace cannot be approved.
+41. Hardware inspection is local-only. Long Gate may read OS/CPU/RAM/disk metadata and, when locally available, query `nvidia-smi`; hardware-detection failure must not trigger a remote fallback or upload hardware inventory.
+42. Semantic de-identification remediation is bounded to at most three local model rounds. Failure to satisfy the defined evidence gate ends in `LOCAL_ONLY`, never an unbounded autonomous loop or policy relaxation.
+43. A semantic `MANUAL_REVIEW_CANDIDATE` is evidence for local human review only. It always keeps `automatic_release_allowed=false` and `release_allowed=false` in the current baseline.
+44. Semantic Trust Reports may contain hashes, local model metadata, risk counts/rates, decisions, and next actions, but must not embed the source narrative or transformed narrative.
+45. Deterministic pre-scrubbing and local model transformation are preparation steps, not release authorization. Network egress still requires a separately supported policy and approval path.
 
 CI should fail when tests covering these invariants fail.
 
