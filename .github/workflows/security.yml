@@ -22,4 +22,6 @@ jobs:
             tests/test_approval.py \
             tests/test_deployment_contract.py \
             tests/test_egress.py \
-            tests/test_model_vault.py
+            tests/test_model_vault.py \
+            tests/test_hardware_advisor.py \
+            tests/test_deidentify.py
