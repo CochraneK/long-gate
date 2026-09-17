@@ -13,7 +13,7 @@ Long Gate is intended to reduce accidental or agent-driven disclosure of sensiti
 - cloud agents obtaining broad filesystem access;
 - hidden egress caused by an overly permissive pipeline.
 
-## Out of scope in v0.1
+## Out of scope in v0.2
 
 - a compromised host OS or administrator account;
 - side-channel attacks against the local machine;
