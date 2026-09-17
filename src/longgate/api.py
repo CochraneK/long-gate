@@ -28,7 +28,12 @@ from .r_executor import (
 
 
 class LongGate:
-    """Programmatic API for downstream local-first workflows."""
+    """Trusted-local API for downstream local-first workflows.
+
+    Values returned by inspect() and exact() are local computation results, not
+    network-egress authorizations. Network-facing agents should consume only
+    approved artifacts through the SafeWorkspace/MCP boundary.
+    """
 
     def inspect(
         self,
