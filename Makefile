@@ -1,4 +1,4 @@
-.PHONY: install dev test lint format security demo benchmark research-check research-smoke research-summary check
+.PHONY: install dev test lint format security demo benchmark research-check research-smoke research-summary research-redteam check
 
 install:
 	python -m pip install -e .
@@ -32,9 +32,14 @@ benchmark:
 research-check:
 	python -m research.check_artifact
 
+research-redteam:
+	python -m research.semantic_redteam --corpus research/redteam/semantic_synthetic_v1.jsonl --baseline identity --baseline deterministic-regex --out research/results/paper-smoke
+	python -m research.release_boundary_redteam --out research/results/paper-smoke
+
 research-smoke: research-check
 	python -m research.run_experiments --config research/configs/paper-smoke.json --out research/results/paper-smoke
 	python -m research.aggregate_results research/results/paper-smoke/runs.jsonl --out research/results/paper-smoke
+	$(MAKE) research-redteam
 
 research-summary:
 	python -m research.aggregate_results research/results/paper-smoke/runs.jsonl --out research/results/paper-smoke
