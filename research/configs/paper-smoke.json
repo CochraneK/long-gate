@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "suite": "paper-smoke-v1",
+  "purpose": "artifact-pipeline smoke test; not paper evidence",
+  "seeds": [7, 17, 29],
+  "experiments": [
+    {
+      "id": "structured-demo-audit",
+      "kind": "structured_demo_audit",
+      "rows": 200
+    }
+  ]
+}
