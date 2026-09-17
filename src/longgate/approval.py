@@ -5,6 +5,7 @@ import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .egress import EGRESS_MANIFEST_FORMAT
 from .utils import sha256_file, utc_now
 
 
@@ -27,6 +28,43 @@ def _safe_relative(root: Path, relative: str | Path) -> Path:
     return candidate
 
 
+def _eligible_egress_manifest(
+    root: Path,
+    artifact: Path,
+) -> tuple[str, str]:
+    """Require a matching Long Gate egress manifest before local approval.
+
+    The manifest must name the exact artifact, bind its SHA-256, record a
+    successful final scan, and represent a policy-allowed aggregate release.
+    This keeps the approval command from turning an arbitrary file copied into
+    the safe workspace into a network-readable artifact.
+    """
+    digest = sha256_file(artifact)
+    for manifest in sorted(artifact.parent.glob("*egress_manifest.json")):
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError, UnicodeError):
+            continue
+        final_scan = data.get("final_scan")
+        if (
+            data.get("format") == EGRESS_MANIFEST_FORMAT
+            and data.get("artifact") == artifact.name
+            and data.get("artifact_sha256") == digest
+            and data.get("allow") is True
+            and data.get("allow_after_final_scan") is True
+            and data.get("release_class") == "aggregate"
+            and isinstance(final_scan, dict)
+            and final_scan.get("passed") is True
+        ):
+            return str(manifest.resolve().relative_to(root)), digest
+
+    raise ApprovalError(
+        "Artifact is not backed by a matching policy-approved Long Gate "
+        "egress manifest. Run the Long Gate release pipeline first; do not "
+        "copy arbitrary files into the safe workspace."
+    )
+
+
 @dataclass(frozen=True)
 class ApprovalRecord:
     approval_id: str
@@ -34,8 +72,9 @@ class ApprovalRecord:
     relative_path: str
     sha256: str
     purpose: str
+    egress_manifest: str | None = None
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
@@ -64,12 +103,17 @@ def issue_approval(
 
     root = Path(workspace).expanduser().resolve()
     artifact = _safe_relative(root, relative_path)
+    manifest_relative, digest = _eligible_egress_manifest(
+        root,
+        artifact,
+    )
     record = ApprovalRecord(
         approval_id=f"LGA-{uuid.uuid4().hex[:16]}",
         created_at=utc_now(),
         relative_path=str(artifact.relative_to(root)),
-        sha256=sha256_file(artifact),
+        sha256=digest,
         purpose=purpose,
+        egress_manifest=manifest_relative,
     )
     ledger = Path(ledger_path).expanduser().resolve()
     ledger.parent.mkdir(parents=True, exist_ok=True)
