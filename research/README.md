@@ -11,9 +11,9 @@ research/                     -> do the paper's empirical claims hold?
 
 ## Integrity rule
 
-`make research-smoke` is a CI-safe artifact-pipeline smoke test. It is **not paper evidence** and must never be cited as a completed experiment.
+`make research-smoke` is a CI-safe artifact-pipeline and synthetic red-team smoke test. It is **not paper evidence** and must never be cited as a completed experiment.
 
-A future `research-paper` target should only be added after the paper protocol, datasets, baselines, metrics, and main experiment configuration are frozen.
+A future `research-paper` target should only be added after the paper protocol, public datasets, baselines, metrics, local-model revisions, and main experiment configuration are frozen.
 
 ## Current research questions
 
@@ -23,7 +23,8 @@ See [`research-questions.md`](research-questions.md). The current paper directio
 
 The artifact runner records:
 
-- exact Long Gate Git commit when available;
+- exact Long Gate source commit when available;
+- Git checkout/event SHA separately when CI tests a merge ref;
 - configuration SHA-256;
 - Python and platform metadata;
 - logical CPU count and system RAM when detectable;
@@ -37,7 +38,35 @@ Run the smoke suite:
 make research-smoke
 ```
 
-Equivalent commands:
+It currently runs three pieces:
+
+```text
+multi-seed structured audit smoke
+        +
+synthetic semantic red-team
+        +
+release-boundary attack harness
+```
+
+Run only the attack harnesses:
+
+```bash
+make research-redteam
+```
+
+The semantic smoke comparison includes:
+
+- `identity` — negative control / no transformation;
+- `deterministic-regex` — direct-pattern removal baseline.
+
+Research adapters also exist for:
+
+- local Presidio anonymization (`pip install -e '.[research-presidio]'`);
+- one-pass verified local GGUF inference via Long Gate's llama.cpp transformer.
+
+Those heavier baselines are **not** silently executed in GitHub CI. Their model/dependency versions must be frozen in the real paper configuration.
+
+Equivalent core commands:
 
 ```bash
 python -m research.run_experiments \
@@ -47,29 +76,70 @@ python -m research.run_experiments \
 python -m research.aggregate_results \
   research/results/paper-smoke/runs.jsonl \
   --out research/results/paper-smoke
+
+python -m research.semantic_redteam \
+  --corpus research/redteam/semantic_synthetic_v1.jsonl \
+  --baseline identity \
+  --baseline deterministic-regex \
+  --out research/results/paper-smoke
+
+python -m research.release_boundary_redteam \
+  --out research/results/paper-smoke
 ```
 
-The generated directory contains:
+The generated directory contains only experiment provenance/metrics, for example:
 
 ```text
-manifest.json       experiment provenance
-runs.jsonl          one normalized record per seed/run
-summary.json        grouped descriptive statistics
-summary.md          paper-friendly Markdown table
+manifest.json
+runs.jsonl
+summary.json
+summary.md
+semantic-redteam-runs.jsonl
+semantic-redteam-summary.json
+release-boundary-runs.jsonl
+release-boundary-summary.json
 ```
 
 `research/results/` is ignored by Git by default. Raw run outputs should be archived deliberately for a paper artifact release rather than silently committed during development.
 
+## Synthetic red-team scope
+
+`redteam/semantic_synthetic_v1.jsonl` contains fictional/synthetic English cases for:
+
+- direct contact/network identifiers;
+- exact age/date reuse;
+- rare-event leakage;
+- relationship leakage;
+- combination uniqueness;
+- instruction-like text embedded in the source.
+
+The runner never writes source/candidate narratives into result files; it writes case IDs, baseline IDs, failed-condition codes, and aggregate numeric metrics.
+
+The synthetic corpus is useful for development, controlled counterexamples, and ablation plumbing. It is **not an independent external benchmark** and does not establish real-world anonymity.
+
+## Release-boundary harness
+
+`release_boundary_redteam.py` measures implemented behavior for:
+
+- valid authorized read control;
+- purpose mismatch;
+- post-approval mutation;
+- arbitrary-file approval;
+- workspace path escape;
+- egress-manifest hash mismatch;
+- directory-only workspace vs Long Gate's approved workspace on an unapproved file.
+
+This directly supports RQ1, but a paper should still compare against clearly defined external/system baselines rather than treating the internal directory-only control as representative of all competing systems.
+
 ## What is not complete yet
 
-The repository does **not** currently claim that the full paper evaluation is complete. Before a full-paper submission, the matrix in [`experiment-matrix.md`](experiment-matrix.md) should be populated with real runs covering:
+The repository does **not** currently claim that the full paper evaluation is complete. Before a full-paper submission, the matrix in [`experiment-matrix.md`](experiment-matrix.md) should still gain real runs covering:
 
-- deterministic/NER baselines;
-- one-pass local-LLM baseline;
-- Long Gate ablations;
-- semantic privacy attacks including rare-event and relationship leakage;
-- multiple public datasets and a documented synthetic red-team corpus;
-- privacy and downstream-utility metrics;
+- Presidio/NER and one-pass local-LLM baselines on independent data;
+- full Long Gate semantic ablations;
+- stronger inference-based rare-event, relationship, combination, and auxiliary-data attackers;
+- one or more independent public text-anonymization datasets;
+- privacy and downstream-utility metrics appropriate to those datasets;
 - repeated seeds / repeated model runs where stochasticity applies;
 - hardware/runtime evaluation across representative model tiers.
 
