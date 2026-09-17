@@ -4,6 +4,7 @@ import json
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
 from .utils import sha256_file, utc_now
 
 
@@ -105,6 +106,28 @@ def read_approvals(path: str | Path) -> list[ApprovalRecord]:
     return records
 
 
+def matching_approval_digest(
+    relative_path: str,
+    digest: str,
+    ledger_path: str | Path,
+    purpose: str,
+) -> ApprovalRecord | None:
+    """Match an approval against a digest already computed from the bytes in use.
+
+    Callers that expose file content across a trust boundary should read the
+    artifact once, hash those exact bytes, and use this helper. That avoids a
+    check-then-reopen window where the file could change after authorization.
+    """
+    for record in reversed(read_approvals(ledger_path)):
+        if (
+            record.relative_path == relative_path
+            and record.sha256 == digest
+            and record.purpose == purpose
+        ):
+            return record
+    return None
+
+
 def matching_approval(
     workspace: str | Path,
     relative_path: str | Path,
@@ -115,14 +138,12 @@ def matching_approval(
     artifact = _safe_relative(root, relative_path)
     relative = str(artifact.relative_to(root))
     digest = sha256_file(artifact)
-    for record in reversed(read_approvals(ledger_path)):
-        if (
-            record.relative_path == relative
-            and record.sha256 == digest
-            and record.purpose == purpose
-        ):
-            return record
-    return None
+    return matching_approval_digest(
+        relative,
+        digest,
+        ledger_path,
+        purpose,
+    )
 
 
 def list_approved_files(
