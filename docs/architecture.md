@@ -75,7 +75,9 @@ result = gate.exact(
 )
 ```
 
-The API is intended to be shared by AI-Ques, AI-persona, research tools, and future agents without giving those projects direct cloud access to raw data.
+The Python API is a **trusted-local interface**. It is intended to be shared by AI-Ques, AI-persona, research tools, and other local orchestration code without giving those projects direct cloud access to raw data.
+
+A return value from `LongGate.inspect()` or `LongGate.exact()` is **not an egress authorization**. In particular, exact statistics remain exact because they are computed and returned inside the trusted local zone. A network-facing agent must not import this API as a shortcut around release policy; it should receive only artifacts in the approved egress workspace through the MCP + hash/purpose approval boundary.
 
 
 ## Exact execution engines

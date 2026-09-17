@@ -675,7 +675,9 @@ result = gate.exact(
 )
 ```
 
-The goal is for downstream applications to call **Long Gate**, not cloud AI APIs directly, when sensitive local data is involved.
+The goal is for downstream applications to call **Long Gate** locally, not cloud AI APIs directly, when sensitive local data is involved.
+
+The Python `LongGate` API is a **trusted-local API**. Its returned inspection/exact-stat objects are not egress approvals. A network-facing agent must use the approved egress workspace / MCP boundary rather than importing `LongGate.exact()` as a shortcut to move local results across the gate.
 
 ---
 

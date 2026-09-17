@@ -28,3 +28,12 @@ def test_safe_workspace_blocks_absolute_path(tmp_path: Path):
     ws = SafeWorkspace(safe)
     with pytest.raises(WorkspaceViolation):
         ws.read_text(Path("/etc/passwd"))
+
+
+def test_public_python_api_declares_trusted_local_boundary():
+    from longgate import LongGate
+
+    doc = (LongGate.__doc__ or "").lower()
+    assert "trusted-local" in doc
+    assert "not" in doc and "egress" in doc
+    assert "safeworkspace/mcp" in doc
