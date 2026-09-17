@@ -61,6 +61,8 @@ jobs:
       - name: Validate research artifact structure
         run: python -m research.check_artifact
       - name: Run research reproducibility smoke suite
+        env:
+          LONGGATE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: make research-smoke
       - name: Confirm research provenance outputs
         run: |
@@ -73,6 +75,8 @@ jobs:
           summary = json.loads((root / "summary.json").read_text())
           assert manifest["run_count"] == 3
           assert manifest["configuration"]["sha256"]
+          assert manifest["environment"]["source_commit"]
+          assert manifest["environment"]["git_head_commit"]
           assert summary["run_count"] == 3
           assert (root / "summary.md").is_file()
           print("research-smoke", manifest["suite"], manifest["run_count"])
