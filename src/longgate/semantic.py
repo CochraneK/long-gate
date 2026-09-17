@@ -29,7 +29,7 @@ _REMEDIATION_GUIDANCE = {
     "character_ngram_reuse": (
         "Rewrite more abstractly and avoid preserving source phrasing or sentence structure."
     ),
-    "distinctive_token_reuse": (
+    "distinctive_token_reuse": (  # nosec B105 - privacy failure-code key, not a credential
         "Generalize or remove distinctive names, rare terms, organizations, locations, "
         "roles, and event labels."
     ),
