@@ -34,10 +34,7 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _git_commit() -> str | None:
-    env_sha = os.environ.get("GITHUB_SHA")
-    if env_sha and len(env_sha) == 40:
-        return env_sha
+def _git_head_commit() -> str | None:
     try:
         result = subprocess.run(  # noqa: S603 - fixed local git command, no user-controlled shell
             ["git", "rev-parse", "HEAD"],
@@ -85,6 +82,9 @@ def _detect_ram_gb() -> float | None:
 
 
 def environment_snapshot() -> dict[str, object]:
+    git_head = _git_head_commit()
+    declared_source = os.environ.get("LONGGATE_SOURCE_SHA") or git_head
+    github_event_sha = os.environ.get("GITHUB_SHA")
     return {
         "python": platform.python_version(),
         "platform": platform.platform(),
@@ -92,7 +92,9 @@ def environment_snapshot() -> dict[str, object]:
         "logical_cpu_count": os.cpu_count(),
         "system_ram_gb": _detect_ram_gb(),
         "long_gate_version": __version__,
-        "long_gate_commit": _git_commit(),
+        "git_head_commit": git_head,
+        "source_commit": declared_source,
+        "github_event_sha": github_event_sha,
     }
 
 
