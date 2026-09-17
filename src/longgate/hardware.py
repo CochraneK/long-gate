@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import platform
 import shutil
-import subprocess
+import subprocess  # nosec B404 - fixed local nvidia-smi probe; no user command input
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -86,7 +86,7 @@ def detect_nvidia_gpus() -> list[GPUInfo]:
     if not binary:
         return []
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603 - executable path + argv are fixed locally
             [
                 binary,
                 "--query-gpu=name,memory.total",
