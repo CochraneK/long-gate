@@ -37,6 +37,10 @@ These are executable product requirements, not documentation-only promises.
 33. Provenance signatures are optional and never cause Long Gate to copy or manage long-lived signing keys.
 34. Unsigned provenance may claim integrity consistency only, never authenticated origin or resistance to coordinated artifact + manifest replacement.
 35. The Python `LongGate` API is trusted-local. Values returned by `inspect()` or `exact()` are not egress authorizations; network agents consume only approved egress artifacts through the MCP boundary.
+36. An approved network-side read hashes and returns the same byte snapshot; approval must never be checked against one file read and content returned from a later reopen.
+37. Provenance verification may hash artifacts only inside the selected run directory; absolute paths, parent traversal, and symlink escapes fail closed.
+38. Scanned-PDF page dimensions are checked against the pixel limit before allocating or rendering the bitmap.
+39. Privacy-boundary Compose services drop all Linux capabilities and enable `no-new-privileges`; deployment validation parses Compose structurally and fails closed on unresolved external `extends`.
 
 CI should fail when tests covering these invariants fail.
 
