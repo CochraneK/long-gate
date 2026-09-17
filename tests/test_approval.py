@@ -61,6 +61,37 @@ def test_content_change_invalidates_approval(tmp_path: Path):
         workspace.read_text("safe.json", "analysis")
 
 
+def test_approved_read_hashes_and_returns_the_same_bytes(
+    monkeypatch,
+    tmp_path: Path,
+):
+    safe = tmp_path / "egress"
+    safe.mkdir()
+    artifact = safe / "safe.json"
+    approved = b'{"n": 10}'
+    artifact.write_bytes(approved)
+    ledger = tmp_path / "approvals.jsonl"
+    issue_approval(safe, "safe.json", ledger, "analysis")
+
+    original_read_bytes = Path.read_bytes
+    artifact_reads = 0
+
+    def racing_read_bytes(path: Path) -> bytes:
+        nonlocal artifact_reads
+        if path.resolve() == artifact.resolve():
+            artifact_reads += 1
+            if artifact_reads == 1:
+                return approved
+            return b'{"n": 999, "secret": "changed-after-check"}'
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", racing_read_bytes)
+    workspace = ApprovedWorkspace(safe, ledger)
+
+    assert workspace.read_text("safe.json", "analysis") == approved.decode("utf-8")
+    assert artifact_reads == 1
+
+
 def test_access_log_records_decision_without_payload(tmp_path: Path):
     safe = tmp_path / "egress"
     safe.mkdir()
