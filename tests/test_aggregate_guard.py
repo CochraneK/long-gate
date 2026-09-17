@@ -106,3 +106,18 @@ def test_release_safe_describe_fails_if_nothing_is_releasable():
             min_release_n=10,
             count_bucket_size=5,
         )
+
+
+def test_aggregate_guard_blocks_pii_in_dictionary_key():
+    with pytest.raises(ValueError):
+        validate_aggregate_payload(
+            {
+                "summary": {
+                    "person@example.com": {
+                        "n_bucket": "10-19",
+                        "mean": 2.0,
+                        "std": 0.5,
+                    }
+                }
+            }
+        )
