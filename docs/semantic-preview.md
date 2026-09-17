@@ -178,7 +178,7 @@ deidentified.txt.trust-report.html
 The offline report contains:
 
 - input SHA-256;
-- local model path;
+- local model filename (not its full local path);
 - number of remediation rounds;
 - per-round PII counts;
 - reused-number counts;
