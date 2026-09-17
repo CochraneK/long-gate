@@ -7,5 +7,7 @@ dist/
 build/
 *.egg-info/
 longgate-runs/
+research/results/*
+!research/results/README.md
 .env
 .DS_Store
