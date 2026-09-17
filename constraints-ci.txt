@@ -8,6 +8,7 @@ pandas==2.2.3
 numpy==1.26.4
 openpyxl==3.1.5
 faker==30.0.0
+PyYAML==6.0.3
 pytest==9.0.3
 ruff==0.6.0
 bandit==1.9.4
