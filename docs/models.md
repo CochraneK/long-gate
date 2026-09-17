@@ -7,7 +7,16 @@ Long Gate is designed so a new user does not need to understand GGUF filenames, 
 Install:
 
 ```bash
-pip install -e '.[models,local-llm]'
+pip install -e '.[models]'
+```
+
+Install `local-llm` separately after the base setup. It is a native extension,
+so pip may compile it from source. On Windows, use Python 3.12 and the CPU
+wheel when available:
+
+```powershell
+pip install -e ".[local-llm]"
+pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 ```
 
 Inspect the machine without downloading anything:

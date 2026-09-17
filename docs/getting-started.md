@@ -29,7 +29,7 @@ cd long-gate
 
 py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -e ".[models,local-llm,documents]"
+.\.venv\Scripts\python.exe -m pip install -e ".[models,documents]"
 ```
 
 ### macOS / Linux
@@ -40,8 +40,21 @@ cd long-gate
 
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -e '.[models,local-llm,documents]'
+.venv/bin/python -m pip install -e '.[models,documents]'
 ```
+
+`local-llm` is optional because `llama-cpp-python` may compile native C++ code
+when no matching wheel exists. On Windows, Python 3.12 plus the upstream CPU
+wheel is usually the quickest route:
+
+```powershell
+py -3.12 -m venv .venv312
+.\.venv312\Scripts\python.exe -m pip install -U pip
+.\.venv312\Scripts\python.exe -m pip install -e ".[models,documents,local-llm]"
+.\.venv312\Scripts\python.exe -m pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+```
+
+Run `longgate doctor` before private processing.
 
 Existing bootstrap scripts remain available:
 

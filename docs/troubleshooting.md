@@ -68,6 +68,29 @@ Do not add a force flag.
 ## `llama-cpp-python` fails to install
 
 The upstream package may compile native code when a compatible wheel is not available.
+This is why Long Gate keeps `local-llm` optional during the first installation.
+
+On Windows, check the Python version first:
+
+```powershell
+python --version
+longgate doctor
+```
+
+For the quickest CPU-only setup, create a Python 3.12 environment and use the
+upstream wheel index:
+
+```powershell
+py -3.12 -m venv .venv312
+.\.venv312\Scripts\Activate.ps1
+python -m pip install -U pip
+python -m pip install -e ".[models,documents,local-llm]"
+python -m pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+```
+
+If pip still says `Building wheel`, it did not find a matching wheel and is
+compiling from source. Either use Python 3.12 with the CPU index above or
+install the Windows C++ build toolchain and allow the longer build.
 
 Start with:
 

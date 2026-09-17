@@ -48,8 +48,19 @@ cd long-gate
 
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -e '.[models,local-llm,documents]'
+pip install -e '.[models,documents]'
 ```
+
+`local-llm` is optional because `llama-cpp-python` contains native C++ code.
+On Windows, Python 3.12 plus the upstream CPU wheel is usually the quickest
+route. Install it after the core CLI works:
+
+```powershell
+pip install -e ".[local-llm]"
+pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+```
+
+Run `longgate doctor` to see the detected reason and next installation step.
 
 Then:
 

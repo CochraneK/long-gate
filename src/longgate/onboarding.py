@@ -20,8 +20,10 @@ A. Check OS, Python version, available disk space, and system RAM.
 B. Obtain/update the Long Gate repository from:
    https://github.com/CochraneK/long-gate
 C. Create a Python virtual environment.
-D. Install:
-   pip install -e '.[models,local-llm,documents,stats]'
+D. Install the core capabilities first:
+   pip install -e '.[models,documents,stats]'
+   Treat local-llm as optional. On Windows, prefer Python 3.12 and the
+   upstream CPU wheel before allowing a source build.
 E. Run:
    longgate doctor
 F. Run the one-command setup:

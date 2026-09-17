@@ -88,3 +88,16 @@ def test_deidentify_dispatches_bounded_product_path(monkeypatch, capsys, tmp_pat
     assert captured["max_rounds"] == 2
     assert captured["max_tokens"] == 512
     assert payload["release_allowed"] is False
+
+
+def test_doctor_explains_python_313_windows_local_llm_gap(monkeypatch):
+    from longgate import doctor
+
+    monkeypatch.setattr(doctor, "_has", lambda module: False)
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(doctor.sys, "version_info", (3, 13, 0))
+
+    detail = doctor._local_llm_detail()
+
+    assert "Python 3.13 on Windows" in detail
+    assert "Python 3.12" in detail
