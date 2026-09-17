@@ -11,7 +11,7 @@ These are executable product requirements, not documentation-only promises.
 7. Synthetic rows require privacy audit and policy evaluation.
 8. A policy-approved outbound payload receives a final value-level PII rescan.
 9. Any final-scan PII hit blocks payload creation.
-10. Aggregate outputs receive their own PII guard.
+10. Aggregate outputs receive their own PII guard and explicit disclosure-limiting transform before authorization.
 11. Trust Reports contain counts, metadata, hashes, and decisions — never source row values.
 12. The hardened local worker has source-data access and no network.
 13. A network worker may have network access but must never mount source-data paths.
@@ -27,12 +27,14 @@ These are executable product requirements, not documentation-only promises.
 23. Private semantic processing resolves local Model Vault files and does not download models.
 24. Semantic release evidence may qualify an artifact for manual review but can never auto-authorize network egress.
 25. Row-level synthetic production criteria are evidence-only in pre-1.0; even a satisfied checklist returns `release_allowed = false`.
-26. Image, scanned-PDF OCR, and audio paths are local-only and cannot grant egress permission.
-27. Local OCR has no network fallback and returns aggregate PII counts rather than OCR text.
-28. Image/OCR processing rejects inputs above the configured pixel safety limit.
-29. Deployment validation rejects any service that combines private-data capability with network access.
-30. A private-data service may not receive Model Vault write capability or the network-facing safe workspace.
-31. Provenance signatures are optional and never cause Long Gate to copy or manage long-lived signing keys.
+26. A passing synthetic privacy audit is evidence, not authorization; the pre-1.0 PolicyEngine must still deny row-level synthetic release.
+27. The release-ladder aggregate fallback must not expose exact extrema or exact sample counts; it buckets counts, rounds continuous summaries, and suppresses columns below the profile minimum N.
+28. Image, scanned-PDF OCR, and audio paths are local-only and cannot grant egress permission.
+29. Local OCR has no network fallback and returns aggregate PII counts rather than OCR text.
+30. Image/OCR processing rejects inputs above the configured pixel safety limit.
+31. Deployment validation rejects any service that combines private-data capability with network access.
+32. A private-data service may not receive Model Vault write capability or the network-facing safe workspace.
+33. Provenance signatures are optional and never cause Long Gate to copy or manage long-lived signing keys.
 
 CI should fail when tests covering these invariants fail.
 
