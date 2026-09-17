@@ -5,7 +5,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .documents import extract_document_text
-from .semantic import LocalLlamaCppTransformer, SemanticPreviewAudit, audit_semantic_preview
+from .semantic import (
+    LocalLlamaCppTransformer,
+    SemanticPreviewAudit,
+    _safe_chunks,
+    audit_semantic_preview,
+)
 from .unstructured import redact_text_local
 from .utils import sha256_file, utc_now, write_json
 
@@ -124,6 +129,8 @@ def deidentify_local(
     *,
     max_rounds: int = 2,
     max_tokens: int = 512,
+    chunking: str = "none",
+    chunk_size: int = 3000,
 ) -> DeidentifyResult:
     """Run bounded local semantic remediation while keeping egress fail-closed."""
     if not 1 <= max_rounds <= 3:
@@ -134,6 +141,8 @@ def deidentify_local(
     if not source.strip():
         raise ValueError("Input document contains no extractable text.")
 
+    if chunking not in {"none", "safe"}:
+        raise ValueError("chunking must be 'none' or 'safe'.")
     transformer = LocalLlamaCppTransformer(model_path)
     current = redact_text_local(source)
     attempts: list[DeidentifyAttempt] = []
@@ -142,10 +151,14 @@ def deidentify_local(
     risk_focus: list[str] | None = None
 
     for round_number in range(1, max_rounds + 1):
-        final_text = transformer.transform(
-            current,
-            max_tokens=max_tokens,
-            risk_focus=risk_focus,
+        chunks = [current] if chunking == "none" else _safe_chunks(current, chunk_size)
+        final_text = "\n\n".join(
+            transformer.transform(
+                chunk,
+                max_tokens=max_tokens,
+                risk_focus=risk_focus,
+            )
+            for chunk in chunks
         )
         final_audit = audit_semantic_preview(source, final_text)
         attempt = _attempt_from_audit(round_number, final_audit)
@@ -193,6 +206,10 @@ def deidentify_local(
         "automatic_release_allowed": False,
         "release_allowed": False,
         "next_actions": next_actions,
+        "chunking": chunking,
+        "chunk_count": (
+            1 if chunking == "none" else len(_safe_chunks(source, chunk_size))
+        ),
     }
     write_json(audit_path, payload)
     report_path.write_text(

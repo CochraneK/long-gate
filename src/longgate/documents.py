@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from html.parser import HTMLParser
 from pathlib import Path
 
 from .pii import scan_text
@@ -12,6 +13,34 @@ from .unstructured import (
 
 class DocumentDependencyMissing(RuntimeError):
     pass
+
+
+class _VisibleHTMLText(HTMLParser):
+    _ignored = {"script", "style", "noscript", "template", "svg"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+        self._depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() in self._ignored:
+            self._depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in self._ignored and self._depth:
+            self._depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self._depth and data.strip():
+            self.parts.append(data.strip())
+
+
+def _extract_html(path: Path) -> tuple[str, int, str]:
+    parser = _VisibleHTMLText()
+    parser.feed(path.read_text(encoding="utf-8"))
+    text = "\n".join(parser.parts)
+    return text, len(parser.parts), "Visible HTML text extracted locally; scripts and styles are ignored."
 
 
 @dataclass(frozen=True)
@@ -116,6 +145,9 @@ def extract_document_text(
             + (1 if text else 0),
             "UTF-8 local text extraction.",
         )
+    if suffix in {".html", ".htm"}:
+        text, units, note = _extract_html(document_path)
+        return text, "html", units, note
     if suffix == ".docx":
         text, units, note = _extract_docx(
             document_path
@@ -140,7 +172,7 @@ def extract_document_text(
     raise ValueError(
         "Unsupported document type: "
         f"{suffix}. Supported: "
-        "TXT, Markdown, DOCX, PDF."
+        "TXT, Markdown, HTML, DOCX, PDF."
     )
 
 

@@ -311,6 +311,7 @@ class LocalLlamaCppTransformer:
         self.model_path = resolve_model_path(model_path)
         self.n_ctx = n_ctx
         self.max_input_characters = max_input_characters
+        self._model = None
 
     def transform(
         self,
@@ -332,11 +333,13 @@ class LocalLlamaCppTransformer:
                 "pip install 'long-gate[local-llm]'"
             ) from exc
 
-        model = Llama(
-            model_path=str(self.model_path),
-            n_ctx=self.n_ctx,
-            verbose=False,
-        )
+        if self._model is None:
+            self._model = Llama(
+                model_path=str(self.model_path),
+                n_ctx=self.n_ctx,
+                verbose=False,
+            )
+        model = self._model
 
         remediation = _remediation_focus_text(risk_focus)
         prompt = (
@@ -370,16 +373,51 @@ class LocalLlamaCppTransformer:
         return transformed
 
 
+def _safe_chunks(text: str, max_characters: int) -> list[str]:
+    if max_characters < 1000:
+        raise ValueError("Chunk size must be at least 1000 characters.")
+    paragraphs = [part.strip() for part in text.split("\n") if part.strip()]
+    chunks: list[str] = []
+    current: list[str] = []
+    length = 0
+    for paragraph in paragraphs:
+        if len(paragraph) > max_characters:
+            if current:
+                chunks.append("\n".join(current))
+                current, length = [], 0
+            chunks.extend(
+                paragraph[index : index + max_characters]
+                for index in range(0, len(paragraph), max_characters)
+            )
+            continue
+        if current and length + len(paragraph) + 1 > max_characters:
+            chunks.append("\n".join(current))
+            current, length = [], 0
+        current.append(paragraph)
+        length += len(paragraph) + 1
+    if current:
+        chunks.append("\n".join(current))
+    return chunks or [text]
+
+
 def semantic_transform_local(
     input_path: str | Path,
     model_path: str | Path,
     output_path: str | Path,
     max_tokens: int = 512,
+    chunking: str = "none",
+    chunk_size: int = 3000,
 ) -> SemanticPreviewResult:
     source, _, _, _ = extract_document_text(input_path)
 
     transformer = LocalLlamaCppTransformer(model_path)
-    transformed = transformer.transform(source, max_tokens=max_tokens)
+    chunks = [source] if chunking == "none" else _safe_chunks(source, chunk_size)
+    if chunking not in {"none", "safe"}:
+        raise ValueError("chunking must be 'none' or 'safe'.")
+    transformed = "\n\n".join(
+        transformer.transform(chunk, max_tokens=max_tokens)
+        for chunk in chunks
+    )
     audit = audit_semantic_preview(source, transformed)
 
     output = Path(output_path)

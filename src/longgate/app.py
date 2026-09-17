@@ -73,7 +73,7 @@ def _deidentify_parser() -> argparse.ArgumentParser:
             "bounded remediation, privacy audit, and an offline Semantic Trust Report."
         ),
     )
-    parser.add_argument("input", help="TXT/Markdown/DOCX/PDF with extractable text.")
+    parser.add_argument("input", help="TXT/Markdown/HTML/DOCX/PDF with extractable text.")
     parser.add_argument(
         "--model",
         default="auto",
@@ -88,6 +88,13 @@ def _deidentify_parser() -> argparse.ArgumentParser:
         help="Bounded local remediation rounds. Default: 2; maximum: 3.",
     )
     parser.add_argument("--max-tokens", type=int, default=512)
+    parser.add_argument(
+        "--chunking",
+        choices=["none", "safe"],
+        default="none",
+        help="Use explicit paragraph-aware chunks for long documents. Default: none.",
+    )
+    parser.add_argument("--chunk-size", type=int, default=3000)
     return parser
 
 
@@ -126,6 +133,8 @@ def main() -> None:
             args.out,
             max_rounds=args.max_rounds,
             max_tokens=args.max_tokens,
+            chunking=args.chunking,
+            chunk_size=args.chunk_size,
         )
         _print_json(result.to_dict())
         return

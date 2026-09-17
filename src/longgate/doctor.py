@@ -91,6 +91,11 @@ def capabilities() -> list[Capability]:
             "local DOCX/PDF text-layer inspection",
         ),
         Capability(
+            "html",
+            True,
+            "local visible-text extraction; scripts and styles ignored",
+        ),
+        Capability(
             "pyarrow",
             _has("pyarrow"),
             "Parquet support",

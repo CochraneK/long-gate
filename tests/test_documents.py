@@ -36,3 +36,18 @@ def test_document_inspection_rejects_unknown_type(
         inspect_document_file(
             path
         )
+
+
+def test_html_extraction_ignores_scripts_and_styles(tmp_path: Path):
+    path = tmp_path / "note.html"
+    path.write_text(
+        "<html><style>hidden-css</style><body><h1>Visible</h1>"
+        "<script>secret-script</script><p>Body text</p></body></html>",
+        encoding="utf-8",
+    )
+
+    result = inspect_document_file(path)
+
+    assert result.kind == "html"
+    assert result.characters > 0
+    assert "scripts" in result.extraction_note

@@ -4,6 +4,7 @@ import pytest
 
 from longgate.semantic import (
     LocalLlamaCppTransformer,
+    _safe_chunks,
     audit_semantic_preview,
     evaluate_semantic_release_evidence,
 )
@@ -102,3 +103,10 @@ def test_semantic_preview_detects_distinctive_long_token_reuse():
     assert audit.reused_distinctive_tokens >= 1
     assert audit.distinctive_token_reuse_rate > 0
     assert audit.release_allowed is False
+
+
+def test_safe_chunks_respects_paragraph_boundaries():
+    chunks = _safe_chunks("a" * 4000 + "\n" + "b" * 4000, 5000)
+
+    assert len(chunks) == 2
+    assert all(len(chunk) <= 5000 for chunk in chunks)
