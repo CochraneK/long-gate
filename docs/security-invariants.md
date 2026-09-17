@@ -11,7 +11,7 @@ These are executable product requirements, not documentation-only promises.
 7. Synthetic rows require privacy audit and policy evaluation.
 8. A policy-approved outbound payload receives a final value-level PII rescan.
 9. Any final-scan PII hit blocks payload creation.
-10. Aggregate outputs receive their own PII guard and explicit disclosure-limiting transform before authorization.
+10. Aggregate outputs receive their own PII guard and explicit disclosure-limiting transform before authorization; structured keys and values are both scanned because column names can contain direct identifiers.
 11. Trust Reports contain counts, metadata, hashes, and decisions — never source row values.
 12. The hardened local worker has source-data access and no network.
 13. A network worker may have network access but must never mount source-data paths.
