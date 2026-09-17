@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from longgate.advisor import hardware_advice, setup_local_ai
-from longgate.hardware import GPUInfo, HardwareProfile, detect_nvidia_gpus
+from longgate.hardware import GPUInfo, HardwareProfile, detect_hardware, detect_nvidia_gpus
 
 
 def _profile(ram_gb: float) -> HardwareProfile:
@@ -13,7 +13,7 @@ def _profile(ram_gb: float) -> HardwareProfile:
         logical_cpus=8,
         ram_gb=ram_gb,
         free_disk_gb=100.0,
-        disk_path="/tmp",
+        disk_path="/",
         gpus=[],
     )
 
@@ -46,6 +46,15 @@ def test_detect_nvidia_gpus_is_best_effort(monkeypatch):
     gpus = detect_nvidia_gpus()
 
     assert gpus == [GPUInfo(name="NVIDIA Test GPU", vram_gb=8.0, source="nvidia-smi")]
+
+
+def test_hardware_output_does_not_expose_full_local_directory(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr("longgate.hardware.detect_nvidia_gpus", lambda: [])
+
+    profile = detect_hardware(tmp_path / "private-user" / "models", ram_gb=16)
+
+    assert "private-user" not in profile.disk_path
+    assert "models" not in profile.disk_path
 
 
 def test_setup_local_ai_uses_detected_ram(monkeypatch, tmp_path: Path):
