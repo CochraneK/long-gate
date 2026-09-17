@@ -481,7 +481,7 @@ Each run also writes a `provenance.json` containing SHA-256 hashes of key artifa
 longgate verify-run longgate-runs/LG-...
 ```
 
-Without a trusted public key, this verifies **internal integrity only**: current artifacts must still match the recorded unsigned manifest, but coordinated replacement of both artifacts and the unsigned manifest is outside that guarantee. Optional Ed25519 signing is available with `longgate sign-run`; verification with an independently trusted public key adds authenticated provenance. See [Provenance](docs/provenance.md).
+Without a trusted public key, this verifies **internal integrity only**: current artifacts must still match the recorded unsigned manifest, but coordinated replacement of both artifacts and the unsigned manifest is outside that guarantee. Optional Ed25519 signing is available with `longgate sign-run`; authenticated provenance still depends on independently trusting the public key used for verification. See [Provenance](docs/provenance.md).
 
 ---
 
