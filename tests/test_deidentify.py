@@ -5,12 +5,22 @@ from longgate.deidentify import deidentify_local
 
 
 class _ProgressiveTransformer:
+    last_instance = None
+
     def __init__(self, _model_path):
         self.model_path = Path("/models/private-user/fake.gguf")
         self.calls = 0
+        self.focuses = []
+        type(self).last_instance = self
 
-    def transform(self, _text: str, max_tokens: int = 512) -> str:
+    def transform(
+        self,
+        _text: str,
+        max_tokens: int = 512,
+        risk_focus=None,
+    ) -> str:
         assert max_tokens == 512
+        self.focuses.append(list(risk_focus or []))
         self.calls += 1
         if self.calls == 1:
             return (
@@ -30,7 +40,7 @@ class _AlwaysRiskyTransformer:
     def __init__(self, _model_path):
         self.model_path = Path("/models/fake.gguf")
 
-    def transform(self, text: str, max_tokens: int = 512) -> str:
+    def transform(self, text: str, max_tokens: int = 512, risk_focus=None) -> str:
         return text
 
 
@@ -55,6 +65,12 @@ def test_deidentify_retries_until_manual_review_candidate(monkeypatch, tmp_path:
     assert result.release_allowed is False
     assert Path(result.audit_path).is_file()
     assert Path(result.report_path).is_file()
+
+    transformer = _ProgressiveTransformer.last_instance
+    assert transformer is not None
+    assert transformer.focuses[0] == []
+    assert transformer.focuses[1]
+    assert "source_number_reuse" in transformer.focuses[1]
 
     report = Path(result.report_path).read_text(encoding="utf-8")
     assert "person@example.com" not in report
