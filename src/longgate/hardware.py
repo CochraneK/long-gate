@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 import platform
 import shutil
-import subprocess  # nosec B404 - fixed local nvidia-smi probe; no user command input
+# Fixed local nvidia-smi probe; no user-supplied command input.
+import subprocess  # nosec B404
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -86,7 +87,8 @@ def detect_nvidia_gpus() -> list[GPUInfo]:
     if not binary:
         return []
     try:
-        result = subprocess.run(  # noqa: S603  # nosec B603 - fixed local query only
+        # Executable is resolved locally; argv is fixed and no shell is used.
+        result = subprocess.run(  # noqa: S603  # nosec B603
             [
                 binary,
                 "--query-gpu=name,memory.total",
@@ -132,6 +134,7 @@ def detect_hardware(
     except OSError:
         free_disk_gb = None
 
+    disk_scope = root.anchor or "."
     return HardwareProfile(
         system=platform.system() or "unknown",
         release=platform.release() or "unknown",
@@ -140,6 +143,6 @@ def detect_hardware(
         logical_cpus=os.cpu_count(),
         ram_gb=(float(ram_gb) if ram_gb is not None else detect_system_ram_gb()),
         free_disk_gb=free_disk_gb,
-        disk_path=str(root),
+        disk_path=disk_scope,
         gpus=detect_nvidia_gpus(),
     )
