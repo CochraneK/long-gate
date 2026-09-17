@@ -44,7 +44,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Copyable `longgate setup-prompt` for AI-assisted machine setup.
 - Windows PowerShell and macOS/Linux bootstrap guides/scripts.
 - Offline Trust Report v2.
-- Private-compatible security CI with Bandit, Ruff security rules, pip-audit, Trivy, SBOM, Dependabot, and release-readiness workflows.
+- Security CI with Bandit, Ruff security rules, pip-audit, Trivy, SBOM, Dependabot, release-readiness workflows, and CodeQL v4 for the public repository.
 
 ### Security
 - Direct identifiers are excluded from supported synthetic-model training.
@@ -65,7 +65,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 ### Changed
 - The installed `longgate` CLI now routes through a product-level entrypoint while preserving all existing advanced commands through the legacy dispatcher.
 - README / Chinese README / Getting Started now lead with `longgate setup`, the structured-data path, and the iterative local semantic de-identification path.
-- Retired CodeQL as a required gate after the repository became private; equivalent available local/static security checks remain blocking in CI.
+- Restored CodeQL as a public-repository security scan after the repository returned to public visibility; the existing local/static security gates remain blocking as well.
 - Retired the public Railway Safe Demo and removed deployable demo assets from the repository.
 - Local model onboarding moved from manual GGUF selection to a curated Model Vault with one-command setup.
 - Model installation preflights disk space and moves staged GGUF files into place instead of duplicating them.
