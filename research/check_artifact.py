@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 from research.run_experiments import validate_config
+from research.semantic_redteam import load_cases
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
@@ -17,6 +18,7 @@ REQUIRED = [
     ROOT / "research" / "datasets" / "README.md",
     ROOT / "research" / "results" / "README.md",
     ROOT / "research" / "configs" / "paper-smoke.json",
+    ROOT / "research" / "redteam" / "semantic_synthetic_v1.jsonl",
 ]
 
 
@@ -50,6 +52,15 @@ def check() -> list[str]:
             validate_config(payload)
         except Exception as exc:
             errors.append(f"invalid research config {path.relative_to(ROOT)}: {exc}")
+
+    corpus = ROOT / "research" / "redteam" / "semantic_synthetic_v1.jsonl"
+    if corpus.is_file():
+        try:
+            cases = load_cases(corpus)
+            if len(cases) < 5:
+                errors.append("synthetic semantic red-team corpus must contain at least 5 cases")
+        except Exception as exc:
+            errors.append(f"invalid semantic red-team corpus: {exc}")
 
     tracked_results = _tracked_result_files()
     unexpected = [path for path in tracked_results if path != "research/results/README.md"]
