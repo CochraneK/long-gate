@@ -41,6 +41,7 @@ These are executable product requirements, not documentation-only promises.
 37. Provenance verification may hash artifacts only inside the selected run directory; absolute paths, parent traversal, and symlink escapes fail closed.
 38. Scanned-PDF page dimensions are checked against the pixel limit before allocating or rendering the bitmap.
 39. Privacy-boundary Compose services drop all Linux capabilities and enable `no-new-privileges`; deployment validation parses Compose structurally and fails closed on unresolved external `extends`.
+40. Every staged egress artifact is bound to a versioned egress manifest containing its exact filename and SHA-256. Local approval requires that manifest, `allow=true`, a successful final scan, and an exact digest match; arbitrary files copied into the safe workspace cannot be approved.
 
 CI should fail when tests covering these invariants fail.
 
