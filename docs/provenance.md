@@ -1,6 +1,6 @@
 # Provenance, integrity, and signatures
 
-Long Gate records SHA-256 hashes for run artifacts so later changes can be detected.
+Long Gate records SHA-256 hashes for run artifacts so their current contents can be checked against the recorded provenance manifest.
 
 Each structured run writes:
 
@@ -25,7 +25,13 @@ The provenance manifest covers available artifacts such as:
 
 ## Integrity is the default
 
-A SHA-256 provenance manifest detects post-run modification, but by itself it does **not** authenticate who created the run.
+Without a trusted public key, `longgate verify-run` performs **integrity-only verification**:
+
+- current artifacts are hashed and compared with the hashes recorded in `provenance.json`;
+- the provenance document's own canonical integrity digest is checked;
+- the result reports `authenticated=false` and `verification_scope="integrity_only"`.
+
+This detects an artifact changing while the recorded provenance manifest remains fixed. It does **not** protect against coordinated replacement where an attacker can modify the artifacts **and** generate a new unsigned provenance manifest. It also does not authenticate who created the run.
 
 That remains the default because Long Gate should not silently create or manage long-lived signing secrets.
 
@@ -66,7 +72,9 @@ longgate verify-run longgate-runs/LG-... \
   --public-key verification-key.pem
 ```
 
-When `--public-key` is supplied, a missing, mismatched, or invalid signature makes the overall verification fail.
+When `--public-key` is supplied, a missing, mismatched, or invalid signature makes the overall verification fail. A successful check reports `authenticated=true` and `verification_scope="signed_authenticity"`.
+
+The public key must be trusted through an independent channel. Otherwise a coordinated attacker could replace both the run and an untrusted verification key.
 
 ## Key identity
 
