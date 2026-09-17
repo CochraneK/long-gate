@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "tab-v1",
+  "name": "Text Anonymization Benchmark (TAB)",
+  "role": "main-independent-semantic-evaluation",
+  "language": "en",
+  "domain": "European Court of Human Rights cases",
+  "canonical_repository": "https://github.com/NorskRegnesentral/text-anonymization-benchmark",
+  "repository_commit": "558e09e26d6b36f5f78440074e6a233946d98bd9",
+  "release_label": "v1.0",
+  "license": "MIT",
+  "redistribution_note": "The canonical repository states that TAB is released under the MIT License. Long Gate does not vendor the corpus; preparation downloads the pinned upstream files locally and preserves upstream license/provenance.",
+  "paper": {
+    "title": "The Text Anonymization Benchmark (TAB): A Dedicated Corpus and Evaluation Framework for Text Anonymization",
+    "arxiv": "2202.00443",
+    "doi": "10.1162/coli_a_00458"
+  },
+  "files": {
+    "train": "echr_train.json",
+    "dev": "echr_dev.json",
+    "test": "echr_test.json",
+    "license": "LICENSE.txt"
+  },
+  "evaluation_semantics": {
+    "sensitive_identifier_types": ["DIRECT", "QUASI"],
+    "utility_identifier_type": "NO_MASK",
+    "long_gate_metric_note": "Long Gate's initial adapter reports transparent literal-retention/removal metrics over annotated spans. These are not the official TAB evaluation scores."
+  }
+}
