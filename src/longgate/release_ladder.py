@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .aggregate_guard import validate_aggregate_payload
+from .aggregate_guard import build_release_safe_describe, validate_aggregate_payload
 from .egress import stage_json_egress
 from .executor import describe_numeric
 from .policy import PolicyEngine
@@ -112,11 +112,16 @@ def resolve_release(
             profiles,
             min_dataset_size=profile.min_dataset_size,
         )
+        release_summary = build_release_safe_describe(
+            summary,
+            min_release_n=profile.min_dataset_size,
+            count_bucket_size=profile.min_group_size,
+        )
         aggregate_payload = {
             "representation": "aggregate_describe",
             "privacy_profile": profile.name,
             "data_class_counts": _class_counts(profiles),
-            "summary": summary,
+            "summary": release_summary,
         }
         aggregate_payload = validate_aggregate_payload(
             aggregate_payload
@@ -140,7 +145,8 @@ def resolve_release(
         }
 
     aggregate_decision = PolicyEngine().decide(
-        ReleaseClass.AGGREGATE
+        ReleaseClass.AGGREGATE,
+        aggregate_validated=True,
     )
     aggregate_path, aggregate_scan = stage_json_egress(
         aggregate_payload,

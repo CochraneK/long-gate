@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -63,6 +64,16 @@ def test_release_ladder_grants_aggregate_without_weakening_row_policy(tmp_path: 
     assert resolution.granted_release_class == "aggregate"
     assert payload is not None
     assert payload.name == "safe_aggregate.json"
+    released = json.loads(payload.read_text(encoding="utf-8"))
+    assert released["summary"]["n_rows_bucket"] == "10-19"
+    assert "n_rows" not in released["summary"]
+    for stats in released["summary"]["columns"].values():
+        assert "n" not in stats
+        assert "min" not in stats
+        assert "max" not in stats
+        assert set(stats) == {"n_bucket", "mean", "std"}
+    assert released["summary"]["disclosure_controls"]["exact_counts_released"] is False
+    assert released["summary"]["disclosure_controls"]["extrema_released"] is False
     assert scan["passed"] is True
 
 
