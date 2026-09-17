@@ -86,7 +86,7 @@ def detect_nvidia_gpus() -> list[GPUInfo]:
     if not binary:
         return []
     try:
-        result = subprocess.run(  # nosec B603 - executable path + argv are fixed locally
+        result = subprocess.run(  # noqa: S603  # nosec B603 - fixed local query only
             [
                 binary,
                 "--query-gpu=name,memory.total",
