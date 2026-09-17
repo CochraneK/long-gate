@@ -132,8 +132,9 @@ table{{width:100%;border-collapse:collapse}} th,td{{text-align:left;padding:11px
 <tr><td>Raw rows</td><td class="yes">YES</td><td class="yes">OPTIONAL</td><td class="no">NO</td></tr>
 <tr><td>Real identifiers</td><td class="yes">YES</td><td class="no">EXCLUDED where supported</td><td class="no">NO</td></tr>
 <tr><td>Audited synthetic rows</td><td class="yes">YES</td><td class="yes">YES</td><td class="no">v0.2 DEFAULT BLOCK</td></tr>
-<tr><td>Exact statistical aggregates</td><td class="yes">YES</td><td class="yes">YES</td><td class="yes">PURPOSE-BOUND</td></tr>
-</tbody></table></section>
+<tr><td>Disclosure-limited aggregates</td><td class="yes">YES</td><td>N/A</td><td class="yes">APPROVAL-GATED</td></tr>
+</tbody></table>
+<p class="note">Network-eligible aggregate artifacts suppress exact extrema, bucket counts, round statistics, and enforce the active minimum-N policy before purpose/hash approval.</p></section>
 
 <section><h2>Privacy audit</h2>
 <div class="grid">

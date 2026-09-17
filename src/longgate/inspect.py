@@ -11,6 +11,7 @@ IDENTIFIER_PATTERNS = [
     r"phone|mobile|telephone|tel",
     r"email|e_mail",
     r"(^|_)(id|subject_id|participant_id|patient_id|student_id|employee_id|record_id)(_|$)|passport|nhs|ssn|national_id|identity|id_card|身份证|手机号|电话|邮箱|姓名|护照|学号|工号|病历号",
+    r"(^|_)(uid|uuid|guid|mrn|medical_record|account_number|account_no|acct_number|acct_no|member_number|member_no|case_number|case_no|imei|imsi|iccid)(_|$)",
     r"address|postcode|postal|zip|住址|地址|邮编",
 ]
 

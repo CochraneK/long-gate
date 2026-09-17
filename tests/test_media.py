@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+import types
 import wave
 from pathlib import Path
 
@@ -82,6 +84,44 @@ def test_pdf_ocr_is_local_and_bounded(monkeypatch, tmp_path: Path):
     assert "+44 7700 900123" not in str(result.to_dict())
 
 
+def test_pdf_page_pixel_limit_is_checked_before_render(monkeypatch, tmp_path: Path):
+    path = tmp_path / "huge.pdf"
+    path.write_bytes(b"not-used")
+    render_called = False
+
+    class FakePage:
+        def get_size(self):
+            return (100_000.0, 100_000.0)
+
+        def render(self, *, scale):
+            nonlocal render_called
+            render_called = True
+            raise AssertionError(f"render should not run at scale={scale}")
+
+    class FakeDocument:
+        def __init__(self, _path):
+            self.page = FakePage()
+
+        def __len__(self):
+            return 1
+
+        def __getitem__(self, _index):
+            return self.page
+
+        def close(self):
+            return None
+
+    monkeypatch.setitem(
+        sys.modules,
+        "pypdfium2",
+        types.SimpleNamespace(PdfDocument=FakeDocument),
+    )
+
+    with pytest.raises(ValueError, match="pixel safety limit"):
+        media._render_pdf_pages(path, 1)
+    assert render_called is False
+
+
 def test_pdf_ocr_rejects_unbounded_zero_pages(tmp_path: Path):
     path = tmp_path / "scan.pdf"
     path.write_bytes(b"not-used")
@@ -103,7 +143,6 @@ def test_wav_metadata_path_never_marks_content_safe(tmp_path: Path):
     assert result.duration_seconds == pytest.approx(0.1)
     assert result.content_inspected is False
     assert result.release_allowed is False
-
 
 
 def test_giant_image_is_rejected_before_privacy_processing(

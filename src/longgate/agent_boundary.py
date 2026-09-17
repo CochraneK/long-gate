@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,9 +9,9 @@ from .approval import (
     ApprovalError,
     append_access_event,
     list_approved_files,
-    matching_approval,
+    matching_approval_digest,
 )
-from .utils import sha256_file, utc_now
+from .utils import utc_now
 
 
 class WorkspaceViolation(PermissionError):
@@ -52,10 +53,9 @@ class SafeWorkspace:
         return path.read_text(encoding="utf-8")
 
 
-
 @dataclass(frozen=True)
 class ApprovedWorkspace:
-    """Read capability limited by path, content hash, and declared purpose."""
+    """Read capability limited by path, exact content hash, and declared purpose."""
 
     root: Path
     approval_ledger: Path
@@ -97,9 +97,14 @@ class ApprovedWorkspace:
         workspace = SafeWorkspace(self.root)
         try:
             resolved = workspace._resolve(relative)
-            record = matching_approval(
-                self.root,
-                relative,
+            if not resolved.is_file():
+                raise FileNotFoundError(relative)
+            relative_name = str(resolved.relative_to(self.root))
+            payload = resolved.read_bytes()
+            digest = hashlib.sha256(payload).hexdigest()
+            record = matching_approval_digest(
+                relative_name,
+                digest,
                 self.approval_ledger,
                 purpose,
             )
@@ -118,11 +123,6 @@ class ApprovedWorkspace:
             raise
 
         if record is None:
-            digest = (
-                sha256_file(resolved)
-                if resolved.is_file()
-                else None
-            )
             append_access_event(
                 self.access_log,
                 AccessEvent(
@@ -133,7 +133,7 @@ class ApprovedWorkspace:
                     allowed=False,
                     reason=(
                         "No hash-bound approval exists for "
-                        "this file and purpose."
+                        "these exact bytes and purpose."
                     ),
                 ),
             )
@@ -142,7 +142,22 @@ class ApprovedWorkspace:
                 "or its content changed after approval."
             )
 
-        text = workspace.read_text(relative)
+        try:
+            text = payload.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            append_access_event(
+                self.access_log,
+                AccessEvent(
+                    time=utc_now(),
+                    relative_path=str(relative),
+                    purpose=purpose,
+                    sha256=digest,
+                    allowed=False,
+                    reason="Approved artifact is not valid UTF-8 text.",
+                ),
+            )
+            raise ValueError("Approved artifact is not valid UTF-8 text.") from exc
+
         append_access_event(
             self.access_log,
             AccessEvent(
