@@ -1,4 +1,4 @@
-.PHONY: install dev test lint format security demo benchmark research-smoke research-summary check
+.PHONY: install dev test lint format security demo benchmark research-check research-smoke research-summary check
 
 install:
 	python -m pip install -e .
@@ -29,11 +29,14 @@ benchmark:
 	python benchmarks/generate_adversarial.py
 	python benchmarks/run_privacy_benchmark.py
 
-research-smoke:
+research-check:
+	python -m research.check_artifact
+
+research-smoke: research-check
 	python -m research.run_experiments --config research/configs/paper-smoke.json --out research/results/paper-smoke
 	python -m research.aggregate_results research/results/paper-smoke/runs.jsonl --out research/results/paper-smoke
 
 research-summary:
 	python -m research.aggregate_results research/results/paper-smoke/runs.jsonl --out research/results/paper-smoke
 
-check: test lint security
+check: test lint security research-check
