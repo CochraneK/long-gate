@@ -24,6 +24,25 @@ class _Span:
     value: str
 
 
+ASSISTED_ENTITY_TYPES = {
+    "PERSON",
+    "ALIAS",
+    "ORGANIZATION",
+    "LOCATION",
+    "PROJECT",
+    "DATE",
+    "ROLE",
+    "EVENT",
+    "QUASI_IDENTIFIER",
+}
+
+
+@dataclass(frozen=True)
+class AssistedEntityLiteral:
+    entity: str
+    literal: str
+
+
 @dataclass(frozen=True)
 class MappedIdentifierSpan:
     start: int
@@ -144,13 +163,15 @@ class DirectIdentifierMapper:
         self._key_secret = key_secret
         self._counters: dict[str, int] = {}
         self._labels: dict[tuple[str, str], str] = {}
+        self._assisted_literals: dict[str, str] = {}
         self.entity_counts: dict[str, int] = {}
         if state is not None:
             self._load_state(state)
 
     def begin_document(self) -> None:
-        """Reset per-document occurrence counts while retaining stable labels."""
+        """Reset per-document counts/candidates while retaining stable labels."""
         self.entity_counts = {}
+        self._assisted_literals = {}
 
     def _state_key(self, span: _Span) -> tuple[str, str]:
         entity, value = _mapping_key(span)
@@ -292,6 +313,48 @@ class DirectIdentifierMapper:
         ).hexdigest()
         return {**payload, "state_mac": state_mac}
 
+    def register_assisted_literals(
+        self,
+        candidates: list[AssistedEntityLiteral],
+    ) -> None:
+        """Register exact source literals for controlled non-generative replacement."""
+        priority = {
+            "PERSON": 0,
+            "ALIAS": 1,
+            "ORGANIZATION": 2,
+            "LOCATION": 3,
+            "PROJECT": 4,
+            "DATE": 5,
+            "ROLE": 6,
+            "EVENT": 7,
+            "QUASI_IDENTIFIER": 8,
+        }
+        for candidate in candidates:
+            if candidate.entity not in ASSISTED_ENTITY_TYPES:
+                raise ValueError(f"Unsupported assisted entity type: {candidate.entity}")
+            existing = self._assisted_literals.get(candidate.literal)
+            if existing is None or priority[candidate.entity] < priority[existing]:
+                self._assisted_literals[candidate.literal] = candidate.entity
+
+    def _assisted_spans(self, text: str) -> list[_Span]:
+        spans: list[_Span] = []
+        for literal, entity in self._assisted_literals.items():
+            start = 0
+            while True:
+                index = text.find(literal, start)
+                if index < 0:
+                    break
+                spans.append(
+                    _Span(
+                        start=index,
+                        end=index + len(literal),
+                        entity=entity,
+                        value=literal,
+                    )
+                )
+                start = index + max(1, len(literal))
+        return spans
+
     @property
     def replacements(self) -> int:
         return sum(self.entity_counts.values())
@@ -299,7 +362,39 @@ class DirectIdentifierMapper:
     def plan(self, text: str) -> list[MappedIdentifierSpan]:
         """Return mapped direct-identifier spans and update document-level counts."""
         mapped: list[MappedIdentifierSpan] = []
-        for span in _identifier_spans(text):
+        spans = [*_identifier_spans(text), *self._assisted_spans(text)]
+        priority = {
+            "NATIONAL_ID": 0,
+            "EMAIL": 1,
+            "PHONE": 2,
+            "IP_ADDRESS": 3,
+            "POSTCODE": 4,
+            "PERSON": 10,
+            "ALIAS": 11,
+            "ORGANIZATION": 12,
+            "LOCATION": 13,
+            "PROJECT": 14,
+            "DATE": 15,
+            "ROLE": 16,
+            "EVENT": 17,
+            "QUASI_IDENTIFIER": 18,
+        }
+        spans.sort(
+            key=lambda item: (
+                item.start,
+                -(item.end - item.start),
+                priority.get(item.entity, 99),
+            )
+        )
+        accepted: list[_Span] = []
+        cursor = -1
+        for span in spans:
+            if span.start < cursor:
+                continue
+            accepted.append(span)
+            cursor = span.end
+
+        for span in accepted:
             key = self._state_key(span)
             label = self._labels.get(key)
             if label is None:
