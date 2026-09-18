@@ -145,6 +145,8 @@ def deidentify_batch(
     *,
     recursive: bool = False,
     resume: bool = False,
+    entity_detector: object | None = None,
+    entity_max_tokens: int = 768,
 ) -> BatchDeidentifyResult:
     """De-identify a directory with a shared HMAC-backed entity map and checkpoints."""
     source_root = Path(input_dir).expanduser().resolve()
@@ -160,6 +162,16 @@ def deidentify_batch(
 
     state_path = output_root / _BATCH_STATE_NAME
     key_path = output_root / _BATCH_KEY_NAME
+    detector_model = getattr(entity_detector, "model_path", None)
+    entity_assist_config = (
+        {"mode": "none"}
+        if entity_detector is None
+        else {
+            "mode": "local-llm-structured-detection",
+            "model_file": Path(str(detector_model)).name,
+            "max_tokens": entity_max_tokens,
+        }
+    )
 
     if resume:
         if not state_path.is_file() or not key_path.is_file():
@@ -169,6 +181,10 @@ def deidentify_batch(
         expected_root = _token(secret, "input-root", str(source_root))
         if not hmac.compare_digest(str(state["input_root_token"]), expected_root):
             raise ValueError("Batch checkpoint belongs to a different input directory.")
+        if state.get("entity_assist") != entity_assist_config:
+            raise ValueError(
+                "Batch entity-assist configuration differs from the authenticated checkpoint."
+            )
         mapper = DirectIdentifierMapper(
             key_secret=secret,
             state=state["mapper_state"],
@@ -188,6 +204,7 @@ def deidentify_batch(
             "format": _BATCH_FORMAT,
             "input_root_token": _token(secret, "input-root", str(source_root)),
             "mapper_state": mapper.export_state(),
+            "entity_assist": entity_assist_config,
             "completed": {},
         }
         state = _seal_state(secret, state)
@@ -227,7 +244,13 @@ def deidentify_batch(
                 continue
 
         destination.parent.mkdir(parents=True, exist_ok=True)
-        result = deidentify_file_copy(source, destination, mapper=mapper)
+        result = deidentify_file_copy(
+            source,
+            destination,
+            mapper=mapper,
+            entity_detector=entity_detector,
+            entity_max_tokens=entity_max_tokens,
+        )
         record: dict[str, object] = {
             "input_sha256": input_sha256,
             "output_sha256": result.output_sha256,
