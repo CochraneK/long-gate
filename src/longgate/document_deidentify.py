@@ -773,10 +773,14 @@ def deidentify_docx_copy(
                     media_entries += 1
                 if name.startswith("word/embeddings/") and not name.endswith("/"):
                     embedded_entries += 1
+                if name.startswith("word/activeX/") and not name.endswith("/"):
+                    other_risky_binary_entries += 1
                 if (
-                    name.startswith("word/activeX/")
-                    or name.startswith("customXml/")
-                ) and not name.endswith("/"):
+                    name.startswith("customXml/")
+                    and not name.endswith("/")
+                    and not name.endswith(".xml")
+                    and not name.endswith(".rels")
+                ):
                     other_risky_binary_entries += 1
 
                 output_archive.writestr(info, rewritten)
@@ -819,7 +823,8 @@ def deidentify_docx_copy(
             "DOCX is rewritten at OOXML text-node level. Paragraph/run/table/header/footer/"
             "comment/footnote/endnote package structure is retained, including identifiers "
             "split across runs. Hyperlink relationship targets are not rewritten; images, "
-            "embedded objects, ActiveX/custom XML are treated as unresolved local-only risk."
+            "embedded objects, ActiveX, and non-XML custom parts are treated as unresolved "
+            "local-only risk; parseable custom XML is residual-scanned instead."
         ),
         force_local_only=force_local_only,
     )
