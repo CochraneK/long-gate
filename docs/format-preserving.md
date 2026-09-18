@@ -93,3 +93,49 @@ DOCX is treated as an OOXML ZIP package rather than flattened through `paragraph
 - DOCX packages with more than 10,000 entries or more than 256 MiB total uncompressed size fail closed before processing.
 
 Run formatting is preserved on unaffected text nodes; a replacement label inherits the starting run's position/style while covered identifier characters in subsequent runs are removed.
+## Cross-file batch consistency
+
+For related files that must reuse the same direct-identifier placeholders:
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive
+```
+
+Batch mode uses one shared `DirectIdentifierMapper` across the batch. The same direct identifier therefore keeps the same label across TXT/Markdown, HTML, XLSX, and DOCX files.
+
+Persistent state is deliberately privacy-minimized:
+
+```text
+.longgate-batch.key
+  32-byte local secret
+
+.longgate-batch-state.json
+  authenticated checkpoint
+  HMAC(relative path) → input/output hashes + status
+  HMAC(entity type + normalized identifier) → placeholder
+```
+
+The checkpoint does **not** store raw direct identifiers or source filenames. The mapping state and the entire checkpoint are authenticated with the local secret, so state/key mismatch or checkpoint tampering fails closed.
+
+Treat both state files as private local material. Do not commit, upload, email, or place them in a network-facing workspace.
+
+### Resume semantics
+
+```bash
+longgate deidentify-batch private/ \
+  --out-dir deidentified/ \
+  --recursive \
+  --resume
+```
+
+A previous file is skipped only when all of these match:
+
+- authenticated checkpoint;
+- same input root;
+- current input SHA-256;
+- current output file exists;
+- current output SHA-256.
+
+If a file fails, the batch stops. Only files successfully completed before the failure remain checkpointed. After fixing the failing input, `--resume` skips verified completed outputs and retries the rest.
+
+Fresh batch output must be a separate empty directory outside the source tree. Symlink files are not processed.
