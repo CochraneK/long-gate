@@ -218,6 +218,13 @@ longgate deidentify-batch private/ --out-dir deidentified/ --recursive --resume
 ```
 
 The output directory contains a private local `.longgate-batch.key` and authenticated `.longgate-batch-state.json`. They are required to resume consistent mapping and must not be uploaded or exposed to a networked agent. A resume skip requires both input and output SHA-256 to match the authenticated checkpoint.
+To detect identity-bearing names, organizations, locations, dates, projects, roles, events, aliases, and distinctive quasi-identifiers without free-form rewriting:
+
+```bash
+longgate deidentify interview.md --entity-assist local-llm --model auto
+```
+
+The local model returns structured exact-source candidates only. Invalid or hallucinated candidates and overlapping semantic/direct spans fail closed to `LOCAL_ONLY`; candidate text itself is not copied into the Trust Report.
 For stronger semantic abstraction, use the separate command:
 
 ```bash
