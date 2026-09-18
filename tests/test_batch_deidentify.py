@@ -141,3 +141,32 @@ def test_batch_resume_requires_complete_checkpoint_pair(tmp_path: Path):
 
     with pytest.raises(ValueError, match="checkpoint/key pair"):
         deidentify_batch(source, output, resume=True)
+
+
+def test_batch_resume_rejects_tampered_checkpoint(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    source.mkdir()
+    (source / "a.txt").write_text("person@example.com", encoding="utf-8")
+    deidentify_batch(source, output)
+
+    state_path = output / ".longgate-batch-state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    record = next(iter(state["completed"].values()))
+    record["output_sha256"] = "0" * 64
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="authentication failed"):
+        deidentify_batch(source, output, resume=True)
+
+
+def test_batch_resume_rejects_wrong_local_key(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    source.mkdir()
+    (source / "a.txt").write_text("person@example.com", encoding="utf-8")
+    deidentify_batch(source, output)
+
+    (output / ".longgate-batch.key").write_bytes(b"x" * 32)
+    with pytest.raises(ValueError, match="authentication failed"):
+        deidentify_batch(source, output, resume=True)
