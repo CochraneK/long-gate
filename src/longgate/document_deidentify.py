@@ -319,6 +319,7 @@ def deidentify_xlsx_copy(
     processed_properties = 0
     formulas_unmodified = 0
     sheet_titles_unmodified = 0
+    defined_names_unmodified = 0
     remaining_total = 0
     remaining_by_entity: dict[str, int] = {}
 
@@ -363,8 +364,22 @@ def deidentify_xlsx_copy(
     ):
         value = getattr(workbook.properties, name, None)
         if isinstance(value, str) and value:
-            setattr(workbook.properties, name, mapper.replace(value))
+            transformed = mapper.replace(value)
+            setattr(workbook.properties, name, transformed)
             processed_properties += 1
+            remaining_total, remaining_by_entity = _add_findings(
+                transformed, remaining_total, remaining_by_entity
+            )
+
+    for defined_name in workbook.defined_names.values():
+        value = getattr(defined_name, "attr_text", None)
+        if isinstance(value, str) and value:
+            findings = scan_text(value)
+            if findings.total_hits:
+                defined_names_unmodified += 1
+                remaining_total += findings.total_hits
+                for entity, count in findings.by_entity.items():
+                    remaining_by_entity[entity] = remaining_by_entity.get(entity, 0) + count
 
     for sheet in workbook.worksheets:
         for row in sheet.iter_rows():
@@ -403,11 +418,12 @@ def deidentify_xlsx_copy(
         unprocessed_regions={
             "formula_cells": formulas_unmodified,
             "sheet_titles_with_direct_pii": sheet_titles_unmodified,
+            "defined_names_with_direct_pii": defined_names_unmodified,
         },
         note=(
             "All worksheets, including hidden sheets, are traversed. String cells, comments, "
             "hyperlink targets, and selected workbook properties are processed. Formulas and "
-            "sheet titles are preserved exactly and reported for manual review."
+            "sheet titles/defined names are preserved and reported for manual review."
         ),
     )
 
