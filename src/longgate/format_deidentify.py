@@ -362,39 +362,46 @@ class DirectIdentifierMapper:
     def plan(self, text: str) -> list[MappedIdentifierSpan]:
         """Return mapped direct-identifier spans and update document-level counts."""
         mapped: list[MappedIdentifierSpan] = []
-        spans = [*_identifier_spans(text), *self._assisted_spans(text)]
-        priority = {
-            "NATIONAL_ID": 0,
-            "EMAIL": 1,
-            "PHONE": 2,
-            "IP_ADDRESS": 3,
-            "POSTCODE": 4,
-            "PERSON": 10,
-            "ALIAS": 11,
-            "ORGANIZATION": 12,
-            "LOCATION": 13,
-            "PROJECT": 14,
-            "DATE": 15,
-            "ROLE": 16,
-            "EVENT": 17,
-            "QUASI_IDENTIFIER": 18,
+        direct_spans = _identifier_spans(text)
+        assisted_spans = [
+            span
+            for span in self._assisted_spans(text)
+            if not any(
+                span.start < direct.end and direct.start < span.end
+                for direct in direct_spans
+            )
+        ]
+        assisted_priority = {
+            "PERSON": 0,
+            "ALIAS": 1,
+            "ORGANIZATION": 2,
+            "LOCATION": 3,
+            "PROJECT": 4,
+            "DATE": 5,
+            "ROLE": 6,
+            "EVENT": 7,
+            "QUASI_IDENTIFIER": 8,
         }
-        spans.sort(
+        assisted_spans.sort(
             key=lambda item: (
                 item.start,
                 -(item.end - item.start),
-                priority.get(item.entity, 99),
+                assisted_priority.get(item.entity, 99),
             )
         )
-        accepted: list[_Span] = []
+        accepted_assisted: list[_Span] = []
         cursor = -1
-        for span in spans:
+        for span in assisted_spans:
             if span.start < cursor:
                 continue
-            accepted.append(span)
+            accepted_assisted.append(span)
             cursor = span.end
 
-        for span in accepted:
+        spans = sorted(
+            [*direct_spans, *accepted_assisted],
+            key=lambda item: item.start,
+        )
+        for span in spans:
             key = self._state_key(span)
             label = self._labels.get(key)
             if label is None:
