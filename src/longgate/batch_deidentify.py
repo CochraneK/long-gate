@@ -47,6 +47,27 @@ def _token(secret: bytes, namespace: str, value: str) -> str:
     return hmac.new(secret, payload, hashlib.sha256).hexdigest()
 
 
+def _checkpoint_mac(secret: bytes, state: dict[str, object]) -> str:
+    payload = {key: value for key, value in state.items() if key != "checkpoint_mac"}
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("utf-8")
+    return hmac.new(
+        secret,
+        b"long-gate-batch-checkpoint-v1\0" + encoded,
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _seal_state(secret: bytes, state: dict[str, object]) -> dict[str, object]:
+    sealed = dict(state)
+    sealed["checkpoint_mac"] = _checkpoint_mac(secret, sealed)
+    return sealed
+
+
 def _read_secret(path: Path) -> bytes:
     secret = path.read_bytes()
     if len(secret) != _BATCH_KEY_BYTES:
@@ -54,13 +75,19 @@ def _read_secret(path: Path) -> bytes:
     return secret
 
 
-def _load_state(path: Path) -> dict[str, object]:
+def _load_state(path: Path, secret: bytes) -> dict[str, object]:
     try:
         state = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError("Batch checkpoint is unreadable or invalid.") from exc
     if not isinstance(state, dict) or state.get("format") != _BATCH_FORMAT:
         raise ValueError("Unsupported or invalid batch checkpoint format.")
+    checkpoint_mac = state.get("checkpoint_mac")
+    if not isinstance(checkpoint_mac, str) or not hmac.compare_digest(
+        checkpoint_mac,
+        _checkpoint_mac(secret, state),
+    ):
+        raise ValueError("Batch checkpoint authentication failed.")
     if not isinstance(state.get("mapper_state"), dict):
         raise ValueError("Batch checkpoint is missing entity-map state.")
     if not isinstance(state.get("completed"), dict):
@@ -125,7 +152,7 @@ def deidentify_batch(
         if not state_path.is_file() or not key_path.is_file():
             raise ValueError("No complete batch checkpoint/key pair exists to resume.")
         secret = _read_secret(key_path)
-        state = _load_state(state_path)
+        state = _load_state(state_path, secret)
         expected_root = _token(secret, "input-root", str(source_root))
         if not hmac.compare_digest(str(state["input_root_token"]), expected_root):
             raise ValueError("Batch checkpoint belongs to a different input directory.")
@@ -150,6 +177,7 @@ def deidentify_batch(
             "mapper_state": mapper.export_state(),
             "completed": {},
         }
+        state = _seal_state(secret, state)
         write_json(state_path, state)
 
     files = _collect_files(source_root, recursive=recursive)
@@ -199,6 +227,8 @@ def deidentify_batch(
         completed[path_token] = record
         state["mapper_state"] = mapper.export_state()
         state["completed"] = completed
+        state = _seal_state(secret, state)
+        completed = state["completed"]
         write_json(state_path, state)
 
         processed_files += 1
