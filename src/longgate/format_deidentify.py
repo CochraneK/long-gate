@@ -67,6 +67,7 @@ class FormatPreservingResult:
     automatic_release_allowed: bool
     release_allowed: bool
     next_actions: list[str]
+    entity_assist: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -219,7 +220,14 @@ class DirectIdentifierMapper:
         ):
             raise ValueError("Invalid persistent entity-map state.")
 
-        allowed = {"EMAIL", "PHONE", "NATIONAL_ID", "POSTCODE", "IP_ADDRESS"}
+        allowed = {
+            "EMAIL",
+            "PHONE",
+            "NATIONAL_ID",
+            "POSTCODE",
+            "IP_ADDRESS",
+            *ASSISTED_ENTITY_TYPES,
+        }
         loaded_counters: dict[str, int] = {}
         for entity, value in counters.items():
             if (
@@ -445,11 +453,24 @@ def _render_report(
     replacements: int,
     entity_counts: dict[str, int],
     remaining_direct_pii_hits: int,
+    entity_assist: dict[str, object] | None = None,
 ) -> str:
     entity_rows = "".join(
         f"<tr><td>{html.escape(entity)}</td><td>{count}</td></tr>"
         for entity, count in sorted(entity_counts.items())
     ) or "<tr><td>none</td><td>0</td></tr>"
+    assist_html = ""
+    if entity_assist:
+        accepted = int(entity_assist.get("accepted_candidates", 0))
+        rejected = int(entity_assist.get("rejected_candidates", 0))
+        model_file = html.escape(str(entity_assist.get("model_file", "local model")))
+        assist_html = (
+            "<div class=\"card\"><h2>本地语义实体辅助</h2>"
+            f"<p>模型：<code>{model_file}</code></p>"
+            f"<p>已接受候选：{accepted}；被拒绝候选：{rejected}</p>"
+            "<p>模型只提名原文 literal；Long Gate 不允许模型自由重写正文。"
+            "报告不记录候选原文。</p></div>"
+        )
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -482,6 +503,7 @@ table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #d8dee8;padd
 <table><thead><tr><th>类型</th><th>出现次数</th></tr></thead><tbody>{entity_rows}</tbody></table>
 <p>输出中仍被机械扫描器命中的直接 PII：{remaining_direct_pii_hits}</p>
 </div>
+{assist_html}
 <div class="card">
 <h2>仍需人工复核</h2>
 <ul>
@@ -499,6 +521,7 @@ def deidentify_text_copy(
     output_path: str | Path | None = None,
     *,
     mapper: DirectIdentifierMapper | None = None,
+    entity_assist: dict[str, object] | None = None,
 ) -> FormatPreservingResult:
     """Create a structure-preserving TXT/Markdown de-identified copy."""
     source = Path(input_path).expanduser().resolve()
@@ -544,7 +567,12 @@ def deidentify_text_copy(
     output_sha256 = sha256_file(destination)
     audit_path = destination.with_name(destination.name + ".audit.json")
     report_path = destination.with_name(destination.name + ".trust-report.html")
-    status = "LOCAL_ONLY" if remaining.total_hits else "MANUAL_REVIEW_REQUIRED"
+    assist_rejected = int((entity_assist or {}).get("rejected_candidates", 0))
+    status = (
+        "LOCAL_ONLY"
+        if remaining.total_hits or assist_rejected
+        else "MANUAL_REVIEW_REQUIRED"
+    )
     next_actions = [
         "人工复核姓名、组织、地点、别名、罕见事件与组合身份线索。",
         "若输出机械扫描仍有直接 PII 命中，保持 LOCAL_ONLY 并修正后重跑。",
@@ -566,6 +594,7 @@ def deidentify_text_copy(
         "automatic_release_allowed": False,
         "release_allowed": False,
         "next_actions": next_actions,
+        "entity_assist": entity_assist,
     }
     write_json(audit_path, payload)
     atomic_write_text(
@@ -578,6 +607,7 @@ def deidentify_text_copy(
             replacements=replacements,
             entity_counts=entity_counts,
             remaining_direct_pii_hits=remaining.total_hits,
+            entity_assist=entity_assist,
         ),
     )
 
@@ -596,4 +626,5 @@ def deidentify_text_copy(
         automatic_release_allowed=False,
         release_allowed=False,
         next_actions=next_actions,
+        entity_assist=entity_assist,
     )
