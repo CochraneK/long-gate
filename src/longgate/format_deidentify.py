@@ -118,29 +118,43 @@ def _mapping_key(span: _Span) -> tuple[str, str]:
     return span.entity, value
 
 
+class DirectIdentifierMapper:
+    """Stateful direct-identifier map for one document or explicit batch."""
+
+    def __init__(self) -> None:
+        self._counters: dict[str, int] = {}
+        self._labels: dict[tuple[str, str], str] = {}
+        self.entity_counts: dict[str, int] = {}
+
+    @property
+    def replacements(self) -> int:
+        return sum(self.entity_counts.values())
+
+    def replace(self, text: str) -> str:
+        spans = _identifier_spans(text)
+        pieces: list[str] = []
+        cursor = 0
+
+        for span in spans:
+            key = _mapping_key(span)
+            label = self._labels.get(key)
+            if label is None:
+                self._counters[span.entity] = self._counters.get(span.entity, 0) + 1
+                label = f"[{span.entity}_{self._counters[span.entity]:03d}]"
+                self._labels[key] = label
+            pieces.append(text[cursor:span.start])
+            pieces.append(label)
+            cursor = span.end
+            self.entity_counts[span.entity] = self.entity_counts.get(span.entity, 0) + 1
+
+        pieces.append(text[cursor:])
+        return "".join(pieces)
+
+
 def replace_direct_identifiers(text: str) -> tuple[str, dict[str, int]]:
-    """Replace direct identifier literals while preserving all other characters."""
-    spans = _identifier_spans(text)
-    counters: dict[str, int] = {}
-    labels: dict[tuple[str, str], str] = {}
-    entity_counts: dict[str, int] = {}
-    pieces: list[str] = []
-    cursor = 0
-
-    for span in spans:
-        key = _mapping_key(span)
-        label = labels.get(key)
-        if label is None:
-            counters[span.entity] = counters.get(span.entity, 0) + 1
-            label = f"[{span.entity}_{counters[span.entity]:03d}]"
-            labels[key] = label
-        pieces.append(text[cursor:span.start])
-        pieces.append(label)
-        cursor = span.end
-        entity_counts[span.entity] = entity_counts.get(span.entity, 0) + 1
-
-    pieces.append(text[cursor:])
-    return "".join(pieces), entity_counts
+    """Replace direct identifiers with a fresh per-document entity map."""
+    mapper = DirectIdentifierMapper()
+    return mapper.replace(text), dict(mapper.entity_counts)
 
 
 def _render_report(
@@ -228,8 +242,10 @@ def deidentify_text_copy(
     source_bytes = source.read_bytes()
     input_sha256 = hashlib.sha256(source_bytes).hexdigest()
     text = source_bytes.decode("utf-8")
-    transformed, entity_counts = replace_direct_identifiers(text)
-    replacements = sum(entity_counts.values())
+    mapper = DirectIdentifierMapper()
+    transformed = mapper.replace(text)
+    entity_counts = dict(mapper.entity_counts)
+    replacements = mapper.replacements
     remaining = scan_text(transformed)
 
     if sha256_file(source) != input_sha256:
@@ -246,6 +262,7 @@ def deidentify_text_copy(
     output_sha256 = sha256_file(destination)
     audit_path = destination.with_name(destination.name + ".audit.json")
     report_path = destination.with_name(destination.name + ".trust-report.html")
+    status = "LOCAL_ONLY" if remaining.total_hits else "MANUAL_REVIEW_REQUIRED"
     next_actions = [
         "人工复核姓名、组织、地点、别名、罕见事件与组合身份线索。",
         "若输出机械扫描仍有直接 PII 命中，保持 LOCAL_ONLY 并修正后重跑。",
@@ -253,7 +270,7 @@ def deidentify_text_copy(
     ]
     payload = {
         "format": "long-gate-format-preserving-deidentify-v1",
-        "status": "MANUAL_REVIEW_REQUIRED",
+        "status": status,
         "input_format": source.suffix.lower().lstrip("."),
         "input_sha256": input_sha256,
         "output_sha256": output_sha256,
@@ -282,7 +299,7 @@ def deidentify_text_copy(
     )
 
     return FormatPreservingResult(
-        status="MANUAL_REVIEW_REQUIRED",
+        status=status,
         input_path=str(source),
         output_path=str(destination),
         audit_path=str(audit_path),
