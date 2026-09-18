@@ -26,14 +26,18 @@ def _xml_text(data: bytes, *, word_text_only: bool) -> str:
     # Hardened parser: no DTD/entities/network, bounded DOCX package input.
     root = etree.fromstring(data, parser=parser)  # noqa: S320
     if word_text_only:
-        return "\n".join(
-            node.text or ""
-            for node in root.xpath(
-                ".//w:t | .//w:delText",
-                namespaces={"w": _WORD_NS},
+        paragraphs: list[str] = []
+        for paragraph in root.xpath(".//w:p", namespaces={"w": _WORD_NS}):
+            text = "".join(
+                node.text or ""
+                for node in paragraph.xpath(
+                    ".//w:t | .//w:delText",
+                    namespaces={"w": _WORD_NS},
+                )
             )
-            if node.text
-        )
+            if text:
+                paragraphs.append(text)
+        return "\n".join(paragraphs)
     return "\n".join(value for value in root.itertext() if value)
 
 
