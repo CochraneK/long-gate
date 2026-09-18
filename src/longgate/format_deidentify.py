@@ -467,11 +467,13 @@ def _render_report(
     if entity_assist:
         accepted = int(entity_assist.get("accepted_candidates", 0))
         rejected = int(entity_assist.get("rejected_candidates", 0))
+        conflicts = int(entity_assist.get("overlap_conflicts", 0))
         model_file = html.escape(str(entity_assist.get("model_file", "local model")))
         assist_html = (
             "<div class=\"card\"><h2>本地语义实体辅助</h2>"
             f"<p>模型：<code>{model_file}</code></p>"
-            f"<p>已接受候选：{accepted}；被拒绝候选：{rejected}</p>"
+            f"<p>已接受候选：{accepted}；被拒绝候选：{rejected}；"
+            f"span 冲突：{conflicts}</p>"
             "<p>模型只提名原文 literal；Long Gate 不允许模型自由重写正文。"
             "报告不记录候选原文。</p></div>"
         )
