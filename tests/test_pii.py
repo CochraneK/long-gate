@@ -42,3 +42,8 @@ def test_structured_scan_still_detects_string_pii():
 def test_scan_text_detects_sentence_final_ip_address():
     result = scan_text("Observed host 192.0.2.1.")
     assert result.by_entity["ip_address"] == 1
+
+
+def test_scan_text_does_not_treat_iso_date_as_phone():
+    result = scan_text("Created on 2026-09-18.")
+    assert result.by_entity.get("phone", 0) == 0
