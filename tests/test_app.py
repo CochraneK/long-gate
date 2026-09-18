@@ -16,6 +16,7 @@ def test_top_level_help_surfaces_product_commands(monkeypatch, capsys):
     assert "longgate setup" in output
     assert "longgate hardware" in output
     assert "longgate deidentify" in output
+    assert "longgate deidentify-batch" in output
     assert "longgate semantic-summarize" in output
     assert "longgate run" in output
 
@@ -179,3 +180,55 @@ def test_doctor_deep_reports_failed_local_check_without_crashing(monkeypatch, ca
     payload = json.loads(capsys.readouterr().out)
     assert payload[-1]["name"] == "local_llm_deep"
     assert payload[-1]["available"] is False
+
+
+def test_deidentify_batch_dispatches_resume_flags(monkeypatch, capsys, tmp_path: Path):
+    from longgate.batch_deidentify import BatchDeidentifyResult
+
+    captured = {}
+
+    def fake_batch(input_dir, output_dir, *, recursive, resume):
+        captured.update(
+            {
+                "input_dir": input_dir,
+                "output_dir": output_dir,
+                "recursive": recursive,
+                "resume": resume,
+            }
+        )
+        return BatchDeidentifyResult(
+            status="COMPLETED_LOCAL_REVIEW_REQUIRED",
+            output_dir=str(output_dir),
+            state_path=str(Path(output_dir) / ".longgate-batch-state.json"),
+            total_files=2,
+            processed_files=1,
+            resumed_files=1,
+            manual_review_files=2,
+            local_only_files=0,
+            release_allowed=False,
+        )
+
+    monkeypatch.setattr(app, "deidentify_batch", fake_batch)
+    output = tmp_path / "output"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "longgate",
+            "deidentify-batch",
+            "private-input",
+            "--out-dir",
+            str(output),
+            "--recursive",
+            "--resume",
+        ],
+    )
+
+    app.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert captured["input_dir"] == "private-input"
+    assert captured["output_dir"] == str(output)
+    assert captured["recursive"] is True
+    assert captured["resume"] is True
+    assert payload["release_allowed"] is False
