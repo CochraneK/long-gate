@@ -170,3 +170,27 @@ def test_batch_resume_rejects_wrong_local_key(tmp_path: Path):
     (output / ".longgate-batch.key").write_bytes(b"x" * 32)
     with pytest.raises(ValueError, match="authentication failed"):
         deidentify_batch(source, output, resume=True)
+
+
+def test_batch_empty_input_creates_no_state(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    source.mkdir()
+
+    with pytest.raises(ValueError, match="No supported files"):
+        deidentify_batch(source, output)
+
+    assert not output.exists()
+
+
+def test_batch_rejects_case_colliding_paths(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    source.mkdir()
+    (source / "A.txt").write_text("one@example.com", encoding="utf-8")
+    (source / "a.txt").write_text("two@example.com", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="case-colliding"):
+        deidentify_batch(source, output)
+
+    assert not output.exists()
