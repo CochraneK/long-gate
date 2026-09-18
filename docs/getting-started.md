@@ -3,7 +3,7 @@
 Long Gate has two first-class paths:
 
 ```text
-PRIVATE TABLE                         PRIVATE TXT / MD / HTML / XLSX
+PRIVATE TABLE                         PRIVATE TXT / MD / HTML / XLSX / DOCX
      │                                        │
      ▼                                        ▼
 longgate run                         longgate deidentify
@@ -177,7 +177,7 @@ longgate exact study.csv ols --outcome score --predictor age --predictor group
 
 # 3B. Private documents: format-preserving de-identification
 
-For TXT/Markdown/HTML/XLSX that must remain reusable after de-identification:
+For TXT/Markdown/HTML/XLSX/DOCX that must remain reusable after de-identification:
 
 ```bash
 longgate deidentify interview.md
@@ -203,7 +203,7 @@ scan output again
 MANUAL_REVIEW_REQUIRED
 ```
 
-Names, organizations, locations, aliases, rare events, and combination uniqueness are not guaranteed to be removed. HTML scripts/styles/templates/SVG text and XLSX formulas/sheet titles/defined names are intentionally not silently rewritten. If direct PII remains in those regions the result is `LOCAL_ONLY`. See [Format-preserving de-identification](format-preserving.md).
+Names, organizations, locations, aliases, rare events, and combination uniqueness are not guaranteed to be removed. HTML scripts/styles/templates/SVG text, XLSX formulas/sheet titles/defined names, and DOCX relationship/field instructions are intentionally not silently rewritten. DOCX images and embedded/ActiveX/custom-XML surfaces are treated as unresolved and force `LOCAL_ONLY`. If direct PII remains in those regions the result is `LOCAL_ONLY`. See [Format-preserving de-identification](format-preserving.md).
 
 For stronger semantic abstraction, use the separate command:
 
