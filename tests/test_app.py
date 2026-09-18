@@ -43,8 +43,21 @@ def test_setup_recommend_only_does_not_call_installer(monkeypatch, capsys):
 def test_deidentify_dispatches_format_preserving_path(monkeypatch, capsys, tmp_path: Path):
     captured = {}
 
-    def fake_deidentify(input_path, output_path):
-        captured.update({"input": input_path, "output": output_path})
+    def fake_deidentify(
+        input_path,
+        output_path,
+        *,
+        entity_detector,
+        entity_max_tokens,
+    ):
+        captured.update(
+            {
+                "input": input_path,
+                "output": output_path,
+                "entity_detector": entity_detector,
+                "entity_max_tokens": entity_max_tokens,
+            }
+        )
         output = Path(output_path)
         return FormatPreservingResult(
             status="MANUAL_REVIEW_REQUIRED",
@@ -76,6 +89,8 @@ def test_deidentify_dispatches_format_preserving_path(monkeypatch, capsys, tmp_p
     payload = json.loads(capsys.readouterr().out)
     assert captured["input"] == "interview.txt"
     assert captured["output"] == str(output)
+    assert captured["entity_detector"] is None
+    assert captured["entity_max_tokens"] == 768
     assert payload["original_unchanged"] is True
     assert payload["release_allowed"] is False
 
@@ -187,13 +202,23 @@ def test_deidentify_batch_dispatches_resume_flags(monkeypatch, capsys, tmp_path:
 
     captured = {}
 
-    def fake_batch(input_dir, output_dir, *, recursive, resume):
+    def fake_batch(
+        input_dir,
+        output_dir,
+        *,
+        recursive,
+        resume,
+        entity_detector,
+        entity_max_tokens,
+    ):
         captured.update(
             {
                 "input_dir": input_dir,
                 "output_dir": output_dir,
                 "recursive": recursive,
                 "resume": resume,
+                "entity_detector": entity_detector,
+                "entity_max_tokens": entity_max_tokens,
             }
         )
         return BatchDeidentifyResult(
@@ -231,4 +256,71 @@ def test_deidentify_batch_dispatches_resume_flags(monkeypatch, capsys, tmp_path:
     assert captured["output_dir"] == str(output)
     assert captured["recursive"] is True
     assert captured["resume"] is True
+    assert captured["entity_detector"] is None
+    assert captured["entity_max_tokens"] == 768
     assert payload["release_allowed"] is False
+
+
+def test_deidentify_cli_constructs_local_entity_detector(monkeypatch, capsys, tmp_path: Path):
+    captured = {}
+
+    class FakeLocalDetector:
+        def __init__(self, model):
+            captured["model"] = model
+
+    def fake_deidentify(
+        input_path,
+        output_path,
+        *,
+        entity_detector,
+        entity_max_tokens,
+    ):
+        captured["detector"] = entity_detector
+        captured["entity_max_tokens"] = entity_max_tokens
+        output = Path(output_path)
+        return FormatPreservingResult(
+            status="MANUAL_REVIEW_REQUIRED",
+            input_path=str(input_path),
+            output_path=str(output),
+            audit_path=str(output) + ".audit.json",
+            report_path=str(output) + ".trust-report.html",
+            input_sha256="a" * 64,
+            output_sha256="b" * 64,
+            replacements=1,
+            replacement_entities={"PERSON": 1},
+            original_unchanged=True,
+            manual_review_required=True,
+            automatic_release_allowed=False,
+            release_allowed=False,
+            next_actions=["review"],
+            entity_assist={"enabled": True},
+        )
+
+    monkeypatch.setattr(app, "LocalLlamaCppEntityDetector", FakeLocalDetector)
+    monkeypatch.setattr(app, "deidentify_file_copy", fake_deidentify)
+    output = tmp_path / "out.md"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "longgate",
+            "deidentify",
+            "private.md",
+            "--out",
+            str(output),
+            "--entity-assist",
+            "local-llm",
+            "--model",
+            "qwen3-8b",
+            "--entity-max-tokens",
+            "640",
+        ],
+    )
+
+    app.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert captured["model"] == "qwen3-8b"
+    assert isinstance(captured["detector"], FakeLocalDetector)
+    assert captured["entity_max_tokens"] == 640
+    assert payload["entity_assist"]["enabled"] is True
