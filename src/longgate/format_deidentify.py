@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import html
 import ipaddress
 import re
@@ -133,10 +134,87 @@ def _mapping_key(span: _Span) -> tuple[str, str]:
 class DirectIdentifierMapper:
     """Stateful direct-identifier map for one document or explicit batch."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        key_secret: bytes | None = None,
+        state: dict[str, object] | None = None,
+    ) -> None:
+        self._key_secret = key_secret
         self._counters: dict[str, int] = {}
         self._labels: dict[tuple[str, str], str] = {}
         self.entity_counts: dict[str, int] = {}
+        if state is not None:
+            self._load_state(state)
+
+    def begin_document(self) -> None:
+        """Reset per-document occurrence counts while retaining stable labels."""
+        self.entity_counts = {}
+
+    def _state_key(self, span: _Span) -> tuple[str, str]:
+        entity, value = _mapping_key(span)
+        if self._key_secret is None:
+            return entity, value
+        digest = hmac.new(
+            self._key_secret,
+            f"{entity}\0{value}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        return entity, digest
+
+    def _load_state(self, state: dict[str, object]) -> None:
+        if self._key_secret is None:
+            raise ValueError("Persistent mapper state requires a key_secret.")
+        if state.get("version") != 1:
+            raise ValueError("Unsupported persistent entity-map state version.")
+
+        counters = state.get("counters")
+        labels = state.get("labels")
+        if not isinstance(counters, dict) or not isinstance(labels, list):
+            raise ValueError("Invalid persistent entity-map state.")
+
+        allowed = {"EMAIL", "PHONE", "NATIONAL_ID", "POSTCODE", "IP_ADDRESS"}
+        loaded_counters: dict[str, int] = {}
+        for entity, value in counters.items():
+            if entity not in allowed or not isinstance(value, int) or value < 0:
+                raise ValueError("Invalid persistent entity-map counter.")
+            loaded_counters[str(entity)] = value
+
+        loaded_labels: dict[tuple[str, str], str] = {}
+        for item in labels:
+            if not isinstance(item, dict):
+                raise ValueError("Invalid persistent entity-map label.")
+            entity = item.get("entity")
+            digest = item.get("digest")
+            label = item.get("label")
+            if (
+                entity not in allowed
+                or not isinstance(digest, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                or not isinstance(label, str)
+                or not re.fullmatch(rf"\[{entity}_[0-9]{{3,}}\]", label)
+            ):
+                raise ValueError("Invalid persistent entity-map label.")
+            key = (str(entity), digest)
+            if key in loaded_labels:
+                raise ValueError("Duplicate persistent entity-map key.")
+            loaded_labels[key] = label
+
+        self._counters = loaded_counters
+        self._labels = loaded_labels
+
+    def export_state(self) -> dict[str, object]:
+        """Export only keyed digests, never raw identifier values."""
+        if self._key_secret is None:
+            raise ValueError("Persistent export requires a key_secret.")
+        return {
+            "version": 1,
+            "counters": dict(self._counters),
+            "labels": [
+                {"entity": entity, "digest": digest, "label": label}
+                for (entity, digest), label in sorted(self._labels.items())
+            ],
+        }
 
     @property
     def replacements(self) -> int:
@@ -146,7 +224,7 @@ class DirectIdentifierMapper:
         """Return mapped direct-identifier spans and update document-level counts."""
         mapped: list[MappedIdentifierSpan] = []
         for span in _identifier_spans(text):
-            key = _mapping_key(span)
+            key = self._state_key(span)
             label = self._labels.get(key)
             if label is None:
                 self._counters[span.entity] = self._counters.get(span.entity, 0) + 1
@@ -241,6 +319,8 @@ table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #d8dee8;padd
 def deidentify_text_copy(
     input_path: str | Path,
     output_path: str | Path | None = None,
+    *,
+    mapper: DirectIdentifierMapper | None = None,
 ) -> FormatPreservingResult:
     """Create a structure-preserving TXT/Markdown de-identified copy."""
     source = Path(input_path).expanduser().resolve()
@@ -266,7 +346,7 @@ def deidentify_text_copy(
     source_bytes = source.read_bytes()
     input_sha256 = hashlib.sha256(source_bytes).hexdigest()
     text = source_bytes.decode("utf-8")
-    mapper = DirectIdentifierMapper()
+    mapper = mapper or DirectIdentifierMapper()
     transformed = mapper.replace(text)
     entity_counts = dict(mapper.entity_counts)
     replacements = mapper.replacements
