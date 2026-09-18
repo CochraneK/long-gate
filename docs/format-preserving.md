@@ -18,7 +18,7 @@ Every current output remains local-review-only. A successful rewrite never creat
 | TXT / Markdown | direct identifier literals | all other characters, headings, paragraphs, line breaks | semantic names/orgs/rare combinations require review |
 | HTML / HTM | visible text plus selected attributes (`alt`, `title`, `aria-label`, `placeholder`, `value`, `href`, `src`, `action`) | DOM/tag structure; scripts/styles/templates/SVG text are not rewritten | BeautifulSoup may normalize serialization/whitespace; ignored-region PII forces `LOCAL_ONLY` |
 | XLSX | all worksheets including hidden sheets; string cells; comments/authors; hyperlink targets; selected workbook properties | formulas and sheet titles are not rewritten | formula/title/defined-name PII forces `LOCAL_ONLY`; OpenPyXL may not preserve unsupported Excel extensions |
-| DOCX | OOXML paragraph text across body/tables/headers/footers/comments/footnotes/endnotes; core/app properties | run/paragraph/table/package structure and non-target ZIP entries are retained | direct identifiers split across runs are replaced; hyperlink relationship targets are scanned but not rewritten; media/embeddings/ActiveX/custom XML force `LOCAL_ONLY` |
+| DOCX | OOXML paragraph text across body/tables/headers/footers/comments/footnotes/endnotes; core/app properties | run/paragraph/table/package structure and non-target ZIP entries are retained | direct identifiers split across runs are replaced; hyperlink relationship targets are scanned but not rewritten; media/embeddings/ActiveX/non-XML custom parts force `LOCAL_ONLY`; parseable custom XML is residual-scanned |
 | PDF | not supported as a format-preserving rewrite target | — | use local inspection/OCR or `semantic-summarize` only when abstract text is intended |
 
 ## Integrity properties
@@ -89,7 +89,7 @@ DOCX is treated as an OOXML ZIP package rather than flattened through `paragraph
 - package entries are copied rather than rebuilt from a new Word document;
 - document/core properties are processed for direct identifier literals;
 - external relationship targets are not silently rewritten; if direct PII remains there, the result is `LOCAL_ONLY`;
-- images, embedded objects, ActiveX and custom XML are unresolved content surfaces and force `LOCAL_ONLY`;
+- images, embedded objects, ActiveX and non-XML custom parts are unresolved content surfaces and force `LOCAL_ONLY`; parseable custom XML is scanned for residual direct PII;
 - DOCX packages with more than 10,000 entries or more than 256 MiB total uncompressed size fail closed before processing.
 
 Run formatting is preserved on unaffected text nodes; a replacement label inherits the starting run's position/style while covered identifier characters in subsequent runs are removed.
