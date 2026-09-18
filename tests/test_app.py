@@ -157,3 +157,25 @@ def test_doctor_explains_python_313_windows_local_llm_gap(monkeypatch):
 
     assert "Python 3.13 on Windows" in detail
     assert "Python 3.12" in detail
+
+
+def test_doctor_deep_reports_failed_local_check_without_crashing(monkeypatch, capsys):
+    from longgate.doctor import Capability
+
+    monkeypatch.setattr(
+        app,
+        "capabilities",
+        lambda: [Capability("python", True, "test")],
+    )
+    monkeypatch.setattr(
+        app,
+        "deep_local_llm_check",
+        lambda _model: Capability("local_llm_deep", False, "model unavailable"),
+    )
+    monkeypatch.setattr(sys, "argv", ["longgate", "doctor", "--deep"])
+
+    app.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload[-1]["name"] == "local_llm_deep"
+    assert payload[-1]["available"] is False
