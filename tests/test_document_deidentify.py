@@ -1,6 +1,9 @@
 import json
+import zipfile
+from io import BytesIO
 from pathlib import Path
 
+from docx import Document
 from openpyxl import Workbook, load_workbook
 from openpyxl.comments import Comment
 
@@ -96,3 +99,90 @@ def test_xlsx_without_unprocessed_direct_pii_reaches_manual_review(tmp_path: Pat
 
     assert result.status == "MANUAL_REVIEW_REQUIRED"
     assert result.release_allowed is False
+
+
+def test_docx_replaces_identifier_split_across_runs_and_preserves_run_styles(tmp_path: Path):
+    source = tmp_path / "interview.docx"
+    document = Document()
+    paragraph = document.add_paragraph()
+    first = paragraph.add_run("Contact person@")
+    first.bold = True
+    second = paragraph.add_run("example.com now")
+    second.italic = True
+
+    table = document.add_table(rows=1, cols=1)
+    table.cell(0, 0).text = "person@example.com"
+    header = document.sections[0].header.paragraphs[0]
+    header.text = "person@example.com"
+    footer = document.sections[0].footer.paragraphs[0]
+    footer.text = "Call +44 7700 900123"
+    document.core_properties.author = "owner@example.com"
+    document.save(source)
+    before = sha256_file(source)
+
+    result = deidentify_file_copy(source)
+
+    rewritten = Document(result.output_path)
+    body_runs = rewritten.paragraphs[0].runs
+    body_text = "".join(run.text for run in body_runs)
+    assert "person@example.com" not in body_text
+    assert "[EMAIL_" in body_text
+    assert body_runs[0].bold is True
+    assert body_runs[1].italic is True
+
+    body_label = next(
+        token
+        for token in body_text.split()
+        if token.startswith("[EMAIL_")
+    )
+    assert rewritten.tables[0].cell(0, 0).text == body_label
+    assert rewritten.sections[0].header.paragraphs[0].text == body_label
+    assert "[PHONE_" in rewritten.sections[0].footer.paragraphs[0].text
+    assert rewritten.core_properties.author.startswith("[EMAIL_")
+    assert result.status == "MANUAL_REVIEW_REQUIRED"
+    assert result.release_allowed is False
+    assert sha256_file(source) == before
+
+    audit = json.loads(Path(result.audit_path).read_text(encoding="utf-8"))
+    payload = json.dumps(audit)
+    assert "person@example.com" not in payload
+    assert "owner@example.com" not in payload
+    assert audit["processed_units"]["paragraphs"] >= 4
+    assert audit["remaining_direct_pii_hits"] == 0
+
+
+def test_docx_embedded_object_forces_local_only(tmp_path: Path):
+    base = tmp_path / "base.docx"
+    document = Document()
+    document.add_paragraph("person@example.com")
+    document.save(base)
+
+    source = tmp_path / "embedded.docx"
+    source_buffer = BytesIO(base.read_bytes())
+    output_buffer = BytesIO()
+    with zipfile.ZipFile(source_buffer, "r") as original:
+        with zipfile.ZipFile(output_buffer, "w") as rewritten:
+            for info in original.infolist():
+                rewritten.writestr(info, original.read(info.filename))
+            rewritten.writestr("word/embeddings/opaque.bin", b"opaque-private-content")
+    source.write_bytes(output_buffer.getvalue())
+
+    result = deidentify_file_copy(source)
+
+    assert result.status == "LOCAL_ONLY"
+    audit = json.loads(Path(result.audit_path).read_text(encoding="utf-8"))
+    assert audit["unprocessed_regions"]["embedded_entries"] == 1
+    with zipfile.ZipFile(result.output_path, "r") as rewritten:
+        assert rewritten.read("word/embeddings/opaque.bin") == b"opaque-private-content"
+
+
+def test_docx_rejects_invalid_zip_package(tmp_path: Path):
+    source = tmp_path / "broken.docx"
+    source.write_bytes(b"not-a-zip")
+
+    try:
+        deidentify_file_copy(source)
+    except ValueError as exc:
+        assert "valid DOCX" in str(exc)
+    else:
+        raise AssertionError("Expected invalid DOCX package to fail closed")
