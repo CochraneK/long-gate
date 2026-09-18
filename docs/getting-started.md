@@ -3,16 +3,16 @@
 Long Gate has two first-class paths:
 
 ```text
-PRIVATE TABLE                         PRIVATE TEXT / DOCUMENT
+PRIVATE TABLE                         PRIVATE TXT / MARKDOWN
      │                                        │
      ▼                                        ▼
 longgate run                         longgate deidentify
      │                                        │
      ▼                                        ▼
-structured Trust Report             Semantic Trust Report
+structured Trust Report             same-format local copy + Trust Report
      │                                        │
      ▼                                        ▼
-approved aggregate or LOCAL_ONLY    MANUAL_REVIEW_CANDIDATE or LOCAL_ONLY
+approved aggregate or LOCAL_ONLY    MANUAL_REVIEW_REQUIRED / LOCAL_ONLY
 ```
 
 The semantic path is deliberately stricter: **a manual-review candidate is still local-only and is not automatically eligible for network egress.**
@@ -175,92 +175,55 @@ longgate exact study.csv ols --outcome score --predictor age --predictor group
 
 ---
 
-# 3B. Private text / DOCX / PDF: local semantic de-identification
+# 3B. Private text: format-preserving de-identification
 
-Use the new product-level command:
-
-```bash
-longgate deidentify interview.txt \
-  --model auto \
-  --out deidentified.txt
-```
-
-Supported extractable-text inputs are TXT, Markdown, DOCX, and PDF text layers.
-
-The pipeline is:
-
-```text
-private document
-      ↓
-deterministic local pre-scrub
-      ↓
-verified local GGUF model
-      ↓
-semantic identity-detaching transform
-      ↓
-compare against original source
-      ↓
-PII / number reuse / n-gram reuse / distinctive-token audit
-      ↓
-PASS? ─ yes ─→ MANUAL_REVIEW_CANDIDATE
-  │
-  no
-  ↓
-run another stronger local transformation pass
-  ↓
-maximum 3 total rounds
-  ↓
-if still not enough → LOCAL_ONLY
-```
-
-Default behavior uses at most two semantic rounds. You may explicitly choose 1–3:
+For TXT or Markdown that must remain reusable after de-identification:
 
 ```bash
-longgate deidentify interview.txt \
-  --model auto \
-  --out deidentified.txt \
-  --max-rounds 3
+longgate deidentify interview.md
 ```
 
-The loop is intentionally bounded. Long Gate never responds to privacy failure by weakening policy or retrying forever.
+`--out` is optional. By default Long Gate writes `interview.deidentified.md` beside the source. The source is never overwritten.
 
-Outputs:
+The Phase-1 pipeline is:
 
 ```text
-deidentified.txt
-├── transformed text (local)
-├── deidentified.txt.audit.json
-└── deidentified.txt.trust-report.html
+source TXT / Markdown
+      ↓
+fix source SHA-256 before any write
+      ↓
+detect explicit direct identifiers
+      ↓
+stable per-document placeholders
+      ↓
+same-format atomic output
+      ↓
+scan output again
+      ↓
+MANUAL_REVIEW_REQUIRED
 ```
 
-The Semantic Trust Report records hashes, model metadata, each remediation round, risk metrics, failed conditions, status, and next actions. It intentionally does **not** embed the source narrative or transformed narrative.
+At this stage names, organizations, locations, aliases, rare events, and combination uniqueness are not guaranteed to be removed. This path is therefore useful for structure-preserving preparation, not as an anonymity certificate.
 
-Possible final states:
-
-```text
-MANUAL_REVIEW_CANDIDATE
-  mechanical evidence is quiet enough for human review
-  automatic_release_allowed = false
-  release_allowed = false
-
-LOCAL_ONLY
-  bounded remediation did not satisfy the evidence gate
-  automatic_release_allowed = false
-  release_allowed = false
-```
-
-A semantic candidate is therefore **not the same thing as an approved structured egress artifact**.
-
-The older low-level command remains available for experiments:
+For stronger semantic abstraction, use the separate command:
 
 ```bash
-longgate semantic-transform-local interview.txt \
+longgate semantic-summarize interview.txt \
   --model auto \
-  --out preview.txt
+  --out summary.txt
 ```
+
+`semantic-summarize` is the previous bounded local-GGUF transformation pipeline. It supports extractable TXT/Markdown/HTML/DOCX/PDF text, audits every candidate against the original source, rejects token-limit truncation, and remains local-only.
+
+Use a real model/inference health check when needed:
+
+```bash
+longgate doctor --deep --model auto
+```
+
+Neither path grants network egress automatically.
 
 ---
-
 # 4. Review before any network use
 
 For structured runs, open:
@@ -278,7 +241,7 @@ Review:
 - staged artifact;
 - provenance.
 
-For semantic de-identification, open the generated `*.trust-report.html` and inspect the transformed text locally yourself. Current semantic output remains local-only even when its mechanical evidence qualifies it for manual review.
+For format-preserving de-identification, open the generated `*.trust-report.html` and inspect the same-format copy locally. For semantic abstraction, inspect the `semantic-summarize` output and its Semantic Trust Report. Both remain local-only.
 
 ---
 
