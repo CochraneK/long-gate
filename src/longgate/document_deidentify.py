@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import html
+import re
+import zipfile
 from io import BytesIO
 from pathlib import Path
 
@@ -17,6 +19,11 @@ from .utils import atomic_write_bytes, atomic_write_text, sha256_file, utc_now, 
 
 _HTML_SUFFIXES = {".html", ".htm"}
 _XLSX_SUFFIXES = {".xlsx"}
+_DOCX_SUFFIXES = {".docx"}
+_DOCX_MAX_ENTRIES = 10000
+_DOCX_MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
+_WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
 
 
 def _paths_and_snapshot(
@@ -130,6 +137,7 @@ def _commit_result(
     processed_units: dict[str, int],
     unprocessed_regions: dict[str, int],
     note: str,
+    force_local_only: bool = False,
 ) -> FormatPreservingResult:
     if sha256_file(source) != source_sha256:
         raise RuntimeError("Input file changed during processing; no output was written.")
@@ -142,7 +150,11 @@ def _commit_result(
         )
 
     output_sha256 = sha256_file(destination)
-    status = "LOCAL_ONLY" if remaining_direct_pii_hits else "MANUAL_REVIEW_REQUIRED"
+    status = (
+        "LOCAL_ONLY"
+        if remaining_direct_pii_hits or force_local_only
+        else "MANUAL_REVIEW_REQUIRED"
+    )
     audit_path = destination.with_name(destination.name + ".audit.json")
     report_path = destination.with_name(destination.name + ".trust-report.html")
     next_actions = [
@@ -428,6 +440,398 @@ def deidentify_xlsx_copy(
     )
 
 
+
+def _set_ooxml_text(node: object, value: str) -> None:
+    node.text = value
+    if value.startswith(" ") or value.endswith(" "):
+        node.set(_XML_SPACE, "preserve")
+
+
+def _node_offsets(nodes: list[object]) -> list[tuple[int, int]]:
+    offsets: list[tuple[int, int]] = []
+    cursor = 0
+    for node in nodes:
+        text = node.text or ""
+        offsets.append((cursor, cursor + len(text)))
+        cursor += len(text)
+    return offsets
+
+
+def _locate_start(offsets: list[tuple[int, int]], position: int) -> tuple[int, int]:
+    for index, (start, end) in enumerate(offsets):
+        if start <= position < end:
+            return index, position - start
+    raise ValueError("Identifier start did not map to an OOXML text node.")
+
+
+def _locate_end(offsets: list[tuple[int, int]], position: int) -> tuple[int, int]:
+    for index, (start, end) in enumerate(offsets):
+        if start < position <= end:
+            return index, position - start
+    raise ValueError("Identifier end did not map to an OOXML text node.")
+
+
+def _rewrite_ooxml_text_nodes(nodes: list[object], mapper: DirectIdentifierMapper) -> int:
+    if not nodes:
+        return 0
+    original_texts = [node.text or "" for node in nodes]
+    joined = "".join(original_texts)
+    if not joined:
+        return 0
+    plan = mapper.plan(joined)
+    if not plan:
+        return 0
+
+    offsets = _node_offsets(nodes)
+    for span in reversed(plan):
+        start_index, start_local = _locate_start(offsets, span.start)
+        end_index, end_local = _locate_end(offsets, span.end)
+
+        if start_index == end_index:
+            current = nodes[start_index].text or ""
+            _set_ooxml_text(
+                nodes[start_index],
+                current[:start_local] + span.label + current[end_local:],
+            )
+            continue
+
+        start_text = nodes[start_index].text or ""
+        end_text = nodes[end_index].text or ""
+        _set_ooxml_text(nodes[start_index], start_text[:start_local] + span.label)
+        for index in range(start_index + 1, end_index):
+            _set_ooxml_text(nodes[index], "")
+        _set_ooxml_text(nodes[end_index], end_text[end_local:])
+    return len(plan)
+
+
+def _scan_word_xml_root(root: object) -> tuple[int, dict[str, int], int]:
+    total = 0
+    by_entity: dict[str, int] = {}
+    paragraphs = root.xpath(".//w:p", namespaces={"w": _WORD_NS})
+    for paragraph in paragraphs:
+        text = "".join(
+            node.text or ""
+            for node in paragraph.xpath(".//w:t | .//w:delText", namespaces={"w": _WORD_NS})
+        )
+        total, by_entity = _add_findings(text, total, by_entity)
+
+    instruction_hits = 0
+    for node in root.xpath(".//w:instrText", namespaces={"w": _WORD_NS}):
+        if node.text:
+            findings = scan_text(node.text)
+            instruction_hits += findings.total_hits
+            total += findings.total_hits
+            for entity, count in findings.by_entity.items():
+                by_entity[entity] = by_entity.get(entity, 0) + count
+    return total, by_entity, instruction_hits
+
+
+def _rewrite_word_xml(
+    data: bytes,
+    mapper: DirectIdentifierMapper,
+) -> tuple[bytes, int, int, dict[str, int], int]:
+    try:
+        from lxml import etree
+    except ImportError as exc:
+        raise RuntimeError(
+            "DOCX format-preserving de-identification requires the documents extra."
+        ) from exc
+
+    parser = etree.XMLParser(
+        resolve_entities=False,
+        no_network=True,
+        load_dtd=False,
+        huge_tree=False,
+        recover=False,
+    )
+    # Hardened parser: no DTD/entities/network, bounded OOXML ZIP input.
+    root = etree.fromstring(data, parser=parser)  # noqa: S320
+    paragraphs = root.xpath(".//w:p", namespaces={"w": _WORD_NS})
+    processed_paragraphs = 0
+    for paragraph in paragraphs:
+        nodes = list(
+            paragraph.xpath(".//w:t | .//w:delText", namespaces={"w": _WORD_NS})
+        )
+        if not nodes:
+            continue
+        _rewrite_ooxml_text_nodes(nodes, mapper)
+        processed_paragraphs += 1
+
+    remaining_total, remaining_by_entity, instruction_hits = _scan_word_xml_root(root)
+    rendered = etree.tostring(
+        root,
+        xml_declaration=data.lstrip().startswith(b"<?xml"),
+        encoding="UTF-8",
+        standalone=None,
+    )
+    return (
+        rendered,
+        processed_paragraphs,
+        remaining_total,
+        remaining_by_entity,
+        instruction_hits,
+    )
+
+
+def _rewrite_property_xml(
+    data: bytes,
+    mapper: DirectIdentifierMapper,
+) -> tuple[bytes, int, int, dict[str, int]]:
+    try:
+        from lxml import etree
+    except ImportError as exc:
+        raise RuntimeError(
+            "DOCX format-preserving de-identification requires the documents extra."
+        ) from exc
+
+    parser = etree.XMLParser(
+        resolve_entities=False,
+        no_network=True,
+        load_dtd=False,
+        huge_tree=False,
+        recover=False,
+    )
+    # Hardened parser: no DTD/entities/network, bounded OOXML ZIP input.
+    root = etree.fromstring(data, parser=parser)  # noqa: S320
+    processed = 0
+    for element in root.iter():
+        if element.text:
+            transformed = mapper.replace(element.text)
+            if transformed != element.text:
+                element.text = transformed
+                processed += 1
+    text = "\n".join(value for value in root.itertext() if value)
+    remaining = scan_text(text)
+    rendered = etree.tostring(
+        root,
+        xml_declaration=data.lstrip().startswith(b"<?xml"),
+        encoding="UTF-8",
+        standalone=None,
+    )
+    return rendered, processed, remaining.total_hits, remaining.by_entity
+
+
+def _scan_unhandled_xml(data: bytes) -> tuple[int, dict[str, int]]:
+    """Scan XML text plus obviously user-authored string attributes, not structural numbers."""
+    try:
+        from lxml import etree
+    except ImportError as exc:
+        raise RuntimeError(
+            "DOCX format-preserving de-identification requires the documents extra."
+        ) from exc
+
+    parser = etree.XMLParser(
+        resolve_entities=False,
+        no_network=True,
+        load_dtd=False,
+        huge_tree=False,
+        recover=False,
+    )
+    # Hardened parser: no DTD/entities/network, bounded OOXML ZIP input.
+    root = etree.fromstring(data, parser=parser)  # noqa: S320
+    total = 0
+    by_entity: dict[str, int] = {}
+
+    for value in root.itertext():
+        if value:
+            total, by_entity = _add_findings(value, total, by_entity)
+
+    for element in root.iter():
+        for value in element.attrib.values():
+            if not isinstance(value, str):
+                continue
+            lowered = value.lower()
+            if "@" in value or "mailto:" in lowered or "tel:" in lowered:
+                total, by_entity = _add_findings(value, total, by_entity)
+
+    return total, by_entity
+
+
+def _is_docx_word_text_part(name: str) -> bool:
+    if name in {
+        "word/document.xml",
+        "word/comments.xml",
+        "word/footnotes.xml",
+        "word/endnotes.xml",
+    }:
+        return True
+    return bool(re.fullmatch(r"word/(?:header|footer)\d+\.xml", name))
+
+
+def deidentify_docx_copy(
+    input_path: str | Path,
+    output_path: str | Path | None = None,
+) -> FormatPreservingResult:
+    source, destination, source_bytes, source_sha256 = _paths_and_snapshot(
+        input_path, output_path, _DOCX_SUFFIXES
+    )
+    mapper = DirectIdentifierMapper()
+    remaining_total = 0
+    remaining_by_entity: dict[str, int] = {}
+    processed_parts = 0
+    processed_paragraphs = 0
+    processed_property_fields = 0
+    relationship_parts_with_pii = 0
+    field_instruction_pii_hits = 0
+    unprocessed_xml_parts_with_pii = 0
+    media_entries = 0
+    embedded_entries = 0
+    other_risky_binary_entries = 0
+    force_unparsed_xml_local_only = False
+
+    input_buffer = BytesIO(source_bytes)
+    output_buffer = BytesIO()
+    try:
+        archive = zipfile.ZipFile(input_buffer, "r")
+    except zipfile.BadZipFile as exc:
+        raise ValueError("Input is not a valid DOCX/OOXML ZIP package.") from exc
+
+    with archive:
+        infos = archive.infolist()
+        if any(info.filename.startswith("_xmlsignatures/") for info in infos):
+            raise ValueError(
+                "Digitally signed DOCX packages are not rewritten because modification "
+                "would invalidate the package signature."
+            )
+        if len(infos) > _DOCX_MAX_ENTRIES:
+            raise ValueError("DOCX contains too many package entries.")
+        total_uncompressed = sum(info.file_size for info in infos)
+        if total_uncompressed > _DOCX_MAX_UNCOMPRESSED_BYTES:
+            raise ValueError("DOCX uncompressed package size exceeds the safety limit.")
+
+        with zipfile.ZipFile(output_buffer, "w") as output_archive:
+            output_archive.comment = archive.comment
+            for info in infos:
+                data = archive.read(info.filename)
+                name = info.filename
+                rewritten = data
+                handled_xml = False
+
+                if _is_docx_word_text_part(name):
+                    handled_xml = True
+                    (
+                        rewritten,
+                        paragraph_count,
+                        part_remaining,
+                        part_by_entity,
+                        instruction_hits,
+                    ) = _rewrite_word_xml(data, mapper)
+                    processed_parts += 1
+                    processed_paragraphs += paragraph_count
+                    field_instruction_pii_hits += instruction_hits
+                    remaining_total += part_remaining
+                    for entity, count in part_by_entity.items():
+                        remaining_by_entity[entity] = (
+                            remaining_by_entity.get(entity, 0) + count
+                        )
+                elif name in {
+                    "docProps/core.xml",
+                    "docProps/app.xml",
+                    "docProps/custom.xml",
+                }:
+                    handled_xml = True
+                    (
+                        rewritten,
+                        field_count,
+                        part_remaining,
+                        part_by_entity,
+                    ) = _rewrite_property_xml(data, mapper)
+                    processed_property_fields += field_count
+                    remaining_total += part_remaining
+                    for entity, count in part_by_entity.items():
+                        remaining_by_entity[entity] = (
+                            remaining_by_entity.get(entity, 0) + count
+                        )
+                elif name.endswith(".rels"):
+                    handled_xml = True
+                    try:
+                        relation_text = data.decode("utf-8")
+                    except UnicodeDecodeError:
+                        relation_text = ""
+                    findings = scan_text(relation_text)
+                    if findings.total_hits:
+                        relationship_parts_with_pii += 1
+                        remaining_total += findings.total_hits
+                        for entity, count in findings.by_entity.items():
+                            remaining_by_entity[entity] = (
+                                remaining_by_entity.get(entity, 0) + count
+                            )
+
+                if name.endswith(".xml") and not handled_xml:
+                    try:
+                        part_remaining, part_by_entity = _scan_unhandled_xml(data)
+                    except Exception:
+                        unprocessed_xml_parts_with_pii += 1
+                        force_unparsed_xml_local_only = True
+                    else:
+                        if part_remaining:
+                            unprocessed_xml_parts_with_pii += 1
+                            remaining_total += part_remaining
+                            for entity, count in part_by_entity.items():
+                                remaining_by_entity[entity] = (
+                                    remaining_by_entity.get(entity, 0) + count
+                                )
+
+                if name.startswith("word/media/") and not name.endswith("/"):
+                    media_entries += 1
+                if name.startswith("word/embeddings/") and not name.endswith("/"):
+                    embedded_entries += 1
+                if name.startswith("word/activeX/") and not name.endswith("/"):
+                    other_risky_binary_entries += 1
+                if (
+                    name.startswith("customXml/")
+                    and not name.endswith("/")
+                    and not name.endswith(".xml")
+                    and not name.endswith(".rels")
+                ):
+                    other_risky_binary_entries += 1
+
+                output_archive.writestr(info, rewritten)
+
+    force_local_only = any(
+        (
+            media_entries,
+            embedded_entries,
+            other_risky_binary_entries,
+            relationship_parts_with_pii,
+            field_instruction_pii_hits,
+            unprocessed_xml_parts_with_pii,
+            force_unparsed_xml_local_only,
+        )
+    )
+    return _commit_result(
+        source=source,
+        destination=destination,
+        source_sha256=source_sha256,
+        payload=output_buffer.getvalue(),
+        format_kind="docx",
+        mapper=mapper,
+        remaining_direct_pii_hits=remaining_total,
+        remaining_by_entity=remaining_by_entity,
+        processed_units={
+            "word_xml_parts": processed_parts,
+            "paragraphs": processed_paragraphs,
+            "property_fields_replaced": processed_property_fields,
+        },
+        unprocessed_regions={
+            "relationship_parts_with_direct_pii": relationship_parts_with_pii,
+            "field_instruction_direct_pii_hits": field_instruction_pii_hits,
+            "unprocessed_xml_parts_with_direct_pii": unprocessed_xml_parts_with_pii,
+            "unparsed_xml_parts": int(force_unparsed_xml_local_only),
+            "media_entries": media_entries,
+            "embedded_entries": embedded_entries,
+            "other_risky_binary_entries": other_risky_binary_entries,
+        },
+        note=(
+            "DOCX is rewritten at OOXML text-node level. Paragraph/run/table/header/footer/"
+            "comment/footnote/endnote package structure is retained, including identifiers "
+            "split across runs. Hyperlink relationship targets are not rewritten; images, "
+            "embedded objects, ActiveX, and non-XML custom parts are treated as unresolved "
+            "local-only risk; parseable custom XML is residual-scanned instead."
+        ),
+        force_local_only=force_local_only,
+    )
+
 def deidentify_file_copy(
     input_path: str | Path,
     output_path: str | Path | None = None,
@@ -439,8 +843,10 @@ def deidentify_file_copy(
         return deidentify_html_copy(input_path, output_path)
     if suffix in _XLSX_SUFFIXES:
         return deidentify_xlsx_copy(input_path, output_path)
+    if suffix in _DOCX_SUFFIXES:
+        return deidentify_docx_copy(input_path, output_path)
     raise ValueError(
-        "Format-preserving deidentify supports TXT/Markdown, HTML, and XLSX in the "
-        "current phase. DOCX/PDF are not silently flattened; use semantic-summarize "
+        "Format-preserving deidentify supports TXT/Markdown, HTML, XLSX, and DOCX in the "
+        "current phase. PDF is not silently flattened; use semantic-summarize "
         "only when an abstract text output is actually intended."
     )

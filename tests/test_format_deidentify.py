@@ -91,3 +91,9 @@ def test_national_id_takes_priority_over_phone_pattern():
     transformed, counts = replace_direct_identifiers("ID 11010519491231002X")
     assert transformed == "ID [NATIONAL_ID_001]"
     assert counts == {"NATIONAL_ID": 1}
+
+
+def test_direct_identifier_mapper_preserves_iso_date():
+    transformed, counts = replace_direct_identifiers("Date 2026-09-18")
+    assert transformed == "Date 2026-09-18"
+    assert counts == {}

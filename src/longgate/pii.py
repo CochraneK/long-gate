@@ -9,6 +9,7 @@ import pandas as pd
 
 EMAIL_RE = re.compile(r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![\w.-])", re.IGNORECASE)
 PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\d ()-]{7,}\d)(?!\d)")
+_DATE_LIKE_RE = re.compile(r"^\d{4}[-/]\d{1,2}[-/]\d{1,2}$")
 CN_ID_RE = re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)")
 UK_POSTCODE_RE = re.compile(r"\b(?:GIR ?0AA|[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2})\b", re.IGNORECASE)
 
@@ -32,10 +33,21 @@ def _iter_text(values: Iterable[object]) -> Iterable[str]:
             yield text
 
 
+def iter_phone_matches(text: str):
+    """Yield plausible phone matches while excluding common date-like false positives."""
+    for match in PHONE_RE.finditer(text):
+        candidate = match.group(0).strip()
+        if _DATE_LIKE_RE.fullmatch(candidate):
+            continue
+        if sum(character.isdigit() for character in candidate) < 9:
+            continue
+        yield match
+
+
 def _count_text(text: str) -> dict[str, int]:
     counts = {
         "email": len(EMAIL_RE.findall(text)),
-        "phone": len(PHONE_RE.findall(text)),
+        "phone": sum(1 for _match in iter_phone_matches(text)),
         "cn_national_id": len(CN_ID_RE.findall(text)),
         "uk_postcode": len(UK_POSTCODE_RE.findall(text)),
         "ip_address": 0,
