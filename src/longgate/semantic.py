@@ -432,6 +432,8 @@ def semantic_transform_local(
         raise ValueError("Refusing to overwrite the input file.")
     input_sha256 = sha256_file(input_file)
     source, _, _, _ = extract_document_text(input_file)
+    if sha256_file(input_file) != input_sha256:
+        raise RuntimeError("Input file changed during extraction; no output was written.")
 
     transformer = LocalLlamaCppTransformer(model_path)
     chunks = [source] if chunking == "none" else _safe_chunks(source, chunk_size)
@@ -443,9 +445,14 @@ def semantic_transform_local(
     )
     audit = audit_semantic_preview(source, transformed)
 
+    if sha256_file(input_file) != input_sha256:
+        raise RuntimeError("Input file changed during processing; no output was written.")
     atomic_write_text(output, transformed, encoding="utf-8")
     if sha256_file(input_file) != input_sha256:
-        raise RuntimeError("Input file changed during processing; refusing to report success.")
+        output.unlink(missing_ok=True)
+        raise RuntimeError(
+            "Input file changed while output was being committed; generated output was removed."
+        )
 
     audit_path = output.with_name(output.name + ".audit.json")
     write_json(audit_path, audit.to_dict())
