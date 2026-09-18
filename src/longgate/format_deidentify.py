@@ -81,13 +81,26 @@ def _collect_ip_spans(text: str) -> list[_Span]:
 
 def _identifier_spans(text: str) -> list[_Span]:
     spans = [
-        *_collect_regex_spans(text, EMAIL_RE, "EMAIL"),
-        *_collect_regex_spans(text, PHONE_RE, "PHONE"),
         *_collect_regex_spans(text, CN_ID_RE, "NATIONAL_ID"),
+        *_collect_regex_spans(text, EMAIL_RE, "EMAIL"),
         *_collect_regex_spans(text, UK_POSTCODE_RE, "POSTCODE"),
         *_collect_ip_spans(text),
+        *_collect_regex_spans(text, PHONE_RE, "PHONE"),
     ]
-    spans.sort(key=lambda item: (item.start, -(item.end - item.start)))
+    priority = {
+        "NATIONAL_ID": 0,
+        "EMAIL": 1,
+        "POSTCODE": 2,
+        "IP_ADDRESS": 3,
+        "PHONE": 4,
+    }
+    spans.sort(
+        key=lambda item: (
+            item.start,
+            -(item.end - item.start),
+            priority.get(item.entity, 99),
+        )
+    )
 
     accepted: list[_Span] = []
     cursor = -1
@@ -131,8 +144,7 @@ def replace_direct_identifiers(text: str) -> tuple[str, dict[str, int]]:
 
 def _render_report(
     *,
-    input_name: str,
-    output_name: str,
+    file_format: str,
     input_sha256: str,
     output_sha256: str,
     replacements: int,
@@ -164,8 +176,8 @@ table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #d8dee8;padd
 </div>
 <div class="card">
 <h2>文件完整性</h2>
-<p>输入文件：<code>{html.escape(input_name)}</code></p>
-<p>输出文件：<code>{html.escape(output_name)}</code></p>
+<p>文件格式：<code>{html.escape(file_format)}</code></p>
+<p>输入/输出文件名和本地目录路径不会写入本报告。</p>
 <p>输入 SHA-256：<code>{html.escape(input_sha256)}</code></p>
 <p>输出 SHA-256：<code>{html.escape(output_sha256)}</code></p>
 </div>
@@ -234,8 +246,7 @@ def deidentify_text_copy(
     payload = {
         "format": "long-gate-format-preserving-deidentify-v1",
         "status": "MANUAL_REVIEW_REQUIRED",
-        "input_name": source.name,
-        "output_name": destination.name,
+        "input_format": source.suffix.lower().lstrip("."),
         "input_sha256": input_sha256,
         "output_sha256": output_sha256,
         "replacements": replacements,
@@ -253,8 +264,7 @@ def deidentify_text_copy(
     atomic_write_text(
         report_path,
         _render_report(
-            input_name=source.name,
-            output_name=destination.name,
+            file_format=source.suffix.lower().lstrip("."),
             input_sha256=input_sha256,
             output_sha256=output_sha256,
             replacements=replacements,
