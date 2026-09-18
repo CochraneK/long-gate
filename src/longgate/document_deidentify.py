@@ -7,6 +7,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
+from .entity_source import collect_entity_assist_text
 from .format_deidentify import (
     DirectIdentifierMapper,
     FormatPreservingResult,
@@ -30,6 +31,8 @@ def _paths_and_snapshot(
     input_path: str | Path,
     output_path: str | Path | None,
     allowed_suffixes: set[str],
+    *,
+    expected_source_sha256: str | None = None,
 ) -> tuple[Path, Path, bytes, str]:
     source = Path(input_path).expanduser().resolve()
     if not source.is_file():
@@ -50,6 +53,10 @@ def _paths_and_snapshot(
 
     source_bytes = source.read_bytes()
     digest = hashlib.sha256(source_bytes).hexdigest()
+    if expected_source_sha256 is not None and digest != expected_source_sha256:
+        raise RuntimeError(
+            "Input changed after entity detection; no output was written."
+        )
     return source, destination, source_bytes, digest
 
 
@@ -240,6 +247,7 @@ def deidentify_html_copy(
     *,
     mapper: DirectIdentifierMapper | None = None,
     entity_assist: dict[str, object] | None = None,
+    expected_source_sha256: str | None = None,
 ) -> FormatPreservingResult:
     try:
         from bs4 import BeautifulSoup, Comment, Doctype, NavigableString
@@ -250,7 +258,10 @@ def deidentify_html_copy(
         ) from exc
 
     source, destination, source_bytes, source_sha256 = _paths_and_snapshot(
-        input_path, output_path, _HTML_SUFFIXES
+        input_path,
+        output_path,
+        _HTML_SUFFIXES,
+        expected_source_sha256=expected_source_sha256,
     )
     try:
         source_text = source_bytes.decode("utf-8")
@@ -343,11 +354,15 @@ def deidentify_xlsx_copy(
     *,
     mapper: DirectIdentifierMapper | None = None,
     entity_assist: dict[str, object] | None = None,
+    expected_source_sha256: str | None = None,
 ) -> FormatPreservingResult:
     from openpyxl import load_workbook
 
     source, destination, source_bytes, source_sha256 = _paths_and_snapshot(
-        input_path, output_path, _XLSX_SUFFIXES
+        input_path,
+        output_path,
+        _XLSX_SUFFIXES,
+        expected_source_sha256=expected_source_sha256,
     )
     workbook = load_workbook(BytesIO(source_bytes), data_only=False, keep_links=True)
     mapper = mapper or DirectIdentifierMapper()
@@ -691,9 +706,13 @@ def deidentify_docx_copy(
     *,
     mapper: DirectIdentifierMapper | None = None,
     entity_assist: dict[str, object] | None = None,
+    expected_source_sha256: str | None = None,
 ) -> FormatPreservingResult:
     source, destination, source_bytes, source_sha256 = _paths_and_snapshot(
-        input_path, output_path, _DOCX_SUFFIXES
+        input_path,
+        output_path,
+        _DOCX_SUFFIXES,
+        expected_source_sha256=expected_source_sha256,
     )
     mapper = mapper or DirectIdentifierMapper()
     remaining_total = 0
@@ -868,21 +887,67 @@ def deidentify_file_copy(
     output_path: str | Path | None = None,
     *,
     mapper: DirectIdentifierMapper | None = None,
+    entity_detector: object | None = None,
+    entity_max_tokens: int = 768,
 ) -> FormatPreservingResult:
     shared_mapper = mapper is not None
     mapper = mapper or DirectIdentifierMapper()
     if shared_mapper:
         mapper.begin_document()
 
+    entity_assist: dict[str, object] | None = None
+    expected_source_sha256: str | None = None
+    if entity_detector is not None:
+        expected_source_sha256 = sha256_file(input_path)
+        source_for_detection = collect_entity_assist_text(input_path)
+        if sha256_file(input_path) != expected_source_sha256:
+            raise RuntimeError(
+                "Input changed during entity detection extraction; no output was written."
+            )
+        detect = getattr(entity_detector, "detect", None)
+        if not callable(detect):
+            raise TypeError("entity_detector must provide a callable detect method.")
+        assist_result = detect(source_for_detection, max_tokens=entity_max_tokens)
+        candidates = getattr(assist_result, "candidates", None)
+        summary = getattr(assist_result, "summary_dict", None)
+        if not isinstance(candidates, list) or not callable(summary):
+            raise RuntimeError("Entity detector returned an invalid structured result.")
+        mapper.register_assisted_literals(candidates)
+        entity_assist = summary()
+
     suffix = Path(input_path).suffix.lower()
     if suffix in SUPPORTED_PRESERVE_TEXT:
-        return deidentify_text_copy(input_path, output_path, mapper=mapper)
+        return deidentify_text_copy(
+            input_path,
+            output_path,
+            mapper=mapper,
+            entity_assist=entity_assist,
+            expected_source_sha256=expected_source_sha256,
+        )
     if suffix in _HTML_SUFFIXES:
-        return deidentify_html_copy(input_path, output_path, mapper=mapper)
+        return deidentify_html_copy(
+            input_path,
+            output_path,
+            mapper=mapper,
+            entity_assist=entity_assist,
+            expected_source_sha256=expected_source_sha256,
+        )
     if suffix in _XLSX_SUFFIXES:
-        return deidentify_xlsx_copy(input_path, output_path, mapper=mapper)
+        return deidentify_xlsx_copy(
+            input_path,
+            output_path,
+            mapper=mapper,
+            entity_assist=entity_assist,
+            expected_source_sha256=expected_source_sha256,
+        )
     if suffix in _DOCX_SUFFIXES:
-        return deidentify_docx_copy(input_path, output_path, mapper=mapper)
+        return deidentify_docx_copy(
+            input_path,
+            output_path,
+            mapper=mapper,
+            entity_assist=entity_assist,
+            expected_source_sha256=expected_source_sha256,
+        )
     raise ValueError(
         "Format-preserving deidentify supports TXT/Markdown, HTML, XLSX, and DOCX in the "
         "current phase. PDF is not silently flattened; use semantic-summarize "
