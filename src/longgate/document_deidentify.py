@@ -218,6 +218,8 @@ def _commit_result(
 def deidentify_html_copy(
     input_path: str | Path,
     output_path: str | Path | None = None,
+    *,
+    mapper: DirectIdentifierMapper | None = None,
 ) -> FormatPreservingResult:
     try:
         from bs4 import BeautifulSoup, Comment, Doctype, NavigableString
@@ -236,7 +238,7 @@ def deidentify_html_copy(
         raise ValueError("HTML format-preserving path currently requires UTF-8 input.") from exc
 
     soup = BeautifulSoup(source_text, "html.parser")
-    mapper = DirectIdentifierMapper()
+    mapper = mapper or DirectIdentifierMapper()
     ignored_tags = {"script", "style", "noscript", "template", "svg"}
     processed_text_nodes = 0
     ignored_text_nodes = 0
@@ -317,6 +319,8 @@ def _add_findings(
 def deidentify_xlsx_copy(
     input_path: str | Path,
     output_path: str | Path | None = None,
+    *,
+    mapper: DirectIdentifierMapper | None = None,
 ) -> FormatPreservingResult:
     from openpyxl import load_workbook
 
@@ -324,7 +328,7 @@ def deidentify_xlsx_copy(
         input_path, output_path, _XLSX_SUFFIXES
     )
     workbook = load_workbook(BytesIO(source_bytes), data_only=False, keep_links=True)
-    mapper = DirectIdentifierMapper()
+    mapper = mapper or DirectIdentifierMapper()
     processed_cells = 0
     processed_comments = 0
     processed_hyperlinks = 0
@@ -661,11 +665,13 @@ def _is_docx_word_text_part(name: str) -> bool:
 def deidentify_docx_copy(
     input_path: str | Path,
     output_path: str | Path | None = None,
+    *,
+    mapper: DirectIdentifierMapper | None = None,
 ) -> FormatPreservingResult:
     source, destination, source_bytes, source_sha256 = _paths_and_snapshot(
         input_path, output_path, _DOCX_SUFFIXES
     )
-    mapper = DirectIdentifierMapper()
+    mapper = mapper or DirectIdentifierMapper()
     remaining_total = 0
     remaining_by_entity: dict[str, int] = {}
     processed_parts = 0
@@ -835,16 +841,23 @@ def deidentify_docx_copy(
 def deidentify_file_copy(
     input_path: str | Path,
     output_path: str | Path | None = None,
+    *,
+    mapper: DirectIdentifierMapper | None = None,
 ) -> FormatPreservingResult:
+    shared_mapper = mapper is not None
+    mapper = mapper or DirectIdentifierMapper()
+    if shared_mapper:
+        mapper.begin_document()
+
     suffix = Path(input_path).suffix.lower()
     if suffix in SUPPORTED_PRESERVE_TEXT:
-        return deidentify_text_copy(input_path, output_path)
+        return deidentify_text_copy(input_path, output_path, mapper=mapper)
     if suffix in _HTML_SUFFIXES:
-        return deidentify_html_copy(input_path, output_path)
+        return deidentify_html_copy(input_path, output_path, mapper=mapper)
     if suffix in _XLSX_SUFFIXES:
-        return deidentify_xlsx_copy(input_path, output_path)
+        return deidentify_xlsx_copy(input_path, output_path, mapper=mapper)
     if suffix in _DOCX_SUFFIXES:
-        return deidentify_docx_copy(input_path, output_path)
+        return deidentify_docx_copy(input_path, output_path, mapper=mapper)
     raise ValueError(
         "Format-preserving deidentify supports TXT/Markdown, HTML, XLSX, and DOCX in the "
         "current phase. PDF is not silently flattened; use semantic-summarize "

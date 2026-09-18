@@ -5,6 +5,7 @@ import json
 import sys
 
 from .advisor import hardware_advice, setup_local_ai
+from .batch_deidentify import deidentify_batch
 from .cli import main as legacy_main
 from .deidentify import deidentify_local
 from .doctor import capabilities, deep_local_llm_check
@@ -17,6 +18,7 @@ Start here:
   longgate setup                 Detect hardware and configure a verified local model.
   longgate hardware              Inspect local hardware and model-fit recommendations.
   longgate deidentify FILE       Create a format-preserving TXT/Markdown/HTML/XLSX/DOCX copy.
+  longgate deidentify-batch DIR   Batch de-identify with stable cross-file placeholders.
   longgate semantic-summarize FILE
                                  Create a strongly abstracted local semantic summary.
   longgate run FILE              Structured privacy pipeline.
@@ -110,6 +112,29 @@ def _deidentify_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _batch_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="longgate deidentify-batch",
+        description=(
+            "Batch format-preserving de-identification with a shared HMAC-backed entity "
+            "map and atomic per-file checkpoints."
+        ),
+    )
+    parser.add_argument("input_dir", help="Directory containing supported private files.")
+    parser.add_argument("--out-dir", required=True, help="Separate local output directory.")
+    parser.add_argument(
+        "--recursive",
+        action="store_true",
+        help="Process supported files in subdirectories too.",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume an existing checkpoint and skip unchanged verified outputs.",
+    )
+    return parser
+
+
 def _semantic_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="longgate semantic-summarize",
@@ -181,6 +206,17 @@ def main() -> None:
     if command == "deidentify":
         args = _deidentify_parser().parse_args(command_args)
         result = deidentify_file_copy(args.input, args.out)
+        _print_json(result.to_dict())
+        return
+
+    if command == "deidentify-batch":
+        args = _batch_parser().parse_args(command_args)
+        result = deidentify_batch(
+            args.input_dir,
+            args.out_dir,
+            recursive=args.recursive,
+            resume=args.resume,
+        )
         _print_json(result.to_dict())
         return
 

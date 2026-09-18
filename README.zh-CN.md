@@ -167,7 +167,7 @@ interview.deidentified.md.trust-report.html
 - 输出采用同目录临时文件 + 原子替换；
 - 输出必须保持与输入相同扩展名；
 - 当前支持 TXT / Markdown / HTML / XLSX / DOCX；PDF 保真回写仍 fail-closed；
-- HTML 的 script/style/template/SVG 与 XLSX 公式、sheet title、defined name 不被静默改写；DOCX 的 relationship target / field instruction 不静默改写，图片、嵌入对象、ActiveX/custom XML 视为 unresolved surface；这些区域若有直接 PII 或未知二进制内容，结果必须 `LOCAL_ONLY`；
+- HTML 的 script/style/template/SVG 与 XLSX 公式、sheet title、defined name 不被静默改写；DOCX 的 relationship target / field instruction 不静默改写，图片、嵌入对象、ActiveX/non-XML custom part 视为 unresolved surface；可解析 custom XML 会做 residual scan；这些区域若有直接 PII 或未知二进制内容，结果必须 `LOCAL_ONLY`；
 - 当前仍需人工复核姓名、组织、地点、别名、罕见事件与组合身份线索；
 - `release_allowed = false`，生成脱敏副本不等于获准联网。
 
@@ -209,6 +209,19 @@ MANUAL_REVIEW_CANDIDATE 或 LOCAL_ONLY
 longgate doctor --deep --model auto
 ```
 
+如果是一批相互关联的文件，需要同一个 email / phone 在不同文件里保持同一个占位符：
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive
+```
+
+中途某个文件失败后，修正输入再继续：
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive --resume
+```
+
+Batch 模式会在输出目录保留本地 32-byte secret 与经过认证的 checkpoint。持久化 Entity Map **不保存原始邮箱、电话等值**，只保存 HMAC digest → placeholder；checkpoint 的文件键也是 HMAC path token，不保存源文件名。`.longgate-batch.key` 与 `.longgate-batch-state.json` 都属于私密本地状态，不应上传或分享。Resume 只有在当前 input SHA-256 和现有 output SHA-256 都与认证 checkpoint 匹配时才跳过文件。
 两条路径都遵守同一个原则：**脱敏质量判断 ≠ 网络外发授权。**
 
 ---

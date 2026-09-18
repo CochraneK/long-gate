@@ -113,10 +113,10 @@ flowchart TD
 
     KIND -->|"TXT / Markdown / HTML / XLSX / DOCX"| SEM["2B · longgate deidentify"]
     SEM --> LOOP["Same-format direct-identifier replacement + local review"]
-    LOOP --> SREPORT["Local de-identification Trust Report"]
-    SREPORT --> REVIEW{"Mechanical evidence quiet enough?"}
-    REVIEW -->|"yes"| HUMAN["MANUAL_REVIEW_CANDIDATE"]
-    REVIEW -->|"no"| LOCAL2["LOCAL_ONLY"]
+    LOOP --> SREPORT["Format-preserving Trust Report"]
+    SREPORT --> REVIEW{"Direct PII remains or unresolved surface?"}
+    REVIEW -->|"no"| HUMAN["MANUAL_REVIEW_REQUIRED"]
+    REVIEW -->|"yes"| LOCAL2["LOCAL_ONLY"]
     HUMAN --> HOLD["Still local-only in current baseline"]
 ```
 
@@ -136,6 +136,7 @@ The central rule is:
 | Run structured privacy workflow | `longgate run study.csv --profile research` |
 | Compute real statistics locally | `longgate exact study.csv ...` |
 | Create a same-format TXT/Markdown/HTML/XLSX/DOCX de-identified copy | `longgate deidentify interview.md` |
+| Batch a directory with stable cross-file placeholders | `longgate deidentify-batch private/ --out-dir deidentified/` |
 | Create a strongly abstracted local semantic summary | `longgate semantic-summarize interview.txt --model auto --out summary.txt` |
 | Inspect DOCX/PDF without an LLM | `longgate document-inspect ...` |
 | Local image/scanned-PDF OCR | `image-ocr-local` / `pdf-ocr-local` |
@@ -247,7 +248,21 @@ interview.deidentified.md.trust-report.html
 
 Names, organizations, locations, aliases, rare events, and combination-uniqueness risks still require review. HTML scripts/styles/templates/SVG text and XLSX formulas/sheet titles/defined names are intentionally not silently rewritten; direct PII remaining there forces `LOCAL_ONLY`. Every result keeps `release_allowed = false`.
 
-DOCX images/embedded objects/ActiveX/custom XML remain unresolved surfaces and force `LOCAL_ONLY`; direct PII in unmodified relationship/field instructions also forces `LOCAL_ONLY`. PDF format-preserving rewrite remains unsupported and fails closed.
+DOCX images/embedded objects/ActiveX/non-XML custom parts remain unresolved surfaces and force `LOCAL_ONLY`; parseable custom XML is residual-scanned, and direct PII in unmodified relationship/field instructions also forces `LOCAL_ONLY`. PDF format-preserving rewrite remains unsupported and fails closed.
+
+For a folder of related files where the same direct identifier should keep the same placeholder:
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive
+```
+
+If a later file fails, fix the input and resume:
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive --resume
+```
+
+Batch mode keeps a local 32-byte secret plus an authenticated checkpoint inside the output directory. Persistent mapping stores only HMAC digests → placeholders; checkpoint file keys are HMAC path tokens, not source filenames. **Treat both `.longgate-batch.key` and `.longgate-batch-state.json` as private local state and never upload/share them.** Resume skips a file only when both the current input SHA-256 and existing output SHA-256 match the authenticated checkpoint.
 
 ### B2 · Strong semantic abstraction
 

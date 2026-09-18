@@ -13,6 +13,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Top-level `longgate deidentify` for same-format TXT/Markdown/HTML/XLSX direct-identifier replacement with stable document-scoped placeholders, source-overwrite protection, atomic output writes, and a Chinese local review report.
 - HTML visible-text/selected-attribute adapter and XLSX all-worksheet adapter, including hidden sheets, comments, hyperlink targets, and selected workbook properties.
 - OOXML-level DOCX adapter with cross-run direct-identifier replacement across body/tables/headers/footers/comments/footnotes/endnotes while retaining existing run/package structure.
+- `longgate deidentify-batch` for stable cross-file placeholders, authenticated HMAC-minimized checkpoints, per-file atomic progress, and verified resume.
 - Top-level `longgate semantic-summarize` retains the stronger local-GGUF identity-detached abstraction workflow with original-source auditing and bounded remediation.
 - Bounded semantic remediation loop with a maximum of three local model rounds and fail-closed `MANUAL_REVIEW_CANDIDATE` / `LOCAL_ONLY` outcomes.
 - Semantic Trust Reports that record hashes, model metadata, per-round privacy evidence, failed conditions, and next actions without embedding source or transformed narrative content.
@@ -58,7 +59,8 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Semantic remediation is bounded to at most three rounds and never lowers privacy thresholds automatically.
 - Format-preserving processing binds its audit hash to the source byte snapshot, rejects input/output identity, and fails closed if the source changes during processing.
 - Intentionally unmodified HTML/XLSX regions remain visible to the direct-PII residual gate; residual hits force `LOCAL_ONLY`.
-- DOCX relationship PII and unresolved binary content surfaces (media/embeddings/ActiveX/custom XML) force `LOCAL_ONLY`; oversized OOXML ZIP packages fail closed.
+- DOCX relationship PII and unresolved binary content surfaces (media/embeddings/ActiveX/non-XML custom parts) force `LOCAL_ONLY`; oversized OOXML ZIP packages fail closed.
+- Batch mapping/checkpoint persistence stores no raw direct identifiers or source filenames, authenticates mapper/checkpoint state with a local secret, and resumes only on matching input/output hashes.
 - Token-limit-truncated local LLM completions are rejected rather than accepted as partial privacy transforms.
 - Semantic Trust Reports do not copy source or transformed narrative content into the report.
 - Hardware inspection has no remote fallback; GPU detection uses only a fixed local `nvidia-smi` query when available.

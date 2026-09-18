@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import html
+import json
 import ipaddress
 import re
 from dataclasses import asdict, dataclass
@@ -133,10 +135,162 @@ def _mapping_key(span: _Span) -> tuple[str, str]:
 class DirectIdentifierMapper:
     """Stateful direct-identifier map for one document or explicit batch."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        key_secret: bytes | None = None,
+        state: dict[str, object] | None = None,
+    ) -> None:
+        self._key_secret = key_secret
         self._counters: dict[str, int] = {}
         self._labels: dict[tuple[str, str], str] = {}
         self.entity_counts: dict[str, int] = {}
+        if state is not None:
+            self._load_state(state)
+
+    def begin_document(self) -> None:
+        """Reset per-document occurrence counts while retaining stable labels."""
+        self.entity_counts = {}
+
+    def _state_key(self, span: _Span) -> tuple[str, str]:
+        entity, value = _mapping_key(span)
+        if self._key_secret is None:
+            return entity, value
+        digest = hmac.new(
+            self._key_secret,
+            f"{entity}\0{value}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        return entity, digest
+
+    def _load_state(self, state: dict[str, object]) -> None:
+        if self._key_secret is None:
+            raise ValueError("Persistent mapper state requires a key_secret.")
+        expected_keys = {
+            "version",
+            "key_verifier",
+            "state_mac",
+            "counters",
+            "labels",
+        }
+        if set(state) != expected_keys or state.get("version") != 1:
+            raise ValueError("Unsupported or invalid persistent entity-map state.")
+
+        verifier = state.get("key_verifier")
+        expected_verifier = hmac.new(
+            self._key_secret,
+            b"long-gate-entity-map-state-v1",
+            hashlib.sha256,
+        ).hexdigest()
+        if not isinstance(verifier, str) or not hmac.compare_digest(
+            verifier,
+            expected_verifier,
+        ):
+            raise ValueError("Persistent entity-map state/key mismatch.")
+
+        counters = state.get("counters")
+        labels = state.get("labels")
+        state_mac = state.get("state_mac")
+        if (
+            not isinstance(counters, dict)
+            or not isinstance(labels, list)
+            or not isinstance(state_mac, str)
+        ):
+            raise ValueError("Invalid persistent entity-map state.")
+
+        allowed = {"EMAIL", "PHONE", "NATIONAL_ID", "POSTCODE", "IP_ADDRESS"}
+        loaded_counters: dict[str, int] = {}
+        for entity, value in counters.items():
+            if (
+                not isinstance(entity, str)
+                or entity not in allowed
+                or not isinstance(value, int)
+                or value < 0
+            ):
+                raise ValueError("Invalid persistent entity-map counter.")
+            loaded_counters[entity] = value
+
+        loaded_labels: dict[tuple[str, str], str] = {}
+        normalized_labels: list[dict[str, str]] = []
+        for item in labels:
+            if not isinstance(item, dict) or set(item) != {"entity", "digest", "label"}:
+                raise ValueError("Invalid persistent entity-map label.")
+            entity = item.get("entity")
+            digest = item.get("digest")
+            label = item.get("label")
+            if (
+                not isinstance(entity, str)
+                or entity not in allowed
+                or not isinstance(digest, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                or not isinstance(label, str)
+                or not re.fullmatch(rf"\[{entity}_[0-9]{{3,}}\]", label)
+            ):
+                raise ValueError("Invalid persistent entity-map label.")
+            key = (entity, digest)
+            if key in loaded_labels:
+                raise ValueError("Duplicate persistent entity-map key.")
+            loaded_labels[key] = label
+            normalized_labels.append(
+                {"entity": entity, "digest": digest, "label": label}
+            )
+
+        normalized_payload = {
+            "version": 1,
+            "key_verifier": verifier,
+            "counters": loaded_counters,
+            "labels": normalized_labels,
+        }
+        expected_mac = hmac.new(
+            self._key_secret,
+            (
+                b"long-gate-entity-map-state-v1\0"
+                + json.dumps(
+                    normalized_payload,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                ).encode("utf-8")
+            ),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(state_mac, expected_mac):
+            raise ValueError("Persistent entity-map state authentication failed.")
+
+        self._counters = loaded_counters
+        self._labels = loaded_labels
+
+    def export_state(self) -> dict[str, object]:
+        """Export authenticated keyed digests, never raw identifier values."""
+        if self._key_secret is None:
+            raise ValueError("Persistent export requires a key_secret.")
+        payload: dict[str, object] = {
+            "version": 1,
+            "key_verifier": hmac.new(
+                self._key_secret,
+                b"long-gate-entity-map-state-v1",
+                hashlib.sha256,
+            ).hexdigest(),
+            "counters": dict(self._counters),
+            "labels": [
+                {"entity": entity, "digest": digest, "label": label}
+                for (entity, digest), label in sorted(self._labels.items())
+            ],
+        }
+        state_mac = hmac.new(
+            self._key_secret,
+            (
+                b"long-gate-entity-map-state-v1\0"
+                + json.dumps(
+                    payload,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                ).encode("utf-8")
+            ),
+            hashlib.sha256,
+        ).hexdigest()
+        return {**payload, "state_mac": state_mac}
 
     @property
     def replacements(self) -> int:
@@ -146,7 +300,7 @@ class DirectIdentifierMapper:
         """Return mapped direct-identifier spans and update document-level counts."""
         mapped: list[MappedIdentifierSpan] = []
         for span in _identifier_spans(text):
-            key = _mapping_key(span)
+            key = self._state_key(span)
             label = self._labels.get(key)
             if label is None:
                 self._counters[span.entity] = self._counters.get(span.entity, 0) + 1
@@ -241,6 +395,8 @@ table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #d8dee8;padd
 def deidentify_text_copy(
     input_path: str | Path,
     output_path: str | Path | None = None,
+    *,
+    mapper: DirectIdentifierMapper | None = None,
 ) -> FormatPreservingResult:
     """Create a structure-preserving TXT/Markdown de-identified copy."""
     source = Path(input_path).expanduser().resolve()
@@ -266,7 +422,7 @@ def deidentify_text_copy(
     source_bytes = source.read_bytes()
     input_sha256 = hashlib.sha256(source_bytes).hexdigest()
     text = source_bytes.decode("utf-8")
-    mapper = DirectIdentifierMapper()
+    mapper = mapper or DirectIdentifierMapper()
     transformed = mapper.replace(text)
     entity_counts = dict(mapper.entity_counts)
     replacements = mapper.replacements

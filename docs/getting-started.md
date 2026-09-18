@@ -205,6 +205,19 @@ MANUAL_REVIEW_REQUIRED
 
 Names, organizations, locations, aliases, rare events, and combination uniqueness are not guaranteed to be removed. HTML scripts/styles/templates/SVG text, XLSX formulas/sheet titles/defined names, and DOCX relationship/field instructions are intentionally not silently rewritten. DOCX images and embedded/ActiveX/custom-XML surfaces are treated as unresolved and force `LOCAL_ONLY`. If direct PII remains in those regions the result is `LOCAL_ONLY`. See [Format-preserving de-identification](format-preserving.md).
 
+For a related directory, keep direct-identifier placeholders consistent across files:
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive
+```
+
+If processing stops on a bad/unsupported file, fix that input and continue with:
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive --resume
+```
+
+The output directory contains a private local `.longgate-batch.key` and authenticated `.longgate-batch-state.json`. They are required to resume consistent mapping and must not be uploaded or exposed to a networked agent. A resume skip requires both input and output SHA-256 to match the authenticated checkpoint.
 For stronger semantic abstraction, use the separate command:
 
 ```bash
