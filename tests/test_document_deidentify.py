@@ -186,3 +186,58 @@ def test_docx_rejects_invalid_zip_package(tmp_path: Path):
         assert "valid DOCX" in str(exc)
     else:
         raise AssertionError("Expected invalid DOCX package to fail closed")
+
+
+def _copy_docx_with_extra_entry(source: Path, destination: Path, name: str, payload: bytes) -> None:
+    input_buffer = BytesIO(source.read_bytes())
+    output_buffer = BytesIO()
+    with zipfile.ZipFile(input_buffer, "r") as original:
+        with zipfile.ZipFile(output_buffer, "w") as rewritten:
+            for info in original.infolist():
+                rewritten.writestr(info, original.read(info.filename))
+            rewritten.writestr(name, payload)
+    destination.write_bytes(output_buffer.getvalue())
+
+
+def test_docx_digitally_signed_package_fails_closed(tmp_path: Path):
+    base = tmp_path / "base.docx"
+    document = Document()
+    document.add_paragraph("person@example.com")
+    document.save(base)
+
+    signed = tmp_path / "signed.docx"
+    _copy_docx_with_extra_entry(
+        base,
+        signed,
+        "_xmlsignatures/sig1.xml",
+        b"<Signature/>",
+    )
+
+    try:
+        deidentify_file_copy(signed)
+    except ValueError as exc:
+        assert "Digitally signed DOCX" in str(exc)
+    else:
+        raise AssertionError("Expected signed DOCX rewrite to fail closed")
+
+
+def test_docx_relationship_pii_forces_local_only(tmp_path: Path):
+    source = tmp_path / "linked.docx"
+    document = Document()
+    paragraph = document.add_paragraph("Visible text")
+    part = paragraph.part
+    relationship_id = part.relate_to(
+        "mailto:person@example.com",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        is_external=True,
+    )
+    assert relationship_id
+    document.save(source)
+
+    result = deidentify_file_copy(source)
+
+    assert result.status == "LOCAL_ONLY"
+    audit = json.loads(Path(result.audit_path).read_text(encoding="utf-8"))
+    assert audit["unprocessed_regions"]["relationship_parts_with_direct_pii"] >= 1
+    assert audit["remaining_direct_pii_hits"] >= 1
+    assert "person@example.com" not in json.dumps(audit)
