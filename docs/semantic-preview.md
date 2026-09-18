@@ -1,11 +1,12 @@
 # Local semantic privacy path
 
-Long Gate has two related local-only semantic interfaces:
+Long Gate now separates format-preserving de-identification from semantic abstraction:
 
-- `semantic-transform-local` — low-level single-pass preview for development/debugging;
-- `deidentify` — product-level deterministic pre-scrub + bounded local semantic remediation + audit + Semantic Trust Report.
+- `deidentify` — same-format TXT/Markdown direct-identifier replacement for reusable local copies;
+- `semantic-summarize` — product-level deterministic pre-scrub + bounded local semantic abstraction + audit + Semantic Trust Report;
+- `semantic-transform-local` — low-level single-pass semantic preview for development/debugging.
 
-Neither path is called certified anonymization. Neither path automatically grants network egress.
+None of these paths is called certified anonymization. None automatically grants network egress. The format-preserving `deidentify` path is documented separately because preserving source structure and aggressively abstracting identity are different tasks.
 
 ## Why a local LLM is useful — and still not enough
 
@@ -22,7 +23,7 @@ Long Gate therefore treats the model as a **privacy transformation component**, 
 
 ---
 
-## Recommended path: `longgate deidentify`
+## Product semantic path: `longgate semantic-summarize`
 
 After installing a verified local model:
 
@@ -33,12 +34,12 @@ longgate setup
 run:
 
 ```bash
-longgate deidentify interview.txt \
+longgate semantic-summarize interview.txt \
   --model auto \
   --out deidentified.txt
 ```
 
-Supported extractable-text inputs are TXT, Markdown, DOCX, and PDF text layers.
+Supported extractable-text inputs are TXT, Markdown, HTML, DOCX, and PDF text layers. This command produces an abstract summary, not a format-preserving document copy.
 
 The pipeline is:
 
@@ -67,13 +68,13 @@ quiet enough for manual review?
 The current default is two rounds. Users may explicitly choose 1–3:
 
 ```bash
-longgate deidentify interview.txt \
+longgate semantic-summarize interview.txt \
   --model auto \
   --out deidentified.txt \
   --max-rounds 3
 ```
 
-The retry loop is intentionally bounded. Privacy failure never triggers an infinite autonomous loop or a lower policy threshold.
+The retry loop is intentionally bounded. Privacy failure never triggers an infinite autonomous loop or a lower policy threshold. A llama.cpp completion that ends because the token limit was reached is rejected rather than treated as a valid partial privacy transform.
 
 ### Why compare every round to the original source?
 
@@ -123,7 +124,7 @@ The local transformer uses a fixed privacy-oriented instruction to:
 
 Users and networked agents do not supply arbitrary system prompts through this interface.
 
-The product-level `deidentify` command first applies deterministic local pre-scrubbing for supported obvious patterns before sending the text into the verified local model. This reduces avoidable direct-identifier exposure inside the local inference step, but pre-scrubbing itself is never treated as release authorization.
+The product-level `semantic-summarize` command first applies deterministic local pre-scrubbing for supported obvious patterns before sending the text into the verified local model. This reduces avoidable direct-identifier exposure inside the local inference step, but pre-scrubbing itself is never treated as release authorization.
 
 ---
 
@@ -167,7 +168,7 @@ See [Release evidence gates](release-criteria.md).
 
 ## Semantic Trust Report
 
-`longgate deidentify` writes:
+`longgate semantic-summarize` writes:
 
 ```text
 deidentified.txt
