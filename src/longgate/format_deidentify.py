@@ -24,6 +24,25 @@ class _Span:
     value: str
 
 
+ASSISTED_ENTITY_TYPES = {
+    "PERSON",
+    "ALIAS",
+    "ORGANIZATION",
+    "LOCATION",
+    "PROJECT",
+    "DATE",
+    "ROLE",
+    "EVENT",
+    "QUASI_IDENTIFIER",
+}
+
+
+@dataclass(frozen=True)
+class AssistedEntityLiteral:
+    entity: str
+    literal: str
+
+
 @dataclass(frozen=True)
 class MappedIdentifierSpan:
     start: int
@@ -48,6 +67,7 @@ class FormatPreservingResult:
     automatic_release_allowed: bool
     release_allowed: bool
     next_actions: list[str]
+    entity_assist: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -144,13 +164,17 @@ class DirectIdentifierMapper:
         self._key_secret = key_secret
         self._counters: dict[str, int] = {}
         self._labels: dict[tuple[str, str], str] = {}
+        self._assisted_literals: dict[str, str] = {}
+        self.assisted_conflicts = 0
         self.entity_counts: dict[str, int] = {}
         if state is not None:
             self._load_state(state)
 
     def begin_document(self) -> None:
-        """Reset per-document occurrence counts while retaining stable labels."""
+        """Reset per-document counts/candidates while retaining stable labels."""
         self.entity_counts = {}
+        self._assisted_literals = {}
+        self.assisted_conflicts = 0
 
     def _state_key(self, span: _Span) -> tuple[str, str]:
         entity, value = _mapping_key(span)
@@ -198,7 +222,14 @@ class DirectIdentifierMapper:
         ):
             raise ValueError("Invalid persistent entity-map state.")
 
-        allowed = {"EMAIL", "PHONE", "NATIONAL_ID", "POSTCODE", "IP_ADDRESS"}
+        allowed = {
+            "EMAIL",
+            "PHONE",
+            "NATIONAL_ID",
+            "POSTCODE",
+            "IP_ADDRESS",
+            *ASSISTED_ENTITY_TYPES,
+        }
         loaded_counters: dict[str, int] = {}
         for entity, value in counters.items():
             if (
@@ -292,6 +323,48 @@ class DirectIdentifierMapper:
         ).hexdigest()
         return {**payload, "state_mac": state_mac}
 
+    def register_assisted_literals(
+        self,
+        candidates: list[AssistedEntityLiteral],
+    ) -> None:
+        """Register exact source literals for controlled non-generative replacement."""
+        priority = {
+            "PERSON": 0,
+            "ALIAS": 1,
+            "ORGANIZATION": 2,
+            "LOCATION": 3,
+            "PROJECT": 4,
+            "DATE": 5,
+            "ROLE": 6,
+            "EVENT": 7,
+            "QUASI_IDENTIFIER": 8,
+        }
+        for candidate in candidates:
+            if candidate.entity not in ASSISTED_ENTITY_TYPES:
+                raise ValueError(f"Unsupported assisted entity type: {candidate.entity}")
+            existing = self._assisted_literals.get(candidate.literal)
+            if existing is None or priority[candidate.entity] < priority[existing]:
+                self._assisted_literals[candidate.literal] = candidate.entity
+
+    def _assisted_spans(self, text: str) -> list[_Span]:
+        spans: list[_Span] = []
+        for literal, entity in self._assisted_literals.items():
+            start = 0
+            while True:
+                index = text.find(literal, start)
+                if index < 0:
+                    break
+                spans.append(
+                    _Span(
+                        start=index,
+                        end=index + len(literal),
+                        entity=entity,
+                        value=literal,
+                    )
+                )
+                start = index + max(1, len(literal))
+        return spans
+
     @property
     def replacements(self) -> int:
         return sum(self.entity_counts.values())
@@ -299,7 +372,48 @@ class DirectIdentifierMapper:
     def plan(self, text: str) -> list[MappedIdentifierSpan]:
         """Return mapped direct-identifier spans and update document-level counts."""
         mapped: list[MappedIdentifierSpan] = []
-        for span in _identifier_spans(text):
+        direct_spans = _identifier_spans(text)
+        assisted_spans: list[_Span] = []
+        for span in self._assisted_spans(text):
+            if any(
+                span.start < direct.end and direct.start < span.end
+                for direct in direct_spans
+            ):
+                self.assisted_conflicts += 1
+                continue
+            assisted_spans.append(span)
+        assisted_priority = {
+            "PERSON": 0,
+            "ALIAS": 1,
+            "ORGANIZATION": 2,
+            "LOCATION": 3,
+            "PROJECT": 4,
+            "DATE": 5,
+            "ROLE": 6,
+            "EVENT": 7,
+            "QUASI_IDENTIFIER": 8,
+        }
+        assisted_spans.sort(
+            key=lambda item: (
+                item.start,
+                -(item.end - item.start),
+                assisted_priority.get(item.entity, 99),
+            )
+        )
+        accepted_assisted: list[_Span] = []
+        cursor = -1
+        for span in assisted_spans:
+            if span.start < cursor:
+                self.assisted_conflicts += 1
+                continue
+            accepted_assisted.append(span)
+            cursor = span.end
+
+        spans = sorted(
+            [*direct_spans, *accepted_assisted],
+            key=lambda item: item.start,
+        )
+        for span in spans:
             key = self._state_key(span)
             label = self._labels.get(key)
             if label is None:
@@ -343,11 +457,26 @@ def _render_report(
     replacements: int,
     entity_counts: dict[str, int],
     remaining_direct_pii_hits: int,
+    entity_assist: dict[str, object] | None = None,
 ) -> str:
     entity_rows = "".join(
         f"<tr><td>{html.escape(entity)}</td><td>{count}</td></tr>"
         for entity, count in sorted(entity_counts.items())
     ) or "<tr><td>none</td><td>0</td></tr>"
+    assist_html = ""
+    if entity_assist:
+        accepted = int(entity_assist.get("accepted_candidates", 0))
+        rejected = int(entity_assist.get("rejected_candidates", 0))
+        conflicts = int(entity_assist.get("overlap_conflicts", 0))
+        model_file = html.escape(str(entity_assist.get("model_file", "local model")))
+        assist_html = (
+            "<div class=\"card\"><h2>本地语义实体辅助</h2>"
+            f"<p>模型：<code>{model_file}</code></p>"
+            f"<p>已接受候选：{accepted}；被拒绝候选：{rejected}；"
+            f"span 冲突：{conflicts}</p>"
+            "<p>模型只提名原文 literal；Long Gate 不允许模型自由重写正文。"
+            "报告不记录候选原文。</p></div>"
+        )
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -380,6 +509,7 @@ table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #d8dee8;padd
 <table><thead><tr><th>类型</th><th>出现次数</th></tr></thead><tbody>{entity_rows}</tbody></table>
 <p>输出中仍被机械扫描器命中的直接 PII：{remaining_direct_pii_hits}</p>
 </div>
+{assist_html}
 <div class="card">
 <h2>仍需人工复核</h2>
 <ul>
@@ -397,6 +527,8 @@ def deidentify_text_copy(
     output_path: str | Path | None = None,
     *,
     mapper: DirectIdentifierMapper | None = None,
+    entity_assist: dict[str, object] | None = None,
+    expected_source_sha256: str | None = None,
 ) -> FormatPreservingResult:
     """Create a structure-preserving TXT/Markdown de-identified copy."""
     source = Path(input_path).expanduser().resolve()
@@ -421,6 +553,10 @@ def deidentify_text_copy(
 
     source_bytes = source.read_bytes()
     input_sha256 = hashlib.sha256(source_bytes).hexdigest()
+    if expected_source_sha256 is not None and input_sha256 != expected_source_sha256:
+        raise RuntimeError(
+            "Input changed after entity detection; no output was written."
+        )
     text = source_bytes.decode("utf-8")
     mapper = mapper or DirectIdentifierMapper()
     transformed = mapper.replace(text)
@@ -442,7 +578,16 @@ def deidentify_text_copy(
     output_sha256 = sha256_file(destination)
     audit_path = destination.with_name(destination.name + ".audit.json")
     report_path = destination.with_name(destination.name + ".trust-report.html")
-    status = "LOCAL_ONLY" if remaining.total_hits else "MANUAL_REVIEW_REQUIRED"
+    if entity_assist is not None:
+        entity_assist = dict(entity_assist)
+        entity_assist["overlap_conflicts"] = mapper.assisted_conflicts
+    assist_rejected = int((entity_assist or {}).get("rejected_candidates", 0))
+    assist_conflicts = int((entity_assist or {}).get("overlap_conflicts", 0))
+    status = (
+        "LOCAL_ONLY"
+        if remaining.total_hits or assist_rejected or assist_conflicts
+        else "MANUAL_REVIEW_REQUIRED"
+    )
     next_actions = [
         "人工复核姓名、组织、地点、别名、罕见事件与组合身份线索。",
         "若输出机械扫描仍有直接 PII 命中，保持 LOCAL_ONLY 并修正后重跑。",
@@ -464,6 +609,7 @@ def deidentify_text_copy(
         "automatic_release_allowed": False,
         "release_allowed": False,
         "next_actions": next_actions,
+        "entity_assist": entity_assist,
     }
     write_json(audit_path, payload)
     atomic_write_text(
@@ -476,6 +622,7 @@ def deidentify_text_copy(
             replacements=replacements,
             entity_counts=entity_counts,
             remaining_direct_pii_hits=remaining.total_hits,
+            entity_assist=entity_assist,
         ),
     )
 
@@ -494,4 +641,5 @@ def deidentify_text_copy(
         automatic_release_allowed=False,
         release_allowed=False,
         next_actions=next_actions,
+        entity_assist=entity_assist,
     )

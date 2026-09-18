@@ -10,6 +10,7 @@ from .cli import main as legacy_main
 from .deidentify import deidentify_local
 from .doctor import capabilities, deep_local_llm_check
 from .document_deidentify import deidentify_file_copy
+from .entity_assist import LocalLlamaCppEntityDetector
 
 
 _TOP_HELP = """Long Gate — local-first privacy gateway for safe AI data access.
@@ -109,6 +110,21 @@ def _deidentify_parser() -> argparse.ArgumentParser:
             "The output must keep the same extension."
         ),
     )
+    parser.add_argument(
+        "--entity-assist",
+        choices=["none", "local-llm"],
+        default="none",
+        help=(
+            "Optional structured local semantic detection for names/orgs/locations/"
+            "dates/rare identity cues. The model nominates exact literals only."
+        ),
+    )
+    parser.add_argument(
+        "--model",
+        default="auto",
+        help="Verified local GGUF model for --entity-assist local-llm. Default: auto.",
+    )
+    parser.add_argument("--entity-max-tokens", type=int, default=768)
     return parser
 
 
@@ -132,6 +148,18 @@ def _batch_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Resume an existing checkpoint and skip unchanged verified outputs.",
     )
+    parser.add_argument(
+        "--entity-assist",
+        choices=["none", "local-llm"],
+        default="none",
+        help="Optional structured local semantic entity detection shared across the batch.",
+    )
+    parser.add_argument(
+        "--model",
+        default="auto",
+        help="Verified local GGUF model for --entity-assist local-llm. Default: auto.",
+    )
+    parser.add_argument("--entity-max-tokens", type=int, default=768)
     return parser
 
 
@@ -205,17 +233,34 @@ def main() -> None:
 
     if command == "deidentify":
         args = _deidentify_parser().parse_args(command_args)
-        result = deidentify_file_copy(args.input, args.out)
+        detector = (
+            LocalLlamaCppEntityDetector(args.model)
+            if args.entity_assist == "local-llm"
+            else None
+        )
+        result = deidentify_file_copy(
+            args.input,
+            args.out,
+            entity_detector=detector,
+            entity_max_tokens=args.entity_max_tokens,
+        )
         _print_json(result.to_dict())
         return
 
     if command == "deidentify-batch":
         args = _batch_parser().parse_args(command_args)
+        detector = (
+            LocalLlamaCppEntityDetector(args.model)
+            if args.entity_assist == "local-llm"
+            else None
+        )
         result = deidentify_batch(
             args.input_dir,
             args.out_dir,
             recursive=args.recursive,
             resume=args.resume,
+            entity_detector=detector,
+            entity_max_tokens=args.entity_max_tokens,
         )
         _print_json(result.to_dict())
         return

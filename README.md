@@ -246,7 +246,7 @@ interview.deidentified.md.trust-report.html
 
 `deidentify` keeps the supported document structure and replaces explicit direct identifiers with stable document-scoped placeholders such as `[EMAIL_001]` and `[PHONE_001]`. TXT/Markdown keeps text structure; HTML preserves DOM/tag structure while processing visible text and selected attributes; XLSX traverses all worksheets including hidden sheets plus comments, links, and selected workbook properties; DOCX rewrites OOXML text nodes across body/tables/headers/footers/comments/footnotes/endnotes, including identifiers split across Word runs. It never overwrites the source file, fixes the source SHA-256 before any write, and uses atomic output replacement.
 
-Names, organizations, locations, aliases, rare events, and combination-uniqueness risks still require review. HTML scripts/styles/templates/SVG text and XLSX formulas/sheet titles/defined names are intentionally not silently rewritten; direct PII remaining there forces `LOCAL_ONLY`. Every result keeps `release_allowed = false`.
+Names, organizations, locations, aliases, dates, projects, roles, rare events, and combination-uniqueness cues can optionally be nominated by the already-local GGUF model using `--entity-assist local-llm`; Long Gate still performs the actual exact-literal replacement and the result requires local review. HTML scripts/styles/templates/SVG text and XLSX formulas/sheet titles/defined names are intentionally not silently rewritten; direct PII remaining there forces `LOCAL_ONLY`. Every result keeps `release_allowed = false`.
 
 DOCX images/embedded objects/ActiveX/non-XML custom parts remain unresolved surfaces and force `LOCAL_ONLY`; parseable custom XML is residual-scanned, and direct PII in unmodified relationship/field instructions also forces `LOCAL_ONLY`. PDF format-preserving rewrite remains unsupported and fails closed.
 
@@ -263,6 +263,22 @@ longgate deidentify-batch private/ --out-dir deidentified/ --recursive --resume
 ```
 
 Batch mode keeps a local 32-byte secret plus an authenticated checkpoint inside the output directory. Persistent mapping stores only HMAC digests → placeholders; checkpoint file keys are HMAC path tokens, not source filenames. **Treat both `.longgate-batch.key` and `.longgate-batch-state.json` as private local state and never upload/share them.** Resume skips a file only when both the current input SHA-256 and existing output SHA-256 match the authenticated checkpoint.
+
+
+Optional structured semantic assist:
+
+```bash
+longgate deidentify interview.md --entity-assist local-llm --model auto
+```
+
+The local model does **not** rewrite the document. It may only nominate exact source literals in a typed JSON structure (`PERSON`, `ORGANIZATION`, `LOCATION`, `DATE`, `PROJECT`, `ROLE`, `EVENT`, `ALIAS`, `QUASI_IDENTIFIER`). Long Gate validates each nomination against the source, gives deterministic direct-PII spans priority, and performs the controlled replacement itself. Hallucinated/invalid candidates or span conflicts force `LOCAL_ONLY`.
+
+For related files, the same mode is available in batch and is bound into the authenticated checkpoint together with the exact local model SHA-256:
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive \
+  --entity-assist local-llm --model auto
+```
 
 ### B2 · Strong semantic abstraction
 

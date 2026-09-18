@@ -7,6 +7,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
+from .entity_source import collect_entity_assist_text
 from .format_deidentify import (
     DirectIdentifierMapper,
     FormatPreservingResult,
@@ -30,6 +31,8 @@ def _paths_and_snapshot(
     input_path: str | Path,
     output_path: str | Path | None,
     allowed_suffixes: set[str],
+    *,
+    expected_source_sha256: str | None = None,
 ) -> tuple[Path, Path, bytes, str]:
     source = Path(input_path).expanduser().resolve()
     if not source.is_file():
@@ -50,6 +53,10 @@ def _paths_and_snapshot(
 
     source_bytes = source.read_bytes()
     digest = hashlib.sha256(source_bytes).hexdigest()
+    if expected_source_sha256 is not None and digest != expected_source_sha256:
+        raise RuntimeError(
+            "Input changed after entity detection; no output was written."
+        )
     return source, destination, source_bytes, digest
 
 
@@ -65,6 +72,7 @@ def _render_report(
     processed_units: dict[str, int],
     unprocessed_regions: dict[str, int],
     note: str,
+    entity_assist: dict[str, object] | None = None,
 ) -> str:
     entity_rows = "".join(
         f"<tr><td>{html.escape(entity)}</td><td>{count}</td></tr>"
@@ -78,6 +86,20 @@ def _render_report(
         f"<li>{html.escape(name)}: {count}</li>"
         for name, count in sorted(unprocessed_regions.items())
     ) or "<li>none</li>"
+    assist_html = ""
+    if entity_assist:
+        accepted = int(entity_assist.get("accepted_candidates", 0))
+        rejected = int(entity_assist.get("rejected_candidates", 0))
+        conflicts = int(entity_assist.get("overlap_conflicts", 0))
+        model_file = html.escape(str(entity_assist.get("model_file", "local model")))
+        assist_html = (
+            "<div class=\"card\"><h2>本地语义实体辅助</h2>"
+            f"<p>模型：<code>{model_file}</code></p>"
+            f"<p>已接受候选：{accepted}；被拒绝候选：{rejected}；"
+            f"span 冲突：{conflicts}</p>"
+            "<p>模型只提名原文 literal；Long Gate 不允许自由改写文件内容。"
+            "候选原文不会写入报告。</p></div>"
+        )
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -112,6 +134,7 @@ table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #d8dee8;padd
 </div>
 <div class="card"><h2>已处理区域</h2><ul>{processed}</ul></div>
 <div class="card"><h2>未自动改写 / 需复核区域</h2><ul>{unprocessed}</ul></div>
+{assist_html}
 <div class="card">
 <h2>人工复核重点</h2>
 <ul>
@@ -138,6 +161,7 @@ def _commit_result(
     unprocessed_regions: dict[str, int],
     note: str,
     force_local_only: bool = False,
+    entity_assist: dict[str, object] | None = None,
 ) -> FormatPreservingResult:
     if sha256_file(source) != source_sha256:
         raise RuntimeError("Input file changed during processing; no output was written.")
@@ -150,9 +174,19 @@ def _commit_result(
         )
 
     output_sha256 = sha256_file(destination)
+    if entity_assist is not None:
+        entity_assist = dict(entity_assist)
+        entity_assist["overlap_conflicts"] = mapper.assisted_conflicts
+    assist_rejected = int((entity_assist or {}).get("rejected_candidates", 0))
+    assist_conflicts = int((entity_assist or {}).get("overlap_conflicts", 0))
     status = (
         "LOCAL_ONLY"
-        if remaining_direct_pii_hits or force_local_only
+        if (
+            remaining_direct_pii_hits
+            or force_local_only
+            or assist_rejected
+            or assist_conflicts
+        )
         else "MANUAL_REVIEW_REQUIRED"
     )
     audit_path = destination.with_name(destination.name + ".audit.json")
@@ -180,6 +214,7 @@ def _commit_result(
         "automatic_release_allowed": False,
         "release_allowed": False,
         "next_actions": next_actions,
+        "entity_assist": entity_assist,
     }
     write_json(audit_path, payload_json)
     atomic_write_text(
@@ -195,6 +230,7 @@ def _commit_result(
             processed_units=processed_units,
             unprocessed_regions=unprocessed_regions,
             note=note,
+            entity_assist=entity_assist,
         ),
     )
     return FormatPreservingResult(
@@ -212,6 +248,7 @@ def _commit_result(
         automatic_release_allowed=False,
         release_allowed=False,
         next_actions=next_actions,
+        entity_assist=entity_assist,
     )
 
 
@@ -220,6 +257,8 @@ def deidentify_html_copy(
     output_path: str | Path | None = None,
     *,
     mapper: DirectIdentifierMapper | None = None,
+    entity_assist: dict[str, object] | None = None,
+    expected_source_sha256: str | None = None,
 ) -> FormatPreservingResult:
     try:
         from bs4 import BeautifulSoup, Comment, Doctype, NavigableString
@@ -230,7 +269,10 @@ def deidentify_html_copy(
         ) from exc
 
     source, destination, source_bytes, source_sha256 = _paths_and_snapshot(
-        input_path, output_path, _HTML_SUFFIXES
+        input_path,
+        output_path,
+        _HTML_SUFFIXES,
+        expected_source_sha256=expected_source_sha256,
     )
     try:
         source_text = source_bytes.decode("utf-8")
@@ -301,6 +343,7 @@ def deidentify_html_copy(
             "source serialization/whitespace. Visible text and selected user-facing/link "
             "attributes are processed; scripts/styles/templates/SVG text are not rewritten."
         ),
+        entity_assist=entity_assist,
     )
 
 
@@ -321,11 +364,16 @@ def deidentify_xlsx_copy(
     output_path: str | Path | None = None,
     *,
     mapper: DirectIdentifierMapper | None = None,
+    entity_assist: dict[str, object] | None = None,
+    expected_source_sha256: str | None = None,
 ) -> FormatPreservingResult:
     from openpyxl import load_workbook
 
     source, destination, source_bytes, source_sha256 = _paths_and_snapshot(
-        input_path, output_path, _XLSX_SUFFIXES
+        input_path,
+        output_path,
+        _XLSX_SUFFIXES,
+        expected_source_sha256=expected_source_sha256,
     )
     workbook = load_workbook(BytesIO(source_bytes), data_only=False, keep_links=True)
     mapper = mapper or DirectIdentifierMapper()
@@ -441,6 +489,7 @@ def deidentify_xlsx_copy(
             "hyperlink targets, and selected workbook properties are processed. Formulas and "
             "sheet titles/defined names are preserved and reported for manual review."
         ),
+        entity_assist=entity_assist,
     )
 
 
@@ -667,9 +716,14 @@ def deidentify_docx_copy(
     output_path: str | Path | None = None,
     *,
     mapper: DirectIdentifierMapper | None = None,
+    entity_assist: dict[str, object] | None = None,
+    expected_source_sha256: str | None = None,
 ) -> FormatPreservingResult:
     source, destination, source_bytes, source_sha256 = _paths_and_snapshot(
-        input_path, output_path, _DOCX_SUFFIXES
+        input_path,
+        output_path,
+        _DOCX_SUFFIXES,
+        expected_source_sha256=expected_source_sha256,
     )
     mapper = mapper or DirectIdentifierMapper()
     remaining_total = 0
@@ -836,6 +890,7 @@ def deidentify_docx_copy(
             "local-only risk; parseable custom XML is residual-scanned instead."
         ),
         force_local_only=force_local_only,
+        entity_assist=entity_assist,
     )
 
 def deidentify_file_copy(
@@ -843,21 +898,67 @@ def deidentify_file_copy(
     output_path: str | Path | None = None,
     *,
     mapper: DirectIdentifierMapper | None = None,
+    entity_detector: object | None = None,
+    entity_max_tokens: int = 768,
 ) -> FormatPreservingResult:
     shared_mapper = mapper is not None
     mapper = mapper or DirectIdentifierMapper()
     if shared_mapper:
         mapper.begin_document()
 
+    entity_assist: dict[str, object] | None = None
+    expected_source_sha256: str | None = None
+    if entity_detector is not None:
+        expected_source_sha256 = sha256_file(input_path)
+        source_for_detection = collect_entity_assist_text(input_path)
+        if sha256_file(input_path) != expected_source_sha256:
+            raise RuntimeError(
+                "Input changed during entity detection extraction; no output was written."
+            )
+        detect = getattr(entity_detector, "detect", None)
+        if not callable(detect):
+            raise TypeError("entity_detector must provide a callable detect method.")
+        assist_result = detect(source_for_detection, max_tokens=entity_max_tokens)
+        candidates = getattr(assist_result, "candidates", None)
+        summary = getattr(assist_result, "summary_dict", None)
+        if not isinstance(candidates, list) or not callable(summary):
+            raise RuntimeError("Entity detector returned an invalid structured result.")
+        mapper.register_assisted_literals(candidates)
+        entity_assist = summary()
+
     suffix = Path(input_path).suffix.lower()
     if suffix in SUPPORTED_PRESERVE_TEXT:
-        return deidentify_text_copy(input_path, output_path, mapper=mapper)
+        return deidentify_text_copy(
+            input_path,
+            output_path,
+            mapper=mapper,
+            entity_assist=entity_assist,
+            expected_source_sha256=expected_source_sha256,
+        )
     if suffix in _HTML_SUFFIXES:
-        return deidentify_html_copy(input_path, output_path, mapper=mapper)
+        return deidentify_html_copy(
+            input_path,
+            output_path,
+            mapper=mapper,
+            entity_assist=entity_assist,
+            expected_source_sha256=expected_source_sha256,
+        )
     if suffix in _XLSX_SUFFIXES:
-        return deidentify_xlsx_copy(input_path, output_path, mapper=mapper)
+        return deidentify_xlsx_copy(
+            input_path,
+            output_path,
+            mapper=mapper,
+            entity_assist=entity_assist,
+            expected_source_sha256=expected_source_sha256,
+        )
     if suffix in _DOCX_SUFFIXES:
-        return deidentify_docx_copy(input_path, output_path, mapper=mapper)
+        return deidentify_docx_copy(
+            input_path,
+            output_path,
+            mapper=mapper,
+            entity_assist=entity_assist,
+            expected_source_sha256=expected_source_sha256,
+        )
     raise ValueError(
         "Format-preserving deidentify supports TXT/Markdown, HTML, XLSX, and DOCX in the "
         "current phase. PDF is not silently flattened; use semantic-summarize "

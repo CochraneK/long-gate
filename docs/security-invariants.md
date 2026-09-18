@@ -65,6 +65,13 @@ These are executable product requirements, not documentation-only promises.
 61. Batch resume may skip a file only when the authenticated checkpoint is valid, the input-root binding matches, the current input SHA-256 matches, and the existing output SHA-256 matches.
 62. Batch output must be outside the input tree and a fresh batch requires an empty output directory. Symlink files are not processed.
 63. Batch checkpoint state is atomically committed only after a file succeeds; a failed file is never marked complete, so recovery retries it instead of silently skipping it.
+64. Structured semantic entity assistance is detection-only: the local model may nominate typed exact-source literals but may never provide a free-form replacement document.
+65. Assisted entity candidates must use the allowed type set and match literal source text exactly; invented, malformed, overlong, control-character, placeholder-like, or excessive-frequency candidates are rejected.
+66. Deterministic direct-PII spans remain authoritative. Any direct-vs-semantic or semantic-vs-semantic span conflict is recorded without source text and forces `LOCAL_ONLY`.
+67. Any rejected structured semantic candidate forces `LOCAL_ONLY`; a quiet direct-PII scan does not override model-candidate uncertainty.
+68. Entity detection and format-preserving rewrite are bound to the same input SHA-256. Source mutation between detection and rewrite fails closed.
+69. Batch semantic-assist resume is bound to the authenticated assist mode, exact local model filename + SHA-256, and entity token budget; a changed model/configuration requires a fresh batch.
+70. Format-preserving reports may record entity-assist model filename, counts, accepted/rejected totals, and conflict counts, but never candidate literals or source narrative.
 
 CI should fail when tests covering these invariants fail.
 
