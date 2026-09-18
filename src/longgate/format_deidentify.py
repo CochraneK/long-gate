@@ -165,6 +165,7 @@ class DirectIdentifierMapper:
         self._counters: dict[str, int] = {}
         self._labels: dict[tuple[str, str], str] = {}
         self._assisted_literals: dict[str, str] = {}
+        self.assisted_conflicts = 0
         self.entity_counts: dict[str, int] = {}
         if state is not None:
             self._load_state(state)
@@ -173,6 +174,7 @@ class DirectIdentifierMapper:
         """Reset per-document counts/candidates while retaining stable labels."""
         self.entity_counts = {}
         self._assisted_literals = {}
+        self.assisted_conflicts = 0
 
     def _state_key(self, span: _Span) -> tuple[str, str]:
         entity, value = _mapping_key(span)
@@ -371,14 +373,15 @@ class DirectIdentifierMapper:
         """Return mapped direct-identifier spans and update document-level counts."""
         mapped: list[MappedIdentifierSpan] = []
         direct_spans = _identifier_spans(text)
-        assisted_spans = [
-            span
-            for span in self._assisted_spans(text)
-            if not any(
+        assisted_spans: list[_Span] = []
+        for span in self._assisted_spans(text):
+            if any(
                 span.start < direct.end and direct.start < span.end
                 for direct in direct_spans
-            )
-        ]
+            ):
+                self.assisted_conflicts += 1
+                continue
+            assisted_spans.append(span)
         assisted_priority = {
             "PERSON": 0,
             "ALIAS": 1,
@@ -401,6 +404,7 @@ class DirectIdentifierMapper:
         cursor = -1
         for span in assisted_spans:
             if span.start < cursor:
+                self.assisted_conflicts += 1
                 continue
             accepted_assisted.append(span)
             cursor = span.end
@@ -572,10 +576,14 @@ def deidentify_text_copy(
     output_sha256 = sha256_file(destination)
     audit_path = destination.with_name(destination.name + ".audit.json")
     report_path = destination.with_name(destination.name + ".trust-report.html")
+    if entity_assist is not None:
+        entity_assist = dict(entity_assist)
+        entity_assist["overlap_conflicts"] = mapper.assisted_conflicts
     assist_rejected = int((entity_assist or {}).get("rejected_candidates", 0))
+    assist_conflicts = int((entity_assist or {}).get("overlap_conflicts", 0))
     status = (
         "LOCAL_ONLY"
-        if remaining.total_hits or assist_rejected
+        if remaining.total_hits or assist_rejected or assist_conflicts
         else "MANUAL_REVIEW_REQUIRED"
     )
     next_actions = [
