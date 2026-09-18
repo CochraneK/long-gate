@@ -62,7 +62,7 @@ def test_deidentify_dispatches_format_preserving_path(monkeypatch, capsys, tmp_p
             next_actions=["review"],
         )
 
-    monkeypatch.setattr(app, "deidentify_text_copy", fake_deidentify)
+    monkeypatch.setattr(app, "deidentify_file_copy", fake_deidentify)
     output = tmp_path / "out.txt"
     monkeypatch.setattr(
         sys,

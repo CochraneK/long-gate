@@ -140,11 +140,11 @@ longgate exact study.csv ols --outcome score --predictor age --predictor group
 
 ---
 
-# 路线 B：私密文本——先保格式，再按需做语义泛化
+# 路线 B：私密文档——先保格式，再按需做语义泛化
 
 Long Gate 现在把两件不同的事明确拆开，不再让一个 `deidentify` 命令同时承担“保留原文件”和“自由摘要改写”。
 
-## B1 · TXT / Markdown 格式保真脱敏副本
+## B1 · TXT / Markdown / HTML / XLSX 格式保真脱敏副本
 
 ```bash
 longgate deidentify interview.md
@@ -158,7 +158,7 @@ interview.deidentified.md.audit.json
 interview.deidentified.md.trust-report.html
 ```
 
-`deidentify` 会保持原有标题、段落、换行和非敏感正文，只把明确识别出的直接标识符替换成稳定占位符，例如 `[EMAIL_001]`、`[PHONE_001]`。同一个直接标识符在单文件内保持一致映射。
+`deidentify` 会保持支持格式的主要结构，只把明确识别出的直接标识符替换成稳定占位符，例如 `[EMAIL_001]`、`[PHONE_001]`。TXT/Markdown 保留文本结构；HTML 保留 DOM/tag 结构并处理 visible text 与选定属性；XLSX 遍历所有工作表（包括 hidden）、字符串单元格、批注、超链接和选定 workbook properties。同一直接标识符在整个文档内保持一致映射。
 
 安全约束：
 
@@ -166,7 +166,8 @@ interview.deidentified.md.trust-report.html
 - 在任何写操作之前固定原文件 SHA-256；
 - 输出采用同目录临时文件 + 原子替换；
 - 输出必须保持与输入相同扩展名；
-- 当前只支持 TXT / Markdown；其他格式 fail-closed，不伪装成“已保真处理”；
+- 当前支持 TXT / Markdown / HTML / XLSX；DOCX/PDF 保真回写仍 fail-closed；
+- HTML 的 script/style/template/SVG 与 XLSX 公式、sheet title、defined name 不被静默改写；这些区域若仍含直接 PII，结果必须 `LOCAL_ONLY`；
 - 当前仍需人工复核姓名、组织、地点、别名、罕见事件与组合身份线索；
 - `release_allowed = false`，生成脱敏副本不等于获准联网。
 
@@ -368,6 +369,7 @@ hardware detection failure       → 不使用远程 fallback
 ## 文档
 
 - [Getting Started](docs/getting-started.md)
+- [格式保真脱敏](docs/format-preserving.md)
 - [Local semantic privacy path](docs/semantic-preview.md)
 - [Local Model Guide](docs/models.md)
 - [Security invariants](docs/security-invariants.md)

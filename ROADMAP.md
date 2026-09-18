@@ -71,7 +71,9 @@ Implemented:
 - local-only hardware advisor: OS / architecture / CPU / RAM / disk + best-effort NVIDIA GPU/VRAM
 - FAST / BALANCED / QUALITY model-fit guidance
 - top-level `longgate setup`, `longgate hardware`, `longgate deidentify`, and `longgate semantic-summarize`
-- TXT/Markdown format-preserving direct-identifier replacement with stable per-document placeholders
+- TXT/Markdown/HTML/XLSX format-preserving direct-identifier replacement with stable document-scoped placeholders
+- HTML visible-text/selected-attribute traversal with explicit ignored-region reporting
+- XLSX all-worksheet traversal including hidden sheets, comments, hyperlinks, and selected workbook metadata
 - source-overwrite rejection, source-hash consistency checks, and atomic local output writes
 - deterministic pre-scrub before semantic transformation
 - fail-closed detection of token-limit-truncated local model completions
@@ -85,7 +87,7 @@ Implemented:
 - copyable AI setup prompt
 
 Still open:
-- format-preserving DOCX / HTML / XLSX rewrite adapters
+- format-preserving DOCX rewrite adapter
 - cross-file batch entity maps for consistent replacement
 - semantic entity detection for names / organizations / locations without free-form whole-document rewriting
 - larger semantic identity / rare-event / relationship attack corpus

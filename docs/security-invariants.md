@@ -51,6 +51,9 @@ These are executable product requirements, not documentation-only promises.
 47. The format-preserving Phase-1 path supports only TXT/Markdown. Unsupported formats fail closed rather than being flattened or mislabeled as preserved copies.
 48. Local-model semantic output that terminates because the token limit was reached is rejected as truncated and cannot be treated as a completed privacy transform.
 49. Format-preserving Trust Reports contain hashes, formats, counts, decisions, and next actions but do not embed source/transformed narrative text or local filenames/paths.
+50. A document-scoped direct-identifier map must be shared across all processed regions of an HTML/XLSX artifact so repeated literals receive consistent replacements.
+51. HTML scripts/styles/templates/SVG text and XLSX formulas/sheet titles/defined names are never silently rewritten by the current adapter. Direct PII remaining in intentionally unmodified regions forces `LOCAL_ONLY`.
+52. XLSX format-preserving processing traverses every worksheet, including hidden sheets; it must not treat only the active/first worksheet as complete coverage.
 
 CI should fail when tests covering these invariants fail.
 

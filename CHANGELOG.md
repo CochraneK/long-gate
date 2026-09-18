@@ -10,7 +10,8 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Top-level `longgate setup` product entrypoint that combines local hardware advice with curated Model Vault installation and verification.
 - Top-level `longgate hardware` local-only advisor for OS/architecture/CPU/RAM/disk plus best-effort NVIDIA GPU/VRAM detection.
 - FAST / BALANCED / QUALITY model-fit guidance while keeping automatic selection conservative and RAM-led.
-- Top-level `longgate deidentify` for same-format TXT/Markdown direct-identifier replacement with stable per-document placeholders, source-overwrite protection, atomic output writes, and a Chinese local review report.
+- Top-level `longgate deidentify` for same-format TXT/Markdown/HTML/XLSX direct-identifier replacement with stable document-scoped placeholders, source-overwrite protection, atomic output writes, and a Chinese local review report.
+- HTML visible-text/selected-attribute adapter and XLSX all-worksheet adapter, including hidden sheets, comments, hyperlink targets, and selected workbook properties.
 - Top-level `longgate semantic-summarize` retains the stronger local-GGUF identity-detached abstraction workflow with original-source auditing and bounded remediation.
 - Bounded semantic remediation loop with a maximum of three local model rounds and fail-closed `MANUAL_REVIEW_CANDIDATE` / `LOCAL_ONLY` outcomes.
 - Semantic Trust Reports that record hashes, model metadata, per-round privacy evidence, failed conditions, and next actions without embedding source or transformed narrative content.
@@ -55,6 +56,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Semantic de-identification candidates remain local-only even when mechanical evidence qualifies them for manual review.
 - Semantic remediation is bounded to at most three rounds and never lowers privacy thresholds automatically.
 - Format-preserving processing binds its audit hash to the source byte snapshot, rejects input/output identity, and fails closed if the source changes during processing.
+- Intentionally unmodified HTML/XLSX regions remain visible to the direct-PII residual gate; residual hits force `LOCAL_ONLY`.
 - Token-limit-truncated local LLM completions are rejected rather than accepted as partial privacy transforms.
 - Semantic Trust Reports do not copy source or transformed narrative content into the report.
 - Hardware inspection has no remote fallback; GPU detection uses only a fixed local `nvidia-smi` query when available.

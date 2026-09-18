@@ -135,7 +135,7 @@ The central rule is:
 | Inspect installed capabilities | `longgate doctor` |
 | Run structured privacy workflow | `longgate run study.csv --profile research` |
 | Compute real statistics locally | `longgate exact study.csv ...` |
-| Create a same-format TXT/Markdown de-identified copy | `longgate deidentify interview.md` |\n| Create a strongly abstracted local semantic summary | `longgate semantic-summarize interview.txt --model auto --out summary.txt` |
+| Create a same-format TXT/Markdown/HTML/XLSX de-identified copy | `longgate deidentify interview.md` |\n| Create a strongly abstracted local semantic summary | `longgate semantic-summarize interview.txt --model auto --out summary.txt` |
 | Inspect DOCX/PDF without an LLM | `longgate document-inspect ...` |
 | Local image/scanned-PDF OCR | `image-ocr-local` / `pdf-ocr-local` |
 | Let a network AI read a supported safe aggregate | `run` → review → `approve-egress` → `longgate-mcp` |
@@ -228,7 +228,7 @@ The source rows stay local.
 
 Long Gate now separates two different privacy tasks instead of pretending they are the same thing.
 
-### B1 · Format-preserving TXT / Markdown copy
+### B1 · Format-preserving TXT / Markdown / HTML / XLSX copy
 
 ```bash
 longgate deidentify interview.md
@@ -242,11 +242,11 @@ interview.deidentified.md.audit.json
 interview.deidentified.md.trust-report.html
 ```
 
-`deidentify` keeps the original text/Markdown structure and replaces explicit direct identifiers with stable per-document placeholders such as `[EMAIL_001]` and `[PHONE_001]`. It never overwrites the source file, fixes the source SHA-256 before any write, and uses atomic output replacement.
+`deidentify` keeps the supported document structure and replaces explicit direct identifiers with stable document-scoped placeholders such as `[EMAIL_001]` and `[PHONE_001]`. TXT/Markdown keeps text structure; HTML preserves DOM/tag structure while processing visible text and selected attributes; XLSX traverses all worksheets including hidden sheets plus comments, links, and selected workbook properties. It never overwrites the source file, fixes the source SHA-256 before any write, and uses atomic output replacement.
 
-Current Phase-1 scope is deliberately narrow: TXT/Markdown only. Names, organizations, locations, aliases, rare events, and combination-uniqueness risks still require review. The result therefore remains `MANUAL_REVIEW_REQUIRED` and `release_allowed = false`.
+Names, organizations, locations, aliases, rare events, and combination-uniqueness risks still require review. HTML scripts/styles/templates/SVG text and XLSX formulas/sheet titles/defined names are intentionally not silently rewritten; direct PII remaining there forces `LOCAL_ONLY`. Every result keeps `release_allowed = false`.
 
-Unsupported formats fail closed rather than being flattened into a fake same-format result.
+DOCX/PDF format-preserving rewrite remains unsupported and fails closed rather than being flattened into a fake same-format result.
 
 ### B2 · Strong semantic abstraction
 
@@ -586,6 +586,7 @@ See [Roadmap](ROADMAP.md).
 # Documentation
 
 - [Getting Started — 5 minutes](docs/getting-started.md)
+- [Format-preserving de-identification](docs/format-preserving.md)
 - [Local semantic privacy path](docs/semantic-preview.md)
 - [Local Model Guide](docs/models.md)
 - [Threat model](docs/threat-model.md)
