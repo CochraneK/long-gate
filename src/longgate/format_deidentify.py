@@ -7,7 +7,7 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from .pii import CN_ID_RE, EMAIL_RE, PHONE_RE, UK_POSTCODE_RE, scan_text
+from .pii import CN_ID_RE, EMAIL_RE, UK_POSTCODE_RE, iter_phone_matches, scan_text
 from .utils import atomic_write_text, sha256_file, utc_now, write_json
 
 SUPPORTED_PRESERVE_TEXT = {".txt", ".md", ".markdown"}
@@ -89,12 +89,16 @@ def _collect_ip_spans(text: str) -> list[_Span]:
 
 
 def _identifier_spans(text: str) -> list[_Span]:
+    phone_spans = [
+        _Span(match.start(), match.end(), "PHONE", match.group(0))
+        for match in iter_phone_matches(text)
+    ]
     spans = [
         *_collect_regex_spans(text, CN_ID_RE, "NATIONAL_ID"),
         *_collect_regex_spans(text, EMAIL_RE, "EMAIL"),
         *_collect_regex_spans(text, UK_POSTCODE_RE, "POSTCODE"),
         *_collect_ip_spans(text),
-        *_collect_regex_spans(text, PHONE_RE, "PHONE"),
+        *phone_spans,
     ]
     priority = {
         "NATIONAL_ID": 0,
