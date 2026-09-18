@@ -145,6 +145,7 @@ def test_persistent_mapper_state_rejects_raw_value_shape():
     state = {
         "version": 1,
         "key_verifier": valid_state["key_verifier"],
+        "state_mac": "0" * 64,
         "counters": {"EMAIL": 1},
         "labels": [
             {
