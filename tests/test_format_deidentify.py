@@ -79,3 +79,15 @@ def test_direct_identifier_mapping_is_stable_within_document():
 
     assert transformed == "[EMAIL_001] then [EMAIL_001] and [EMAIL_002]"
     assert counts == {"EMAIL": 3}
+
+
+def test_direct_identifier_replacement_is_idempotent():
+    first, _ = replace_direct_identifiers("Contact person@example.com or 192.0.2.1.")
+    second, _ = replace_direct_identifiers(first)
+    assert second == first
+
+
+def test_national_id_takes_priority_over_phone_pattern():
+    transformed, counts = replace_direct_identifiers("ID 11010519491231002X")
+    assert transformed == "ID [NATIONAL_ID_001]"
+    assert counts == {"NATIONAL_ID": 1}
