@@ -7,6 +7,7 @@ import sys
 from .advisor import hardware_advice, setup_local_ai
 from .cli import main as legacy_main
 from .deidentify import deidentify_local
+from .doctor import capabilities, deep_local_llm_check
 from .format_deidentify import deidentify_text_copy
 
 
@@ -65,6 +66,27 @@ def _hardware_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--ram-gb", type=float, default=None)
     parser.add_argument("--vault", default=None)
+    return parser
+
+
+def _doctor_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="longgate doctor",
+        description=(
+            "Run real local import checks. Add --deep to verify the resolved GGUF "
+            "model file and perform one tiny non-sensitive local inference."
+        ),
+    )
+    parser.add_argument(
+        "--deep",
+        action="store_true",
+        help="Also resolve the model and perform a minimal local inference.",
+    )
+    parser.add_argument(
+        "--model",
+        default="auto",
+        help="Verified Model Vault alias or local GGUF path for --deep. Default: auto.",
+    )
     return parser
 
 
@@ -145,6 +167,14 @@ def main() -> None:
             result = hardware_advice(ram_gb=args.ram_gb, vault_dir=args.vault)
         else:
             result = setup_local_ai(ram_gb=args.ram_gb, vault_dir=args.vault)
+        _print_json(result)
+        return
+
+    if command == "doctor":
+        args = _doctor_parser().parse_args(command_args)
+        result = [capability.to_dict() for capability in capabilities()]
+        if args.deep:
+            result.append(deep_local_llm_check(args.model).to_dict())
         _print_json(result)
         return
 
