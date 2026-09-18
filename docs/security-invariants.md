@@ -58,6 +58,8 @@ These are executable product requirements, not documentation-only promises.
 54. DOCX relationship targets are not silently rewritten. A direct-PII hit in an unmodified relationship target forces `LOCAL_ONLY`.
 55. DOCX media, embedded objects, ActiveX, or custom XML are unresolved content surfaces in the current adapter and force `LOCAL_ONLY` even when text-layer scans are quiet.
 56. DOCX ZIP processing enforces package-entry and total-uncompressed-size limits before rewriting and never extracts archive members to the filesystem.
+57. Digitally signed DOCX packages are not rewritten because any modification would invalidate the package signature; signed inputs fail closed.
+58. Unhandled DOCX XML parts receive residual direct-PII scanning so a clean main document cannot hide direct identifiers in secondary package metadata.
 
 CI should fail when tests covering these invariants fail.
 
