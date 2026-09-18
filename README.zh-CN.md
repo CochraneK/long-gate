@@ -144,7 +144,7 @@ longgate exact study.csv ols --outcome score --predictor age --predictor group
 
 Long Gate 现在把两件不同的事明确拆开，不再让一个 `deidentify` 命令同时承担“保留原文件”和“自由摘要改写”。
 
-## B1 · TXT / Markdown / HTML / XLSX 格式保真脱敏副本
+## B1 · TXT / Markdown / HTML / XLSX / DOCX 格式保真脱敏副本
 
 ```bash
 longgate deidentify interview.md
@@ -158,7 +158,7 @@ interview.deidentified.md.audit.json
 interview.deidentified.md.trust-report.html
 ```
 
-`deidentify` 会保持支持格式的主要结构，只把明确识别出的直接标识符替换成稳定占位符，例如 `[EMAIL_001]`、`[PHONE_001]`。TXT/Markdown 保留文本结构；HTML 保留 DOM/tag 结构并处理 visible text 与选定属性；XLSX 遍历所有工作表（包括 hidden）、字符串单元格、批注、超链接和选定 workbook properties。同一直接标识符在整个文档内保持一致映射。
+`deidentify` 会保持支持格式的主要结构，只把明确识别出的直接标识符替换成稳定占位符，例如 `[EMAIL_001]`、`[PHONE_001]`。TXT/Markdown 保留文本结构；HTML 保留 DOM/tag 结构并处理 visible text 与选定属性；XLSX 遍历所有工作表（包括 hidden）、字符串单元格、批注、超链接和选定 workbook properties；DOCX 在 OOXML `w:t` 层处理正文、表格、header/footer、comments、footnotes/endnotes，并能处理被 Word 拆到多个 run 的直接标识符。同一直接标识符在整个文档内保持一致映射。
 
 安全约束：
 
@@ -166,8 +166,8 @@ interview.deidentified.md.trust-report.html
 - 在任何写操作之前固定原文件 SHA-256；
 - 输出采用同目录临时文件 + 原子替换；
 - 输出必须保持与输入相同扩展名；
-- 当前支持 TXT / Markdown / HTML / XLSX；DOCX/PDF 保真回写仍 fail-closed；
-- HTML 的 script/style/template/SVG 与 XLSX 公式、sheet title、defined name 不被静默改写；这些区域若仍含直接 PII，结果必须 `LOCAL_ONLY`；
+- 当前支持 TXT / Markdown / HTML / XLSX / DOCX；PDF 保真回写仍 fail-closed；
+- HTML 的 script/style/template/SVG 与 XLSX 公式、sheet title、defined name 不被静默改写；DOCX 的 relationship target / field instruction 不静默改写，图片、嵌入对象、ActiveX/custom XML 视为 unresolved surface；这些区域若有直接 PII 或未知二进制内容，结果必须 `LOCAL_ONLY`；
 - 当前仍需人工复核姓名、组织、地点、别名、罕见事件与组合身份线索；
 - `release_allowed = false`，生成脱敏副本不等于获准联网。
 
