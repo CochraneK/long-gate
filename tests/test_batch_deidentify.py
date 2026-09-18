@@ -242,9 +242,13 @@ def test_batch_resume_rejects_changed_entity_assist_model(tmp_path: Path):
     output = tmp_path / "output"
     source.mkdir()
     (source / "a.txt").write_text("张三参加研究。", encoding="utf-8")
-    first_model = tmp_path / "first.gguf"
+    first_dir = tmp_path / "model-a"
+    second_dir = tmp_path / "model-b"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    first_model = first_dir / "same.gguf"
     first_model.write_bytes(b"first-model")
-    second_model = tmp_path / "first-copy.gguf"
+    second_model = second_dir / "same.gguf"
     second_model.write_bytes(b"different-model")
 
     deidentify_batch(
