@@ -635,6 +635,7 @@ def deidentify_docx_copy(
     processed_property_fields = 0
     relationship_parts_with_pii = 0
     field_instruction_pii_hits = 0
+    unprocessed_xml_parts_with_pii = 0
     media_entries = 0
     embedded_entries = 0
     other_risky_binary_entries = 0
@@ -665,8 +666,10 @@ def deidentify_docx_copy(
                 data = archive.read(info.filename)
                 name = info.filename
                 rewritten = data
+                handled_xml = False
 
                 if _is_docx_word_text_part(name):
+                    handled_xml = True
                     (
                         rewritten,
                         paragraph_count,
@@ -686,7 +689,8 @@ def deidentify_docx_copy(
                     "docProps/core.xml",
                     "docProps/app.xml",
                     "docProps/custom.xml",
-                }: 
+                }:
+                    handled_xml = True
                     (
                         rewritten,
                         field_count,
@@ -700,6 +704,7 @@ def deidentify_docx_copy(
                             remaining_by_entity.get(entity, 0) + count
                         )
                 elif name.endswith(".rels"):
+                    handled_xml = True
                     try:
                         relation_text = data.decode("utf-8")
                     except UnicodeDecodeError:
@@ -707,6 +712,20 @@ def deidentify_docx_copy(
                     findings = scan_text(relation_text)
                     if findings.total_hits:
                         relationship_parts_with_pii += 1
+                        remaining_total += findings.total_hits
+                        for entity, count in findings.by_entity.items():
+                            remaining_by_entity[entity] = (
+                                remaining_by_entity.get(entity, 0) + count
+                            )
+
+                if name.endswith(".xml") and not handled_xml:
+                    try:
+                        xml_text = data.decode("utf-8")
+                    except UnicodeDecodeError:
+                        xml_text = ""
+                    findings = scan_text(xml_text)
+                    if findings.total_hits:
+                        unprocessed_xml_parts_with_pii += 1
                         remaining_total += findings.total_hits
                         for entity, count in findings.by_entity.items():
                             remaining_by_entity[entity] = (
@@ -732,6 +751,7 @@ def deidentify_docx_copy(
             other_risky_binary_entries,
             relationship_parts_with_pii,
             field_instruction_pii_hits,
+            unprocessed_xml_parts_with_pii,
         )
     )
     return _commit_result(
@@ -751,6 +771,7 @@ def deidentify_docx_copy(
         unprocessed_regions={
             "relationship_parts_with_direct_pii": relationship_parts_with_pii,
             "field_instruction_direct_pii_hits": field_instruction_pii_hits,
+            "unprocessed_xml_parts_with_direct_pii": unprocessed_xml_parts_with_pii,
             "media_entries": media_entries,
             "embedded_entries": embedded_entries,
             "other_risky_binary_entries": other_risky_binary_entries,
