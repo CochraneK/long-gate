@@ -56,7 +56,7 @@ These are executable product requirements, not documentation-only promises.
 52. XLSX format-preserving processing traverses every worksheet, including hidden sheets; it must not treat only the active/first worksheet as complete coverage.
 53. DOCX direct-identifier detection operates on paragraph text concatenated across OOXML `w:t` nodes so run splitting cannot trivially bypass a direct-pattern replacement; replacements are projected back onto the existing text nodes instead of collapsing the paragraph to one run.
 54. DOCX relationship targets are not silently rewritten. A direct-PII hit in an unmodified relationship target forces `LOCAL_ONLY`.
-55. DOCX media, embedded objects, ActiveX, or custom XML are unresolved content surfaces in the current adapter and force `LOCAL_ONLY` even when text-layer scans are quiet.
+55. DOCX media, embedded objects, ActiveX, or non-XML custom parts are unresolved content surfaces and force `LOCAL_ONLY`; parseable custom XML is residual-scanned and any direct-PII hit also forces `LOCAL_ONLY`.
 56. DOCX ZIP processing enforces package-entry and total-uncompressed-size limits before rewriting and never extracts archive members to the filesystem.
 57. Digitally signed DOCX packages are not rewritten because any modification would invalidate the package signature; signed inputs fail closed.
 58. Unhandled DOCX XML parts receive residual direct-PII scanning so a clean main document cannot hide direct identifiers in secondary package metadata.
