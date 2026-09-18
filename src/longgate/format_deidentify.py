@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import html
 import ipaddress
 import re
@@ -224,16 +225,23 @@ def deidentify_text_copy(
     if destination.suffix.lower() != source.suffix.lower():
         raise ValueError("Format-preserving output must keep the same file extension.")
 
-    input_sha256 = sha256_file(source)
-    text = source.read_text(encoding="utf-8")
+    source_bytes = source.read_bytes()
+    input_sha256 = hashlib.sha256(source_bytes).hexdigest()
+    text = source_bytes.decode("utf-8")
     transformed, entity_counts = replace_direct_identifiers(text)
     replacements = sum(entity_counts.values())
     remaining = scan_text(transformed)
 
+    if sha256_file(source) != input_sha256:
+        raise RuntimeError("Input file changed during processing; no output was written.")
+
     atomic_write_text(destination, transformed, encoding="utf-8")
     original_unchanged = sha256_file(source) == input_sha256
     if not original_unchanged:
-        raise RuntimeError("Input file changed during processing; refusing to report success.")
+        destination.unlink(missing_ok=True)
+        raise RuntimeError(
+            "Input file changed while output was being committed; generated output was removed."
+        )
 
     output_sha256 = sha256_file(destination)
     audit_path = destination.with_name(destination.name + ".audit.json")
