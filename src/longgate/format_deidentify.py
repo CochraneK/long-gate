@@ -188,7 +188,8 @@ class DirectIdentifierMapper:
             digest = item.get("digest")
             label = item.get("label")
             if (
-                entity not in allowed
+                not isinstance(entity, str)
+                or entity not in allowed
                 or not isinstance(digest, str)
                 or not re.fullmatch(r"[0-9a-f]{64}", digest)
                 or not isinstance(label, str)
