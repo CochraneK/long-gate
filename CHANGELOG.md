@@ -14,6 +14,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - HTML visible-text/selected-attribute adapter and XLSX all-worksheet adapter, including hidden sheets, comments, hyperlink targets, and selected workbook properties.
 - OOXML-level DOCX adapter with cross-run direct-identifier replacement across body/tables/headers/footers/comments/footnotes/endnotes while retaining existing run/package structure.
 - `longgate deidentify-batch` for stable cross-file placeholders, authenticated HMAC-minimized checkpoints, per-file atomic progress, and verified resume.
+- Optional structured local-LLM entity assist for names, aliases, organizations, locations, dates, projects, roles, events, and quasi-identifiers without granting the model free-form document rewrite authority.
 - Top-level `longgate semantic-summarize` retains the stronger local-GGUF identity-detached abstraction workflow with original-source auditing and bounded remediation.
 - Bounded semantic remediation loop with a maximum of three local model rounds and fail-closed `MANUAL_REVIEW_CANDIDATE` / `LOCAL_ONLY` outcomes.
 - Semantic Trust Reports that record hashes, model metadata, per-round privacy evidence, failed conditions, and next actions without embedding source or transformed narrative content.
@@ -61,6 +62,7 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 - Intentionally unmodified HTML/XLSX regions remain visible to the direct-PII residual gate; residual hits force `LOCAL_ONLY`.
 - DOCX relationship PII and unresolved binary content surfaces (media/embeddings/ActiveX/non-XML custom parts) force `LOCAL_ONLY`; oversized OOXML ZIP packages fail closed.
 - Batch mapping/checkpoint persistence stores no raw direct identifiers or source filenames, authenticates mapper/checkpoint state with a local secret, and resumes only on matching input/output hashes.
+- Structured semantic candidates must be exact source literals; hallucinations or span conflicts fail closed to `LOCAL_ONLY`, and batch assist is bound to the exact local model SHA-256.
 - Token-limit-truncated local LLM completions are rejected rather than accepted as partial privacy transforms.
 - Semantic Trust Reports do not copy source or transformed narrative content into the report.
 - Hardware inspection has no remote fallback; GPU detection uses only a fixed local `nvidia-smi` query when available.
