@@ -90,11 +90,13 @@ def _render_report(
     if entity_assist:
         accepted = int(entity_assist.get("accepted_candidates", 0))
         rejected = int(entity_assist.get("rejected_candidates", 0))
+        conflicts = int(entity_assist.get("overlap_conflicts", 0))
         model_file = html.escape(str(entity_assist.get("model_file", "local model")))
         assist_html = (
             "<div class=\"card\"><h2>本地语义实体辅助</h2>"
             f"<p>模型：<code>{model_file}</code></p>"
-            f"<p>已接受候选：{accepted}；被拒绝候选：{rejected}</p>"
+            f"<p>已接受候选：{accepted}；被拒绝候选：{rejected}；"
+            f"span 冲突：{conflicts}</p>"
             "<p>模型只提名原文 literal；Long Gate 不允许自由改写文件内容。"
             "候选原文不会写入报告。</p></div>"
         )
@@ -172,10 +174,19 @@ def _commit_result(
         )
 
     output_sha256 = sha256_file(destination)
+    if entity_assist is not None:
+        entity_assist = dict(entity_assist)
+        entity_assist["overlap_conflicts"] = mapper.assisted_conflicts
     assist_rejected = int((entity_assist or {}).get("rejected_candidates", 0))
+    assist_conflicts = int((entity_assist or {}).get("overlap_conflicts", 0))
     status = (
         "LOCAL_ONLY"
-        if remaining_direct_pii_hits or force_local_only or assist_rejected
+        if (
+            remaining_direct_pii_hits
+            or force_local_only
+            or assist_rejected
+            or assist_conflicts
+        )
         else "MANUAL_REVIEW_REQUIRED"
     )
     audit_path = destination.with_name(destination.name + ".audit.json")
