@@ -6,6 +6,8 @@ import pytest
 from docx import Document
 
 from longgate.batch_deidentify import deidentify_batch
+from longgate.entity_assist import EntityAssistResult
+from longgate.format_deidentify import AssistedEntityLiteral
 
 
 def test_batch_uses_consistent_cross_file_placeholders_without_leaking_state(tmp_path: Path):
@@ -194,3 +196,67 @@ def test_batch_rejects_case_colliding_paths(tmp_path: Path):
         deidentify_batch(source, output)
 
     assert not output.exists()
+
+
+class _BatchFakeDetector:
+    def __init__(self, model_path: Path) -> None:
+        self.model_path = model_path
+
+    def detect(self, source: str, *, max_tokens: int = 768) -> EntityAssistResult:
+        candidates = []
+        if "张三" in source:
+            candidates.append(AssistedEntityLiteral("PERSON", "张三"))
+        return EntityAssistResult(
+            candidates=candidates,
+            accepted_by_entity={"PERSON": len(candidates)} if candidates else {},
+            rejected_candidates=0,
+            model_file=self.model_path.name,
+        )
+
+
+def test_batch_entity_assist_keeps_semantic_labels_consistent_and_private(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    source.mkdir()
+    (source / "a.txt").write_text("张三参加研究。", encoding="utf-8")
+    (source / "b.md").write_text("# 记录\n张三再次参加。", encoding="utf-8")
+    model = tmp_path / "fake.gguf"
+    model.write_bytes(b"verified-local-test-model")
+
+    detector = _BatchFakeDetector(model)
+    result = deidentify_batch(source, output, entity_detector=detector)
+
+    assert "[PERSON_001]" in (output / "a.txt").read_text(encoding="utf-8")
+    assert "[PERSON_001]" in (output / "b.md").read_text(encoding="utf-8")
+    assert result.release_allowed is False
+
+    state_text = (output / ".longgate-batch-state.json").read_text(encoding="utf-8")
+    assert "张三" not in state_text
+    state = json.loads(state_text)
+    assert state["entity_assist"]["model_file"] == "fake.gguf"
+    assert len(state["entity_assist"]["model_sha256"]) == 64
+
+
+def test_batch_resume_rejects_changed_entity_assist_model(tmp_path: Path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    source.mkdir()
+    (source / "a.txt").write_text("张三参加研究。", encoding="utf-8")
+    first_model = tmp_path / "first.gguf"
+    first_model.write_bytes(b"first-model")
+    second_model = tmp_path / "first-copy.gguf"
+    second_model.write_bytes(b"different-model")
+
+    deidentify_batch(
+        source,
+        output,
+        entity_detector=_BatchFakeDetector(first_model),
+    )
+
+    with pytest.raises(ValueError, match="entity-assist configuration differs"):
+        deidentify_batch(
+            source,
+            output,
+            resume=True,
+            entity_detector=_BatchFakeDetector(second_model),
+        )
