@@ -9,7 +9,7 @@ from pathlib import Path
 from .documents import extract_document_text
 from .model_vault import resolve_model_path
 from .pii import scan_text
-from .utils import write_json
+from .utils import atomic_write_text, sha256_file, write_json
 
 _NUMBER_CANDIDATE_RE = re.compile(r"(?<!\w)\d[\d./:-]*")
 _WORD_RE = re.compile(r"[^\W\d_][\w'-]{7,}", re.UNICODE)
@@ -274,6 +274,31 @@ def audit_semantic_preview(
     )
 
 
+def _completion_text(response: object) -> str:
+    if not isinstance(response, dict):
+        raise RuntimeError("Local llama.cpp model returned an invalid response.")
+    choices = response.get("choices", [])
+    if not isinstance(choices, list) or not choices:
+        raise RuntimeError("Local llama.cpp model returned no completion.")
+    choice = choices[0]
+    if not isinstance(choice, dict):
+        raise RuntimeError("Local llama.cpp model returned an invalid completion.")
+    finish_reason = choice.get("finish_reason")
+    if finish_reason == "length":
+        raise RuntimeError(
+            "Local llama.cpp completion was truncated by the token limit; "
+            "no partial privacy transform will be accepted."
+        )
+    if finish_reason not in {None, "stop"}:
+        raise RuntimeError(
+            f"Local llama.cpp completion ended unexpectedly: {finish_reason!r}."
+        )
+    transformed = str(choice.get("text", "")).strip()
+    if not transformed:
+        raise RuntimeError("Local llama.cpp model returned empty text.")
+    return transformed
+
+
 def _remediation_focus_text(risk_focus: list[str] | tuple[str, ...] | None) -> str:
     if not risk_focus:
         return ""
@@ -363,14 +388,7 @@ class LocalLlamaCppTransformer:
             temperature=0.1,
             echo=False,
         )
-        choices = response.get("choices", [])
-        if not choices:
-            raise RuntimeError("Local llama.cpp model returned no completion.")
-
-        transformed = str(choices[0].get("text", "")).strip()
-        if not transformed:
-            raise RuntimeError("Local llama.cpp model returned empty text.")
-        return transformed
+        return _completion_text(response)
 
 
 def _safe_chunks(text: str, max_characters: int) -> list[str]:
@@ -408,7 +426,12 @@ def semantic_transform_local(
     chunking: str = "none",
     chunk_size: int = 3000,
 ) -> SemanticPreviewResult:
-    source, _, _, _ = extract_document_text(input_path)
+    input_file = Path(input_path).expanduser().resolve()
+    output = Path(output_path).expanduser().resolve()
+    if output == input_file:
+        raise ValueError("Refusing to overwrite the input file.")
+    input_sha256 = sha256_file(input_file)
+    source, _, _, _ = extract_document_text(input_file)
 
     transformer = LocalLlamaCppTransformer(model_path)
     chunks = [source] if chunking == "none" else _safe_chunks(source, chunk_size)
@@ -420,9 +443,9 @@ def semantic_transform_local(
     )
     audit = audit_semantic_preview(source, transformed)
 
-    output = Path(output_path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(transformed, encoding="utf-8")
+    atomic_write_text(output, transformed, encoding="utf-8")
+    if sha256_file(input_file) != input_sha256:
+        raise RuntimeError("Input file changed during processing; refusing to report success.")
 
     audit_path = output.with_name(output.name + ".audit.json")
     write_json(audit_path, audit.to_dict())
