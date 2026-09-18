@@ -504,23 +504,32 @@ def _rewrite_ooxml_text_nodes(nodes: list[object], mapper: DirectIdentifierMappe
     return len(plan)
 
 
-def _scan_word_xml_root(root: object) -> tuple[int, dict[str, int]]:
+def _scan_word_xml_root(root: object) -> tuple[int, dict[str, int], int]:
     total = 0
     by_entity: dict[str, int] = {}
     paragraphs = root.xpath(".//w:p", namespaces={"w": _WORD_NS})
     for paragraph in paragraphs:
         text = "".join(
             node.text or ""
-            for node in paragraph.xpath(".//w:t", namespaces={"w": _WORD_NS})
+            for node in paragraph.xpath(".//w:t | .//w:delText", namespaces={"w": _WORD_NS})
         )
         total, by_entity = _add_findings(text, total, by_entity)
-    return total, by_entity
+
+    instruction_hits = 0
+    for node in root.xpath(".//w:instrText", namespaces={"w": _WORD_NS}):
+        if node.text:
+            findings = scan_text(node.text)
+            instruction_hits += findings.total_hits
+            total += findings.total_hits
+            for entity, count in findings.by_entity.items():
+                by_entity[entity] = by_entity.get(entity, 0) + count
+    return total, by_entity, instruction_hits
 
 
 def _rewrite_word_xml(
     data: bytes,
     mapper: DirectIdentifierMapper,
-) -> tuple[bytes, int, int, dict[str, int]]:
+) -> tuple[bytes, int, int, dict[str, int], int]:
     try:
         from lxml import etree
     except ImportError as exc:
@@ -539,20 +548,28 @@ def _rewrite_word_xml(
     paragraphs = root.xpath(".//w:p", namespaces={"w": _WORD_NS})
     processed_paragraphs = 0
     for paragraph in paragraphs:
-        nodes = list(paragraph.xpath(".//w:t", namespaces={"w": _WORD_NS}))
+        nodes = list(
+            paragraph.xpath(".//w:t | .//w:delText", namespaces={"w": _WORD_NS})
+        )
         if not nodes:
             continue
         _rewrite_ooxml_text_nodes(nodes, mapper)
         processed_paragraphs += 1
 
-    remaining_total, remaining_by_entity = _scan_word_xml_root(root)
+    remaining_total, remaining_by_entity, instruction_hits = _scan_word_xml_root(root)
     rendered = etree.tostring(
         root,
         xml_declaration=data.lstrip().startswith(b"<?xml"),
         encoding="UTF-8",
         standalone=None,
     )
-    return rendered, processed_paragraphs, remaining_total, remaining_by_entity
+    return (
+        rendered,
+        processed_paragraphs,
+        remaining_total,
+        remaining_by_entity,
+        instruction_hits,
+    )
 
 
 def _rewrite_property_xml(
@@ -617,6 +634,7 @@ def deidentify_docx_copy(
     processed_paragraphs = 0
     processed_property_fields = 0
     relationship_parts_with_pii = 0
+    field_instruction_pii_hits = 0
     media_entries = 0
     embedded_entries = 0
     other_risky_binary_entries = 0
@@ -630,6 +648,11 @@ def deidentify_docx_copy(
 
     with archive:
         infos = archive.infolist()
+        if any(info.filename.startswith("_xmlsignatures/") for info in infos):
+            raise ValueError(
+                "Digitally signed DOCX packages are not rewritten because modification "
+                "would invalidate the package signature."
+            )
         if len(infos) > _DOCX_MAX_ENTRIES:
             raise ValueError("DOCX contains too many package entries.")
         total_uncompressed = sum(info.file_size for info in infos)
@@ -637,6 +660,7 @@ def deidentify_docx_copy(
             raise ValueError("DOCX uncompressed package size exceeds the safety limit.")
 
         with zipfile.ZipFile(output_buffer, "w") as output_archive:
+            output_archive.comment = archive.comment
             for info in infos:
                 data = archive.read(info.filename)
                 name = info.filename
@@ -648,15 +672,21 @@ def deidentify_docx_copy(
                         paragraph_count,
                         part_remaining,
                         part_by_entity,
+                        instruction_hits,
                     ) = _rewrite_word_xml(data, mapper)
                     processed_parts += 1
                     processed_paragraphs += paragraph_count
+                    field_instruction_pii_hits += instruction_hits
                     remaining_total += part_remaining
                     for entity, count in part_by_entity.items():
                         remaining_by_entity[entity] = (
                             remaining_by_entity.get(entity, 0) + count
                         )
-                elif name in {"docProps/core.xml", "docProps/app.xml"}:
+                elif name in {
+                    "docProps/core.xml",
+                    "docProps/app.xml",
+                    "docProps/custom.xml",
+                }: 
                     (
                         rewritten,
                         field_count,
@@ -701,6 +731,7 @@ def deidentify_docx_copy(
             embedded_entries,
             other_risky_binary_entries,
             relationship_parts_with_pii,
+            field_instruction_pii_hits,
         )
     )
     return _commit_result(
@@ -719,6 +750,7 @@ def deidentify_docx_copy(
         },
         unprocessed_regions={
             "relationship_parts_with_direct_pii": relationship_parts_with_pii,
+            "field_instruction_direct_pii_hits": field_instruction_pii_hits,
             "media_entries": media_entries,
             "embedded_entries": embedded_entries,
             "other_risky_binary_entries": other_risky_binary_entries,
