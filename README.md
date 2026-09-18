@@ -113,7 +113,7 @@ flowchart TD
 
     KIND -->|"TXT / Markdown / DOCX / PDF"| SEM["2B · longgate deidentify"]
     SEM --> LOOP["Local semantic transform + audit + bounded remediation"]
-    LOOP --> SREPORT["Semantic Trust Report"]
+    LOOP --> SREPORT["Local de-identification Trust Report"]
     SREPORT --> REVIEW{"Mechanical evidence quiet enough?"}
     REVIEW -->|"yes"| HUMAN["MANUAL_REVIEW_CANDIDATE"]
     REVIEW -->|"no"| LOCAL2["LOCAL_ONLY"]
@@ -135,7 +135,7 @@ The central rule is:
 | Inspect installed capabilities | `longgate doctor` |
 | Run structured privacy workflow | `longgate run study.csv --profile research` |
 | Compute real statistics locally | `longgate exact study.csv ...` |
-| Semantically de-identify a private document | `longgate deidentify interview.txt --model auto --out deidentified.txt` |
+| Create a same-format TXT/Markdown de-identified copy | `longgate deidentify interview.md` |\n| Create a strongly abstracted local semantic summary | `longgate semantic-summarize interview.txt --model auto --out summary.txt` |
 | Inspect DOCX/PDF without an LLM | `longgate document-inspect ...` |
 | Local image/scanned-PDF OCR | `image-ocr-local` / `pdf-ocr-local` |
 | Let a network AI read a supported safe aggregate | `run` → review → `approve-egress` → `longgate-mcp` |
@@ -224,19 +224,41 @@ The source rows stay local.
 
 ---
 
-# Path B · local semantic de-identification
+# Path B · private text: preserve first, abstract when needed
 
-For private TXT, Markdown, DOCX, or PDF text layers:
+Long Gate now separates two different privacy tasks instead of pretending they are the same thing.
+
+### B1 · Format-preserving TXT / Markdown copy
 
 ```bash
-longgate deidentify interview.txt \
-  --model auto \
-  --out deidentified.txt
+longgate deidentify interview.md
 ```
 
-This is not a single “ask the LLM to anonymize it” call.
+Default output:
 
-Long Gate runs:
+```text
+interview.deidentified.md
+interview.deidentified.md.audit.json
+interview.deidentified.md.trust-report.html
+```
+
+`deidentify` keeps the original text/Markdown structure and replaces explicit direct identifiers with stable per-document placeholders such as `[EMAIL_001]` and `[PHONE_001]`. It never overwrites the source file, fixes the source SHA-256 before any write, and uses atomic output replacement.
+
+Current Phase-1 scope is deliberately narrow: TXT/Markdown only. Names, organizations, locations, aliases, rare events, and combination-uniqueness risks still require review. The result therefore remains `MANUAL_REVIEW_REQUIRED` and `release_allowed = false`.
+
+Unsupported formats fail closed rather than being flattened into a fake same-format result.
+
+### B2 · Strong semantic abstraction
+
+If the goal is to produce an identity-detached abstract summary rather than a reusable same-format copy, use:
+
+```bash
+longgate semantic-summarize interview.txt \
+  --model auto \
+  --out summary.txt
+```
+
+This retains the previous local-GGUF pipeline:
 
 ```text
 original private document
@@ -245,64 +267,26 @@ deterministic local pre-scrub
         ↓
 verified local GGUF model
         ↓
-identity-detaching semantic transform
+identity-detached semantic abstraction
         ↓
 audit candidate against ORIGINAL source
         ↓
-PII / exact-number / n-gram / distinctive-token checks
-        ↓
-if failing: another local transform pass
-        ↓
-maximum 3 total rounds
+bounded remediation, maximum 3 rounds
         ↓
 MANUAL_REVIEW_CANDIDATE or LOCAL_ONLY
 ```
 
-Default maximum rounds: 2.
+Truncated local-model completions are rejected rather than accepted as partial privacy transforms. Semantic output remains local-only and never becomes network-authorized automatically.
 
-Explicitly allow up to 3:
+Run a deeper local model check when needed:
 
 ```bash
-longgate deidentify interview.txt \
-  --model auto \
-  --out deidentified.txt \
-  --max-rounds 3
+longgate doctor --deep --model auto
 ```
-
-The loop is intentionally bounded. Privacy failure never causes unlimited retries or threshold relaxation.
-
-Outputs:
-
-```text
-deidentified.txt
-deidentified.txt.audit.json
-deidentified.txt.trust-report.html
-```
-
-The Semantic Trust Report records hashes, local model metadata, each remediation round, risk counts/rates, failed conditions, final status, and next actions.
-
-It deliberately does **not** embed the source narrative or transformed narrative.
-
-Current final states:
-
-```text
-MANUAL_REVIEW_CANDIDATE
-  eligible_for_manual_review = true
-  manual_review_required = true
-  automatic_release_allowed = false
-  release_allowed = false
-
-LOCAL_ONLY
-  automatic_release_allowed = false
-  release_allowed = false
-```
-
-So a semantic manual-review candidate is **not** an approved cloud-safe artifact.
 
 See [Local semantic privacy path](docs/semantic-preview.md).
 
 ---
-
 # Mechanical semantic evidence
 
 Current `semantic-release-evidence-v1` thresholds for becoming eligible for local human review are:
