@@ -76,6 +76,7 @@ Implemented:
 - XLSX all-worksheet traversal including hidden sheets, comments, hyperlinks, and selected workbook metadata
 - DOCX OOXML text-node traversal with cross-run direct-identifier replacement and unresolved binary-surface reporting
 - cross-file batch entity maps with HMAC-minimized authenticated state and hash-verified resume
+- structured local-model entity nomination for names/aliases/organizations/locations/dates/projects/roles/events/quasi-identifiers with exact-literal validation and controlled replacement
 - source-overwrite rejection, source-hash consistency checks, and atomic local output writes
 - deterministic pre-scrub before semantic transformation
 - fail-closed detection of token-limit-truncated local model completions
@@ -89,7 +90,6 @@ Implemented:
 - copyable AI setup prompt
 
 Still open:
-- semantic entity detection for names / organizations / locations without free-form whole-document rewriting
 - larger semantic identity / rare-event / relationship attack corpus
 - multilingual semantic privacy evaluation
 - privacy-aware long-document segmentation + cross-chunk consistency audit
