@@ -8,7 +8,7 @@ from .advisor import hardware_advice, setup_local_ai
 from .cli import main as legacy_main
 from .deidentify import deidentify_local
 from .doctor import capabilities, deep_local_llm_check
-from .format_deidentify import deidentify_text_copy
+from .document_deidentify import deidentify_file_copy
 
 
 _TOP_HELP = """Long Gate — local-first privacy gateway for safe AI data access.
@@ -16,7 +16,7 @@ _TOP_HELP = """Long Gate — local-first privacy gateway for safe AI data access
 Start here:
   longgate setup                 Detect hardware and configure a verified local model.
   longgate hardware              Inspect local hardware and model-fit recommendations.
-  longgate deidentify FILE       Create a format-preserving TXT/Markdown de-identified copy.
+  longgate deidentify FILE       Create a format-preserving TXT/Markdown/HTML/XLSX copy.
   longgate semantic-summarize FILE
                                  Create a strongly abstracted local semantic summary.
   longgate run FILE              Structured privacy pipeline.
@@ -94,11 +94,11 @@ def _deidentify_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="longgate deidentify",
         description=(
-            "Create a same-format TXT/Markdown de-identified copy by replacing "
+            "Create a same-format TXT/Markdown/HTML/XLSX de-identified copy by replacing "
             "explicit direct identifiers locally. The source file is never overwritten."
         ),
     )
-    parser.add_argument("input", help="TXT or Markdown input file.")
+    parser.add_argument("input", help="TXT, Markdown, HTML, or XLSX input file.")
     parser.add_argument(
         "--out",
         default=None,
@@ -180,7 +180,7 @@ def main() -> None:
 
     if command == "deidentify":
         args = _deidentify_parser().parse_args(command_args)
-        result = deidentify_text_copy(args.input, args.out)
+        result = deidentify_file_copy(args.input, args.out)
         _print_json(result.to_dict())
         return
 
