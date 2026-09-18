@@ -160,6 +160,7 @@ def replace_direct_identifiers(text: str) -> tuple[str, dict[str, int]]:
 def _render_report(
     *,
     file_format: str,
+    status: str,
     input_sha256: str,
     output_sha256: str,
     replacements: int,
@@ -185,7 +186,7 @@ table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #d8dee8;padd
 <body>
 <h1>Long Gate · 格式保真脱敏报告</h1>
 <div class="card">
-<p><strong>状态：MANUAL_REVIEW_REQUIRED</strong></p>
+<p><strong>状态：{html.escape(status)}</strong></p>
 <p>本次处理只替换明确识别出的直接标识符，并保持 TXT/Markdown 其余字符、段落和结构不变。</p>
 <p>这不是匿名化证明，也不会自动获得联网外发权限。</p>
 </div>
@@ -290,6 +291,7 @@ def deidentify_text_copy(
         report_path,
         _render_report(
             file_format=source.suffix.lower().lstrip("."),
+            status=status,
             input_sha256=input_sha256,
             output_sha256=output_sha256,
             replacements=replacements,
