@@ -54,6 +54,10 @@ These are executable product requirements, not documentation-only promises.
 50. A document-scoped direct-identifier map must be shared across all processed regions of an HTML/XLSX artifact so repeated literals receive consistent replacements.
 51. HTML scripts/styles/templates/SVG text and XLSX formulas/sheet titles/defined names are never silently rewritten by the current adapter. Direct PII remaining in intentionally unmodified regions forces `LOCAL_ONLY`.
 52. XLSX format-preserving processing traverses every worksheet, including hidden sheets; it must not treat only the active/first worksheet as complete coverage.
+53. DOCX direct-identifier detection operates on paragraph text concatenated across OOXML `w:t` nodes so run splitting cannot trivially bypass a direct-pattern replacement; replacements are projected back onto the existing text nodes instead of collapsing the paragraph to one run.
+54. DOCX relationship targets are not silently rewritten. A direct-PII hit in an unmodified relationship target forces `LOCAL_ONLY`.
+55. DOCX media, embedded objects, ActiveX, or custom XML are unresolved content surfaces in the current adapter and force `LOCAL_ONLY` even when text-layer scans are quiet.
+56. DOCX ZIP processing enforces package-entry and total-uncompressed-size limits before rewriting and never extracts archive members to the filesystem.
 
 CI should fail when tests covering these invariants fail.
 
