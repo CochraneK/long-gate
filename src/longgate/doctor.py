@@ -22,7 +22,7 @@ def _has(module: str) -> bool:
     """Perform a real import check instead of trusting import metadata alone."""
     try:
         importlib.import_module(module)
-    except (ImportError, OSError):
+    except Exception:
         return False
     return True
 
