@@ -23,6 +23,14 @@ class _Span:
 
 
 @dataclass(frozen=True)
+class MappedIdentifierSpan:
+    start: int
+    end: int
+    entity: str
+    label: str
+
+
+@dataclass(frozen=True)
 class FormatPreservingResult:
     status: str
     input_path: str
@@ -130,23 +138,34 @@ class DirectIdentifierMapper:
     def replacements(self) -> int:
         return sum(self.entity_counts.values())
 
-    def replace(self, text: str) -> str:
-        spans = _identifier_spans(text)
-        pieces: list[str] = []
-        cursor = 0
-
-        for span in spans:
+    def plan(self, text: str) -> list[MappedIdentifierSpan]:
+        """Return mapped direct-identifier spans and update document-level counts."""
+        mapped: list[MappedIdentifierSpan] = []
+        for span in _identifier_spans(text):
             key = _mapping_key(span)
             label = self._labels.get(key)
             if label is None:
                 self._counters[span.entity] = self._counters.get(span.entity, 0) + 1
                 label = f"[{span.entity}_{self._counters[span.entity]:03d}]"
                 self._labels[key] = label
-            pieces.append(text[cursor:span.start])
-            pieces.append(label)
-            cursor = span.end
+            mapped.append(
+                MappedIdentifierSpan(
+                    start=span.start,
+                    end=span.end,
+                    entity=span.entity,
+                    label=label,
+                )
+            )
             self.entity_counts[span.entity] = self.entity_counts.get(span.entity, 0) + 1
+        return mapped
 
+    def replace(self, text: str) -> str:
+        pieces: list[str] = []
+        cursor = 0
+        for span in self.plan(text):
+            pieces.append(text[cursor:span.start])
+            pieces.append(span.label)
+            cursor = span.end
         pieces.append(text[cursor:])
         return "".join(pieces)
 
