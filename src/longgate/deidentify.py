@@ -142,6 +142,8 @@ def deidentify_local(
         raise ValueError("Refusing to overwrite the input file.")
     input_sha256 = sha256_file(input_file)
     source, _, _, _ = extract_document_text(input_file)
+    if sha256_file(input_file) != input_sha256:
+        raise RuntimeError("Input file changed during extraction; no output was written.")
     if not source.strip():
         raise ValueError("Input document contains no extractable text.")
 
@@ -190,9 +192,14 @@ def deidentify_local(
         ]
     )
 
+    if sha256_file(input_file) != input_sha256:
+        raise RuntimeError("Input file changed during processing; no output was written.")
     atomic_write_text(output, final_text, encoding="utf-8")
     if sha256_file(input_file) != input_sha256:
-        raise RuntimeError("Input file changed during processing; refusing to report success.")
+        output.unlink(missing_ok=True)
+        raise RuntimeError(
+            "Input file changed while output was being committed; generated output was removed."
+        )
 
     audit_path = output.with_name(output.name + ".audit.json")
     report_path = output.with_name(output.name + ".trust-report.html")
