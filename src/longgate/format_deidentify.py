@@ -522,6 +522,7 @@ def deidentify_text_copy(
     *,
     mapper: DirectIdentifierMapper | None = None,
     entity_assist: dict[str, object] | None = None,
+    expected_source_sha256: str | None = None,
 ) -> FormatPreservingResult:
     """Create a structure-preserving TXT/Markdown de-identified copy."""
     source = Path(input_path).expanduser().resolve()
@@ -546,6 +547,10 @@ def deidentify_text_copy(
 
     source_bytes = source.read_bytes()
     input_sha256 = hashlib.sha256(source_bytes).hexdigest()
+    if expected_source_sha256 is not None and input_sha256 != expected_source_sha256:
+        raise RuntimeError(
+            "Input changed after entity detection; no output was written."
+        )
     text = source_bytes.decode("utf-8")
     mapper = mapper or DirectIdentifierMapper()
     transformed = mapper.replace(text)
