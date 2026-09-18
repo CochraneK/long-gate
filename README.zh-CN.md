@@ -171,6 +171,20 @@ interview.deidentified.md.trust-report.html
 - 当前仍需人工复核姓名、组织、地点、别名、罕见事件与组合身份线索；
 - `release_allowed = false`，生成脱敏副本不等于获准联网。
 
+可选开启**结构化语义实体辅助**：
+
+```bash
+longgate deidentify interview.md --entity-assist local-llm --model auto
+```
+
+本地模型只负责提名原文中可能需要替换的 exact literal，例如 PERSON / ORGANIZATION / LOCATION / DATE / PROJECT / ROLE / EVENT / ALIAS / QUASI_IDENTIFIER；**模型没有整篇重写权限**。Long Gate 会再次验证 literal 必须真实存在于原文，机械 email/phone/ID 等 span 优先，真正替换由 Long Gate 自己完成。模型 hallucination、非法候选或 span 冲突都会让结果降为 `LOCAL_ONLY`。
+
+Batch 同样支持该模式，并把 assist 模式、模型文件名、模型 SHA-256、token 上限绑定进认证 checkpoint：
+
+```bash
+longgate deidentify-batch private/ --out-dir deidentified/ --recursive \
+  --entity-assist local-llm --model auto
+```
 ## B2 · 强语义泛化 / 身份脱离摘要
 
 如果你的目标不是“保留原文件继续使用”，而是得到一个更抽象的 identity-detached summary，则使用：
