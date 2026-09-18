@@ -47,6 +47,10 @@ These are executable product requirements, not documentation-only promises.
 43. A semantic `MANUAL_REVIEW_CANDIDATE` is evidence for local human review only. It always keeps `automatic_release_allowed=false` and `release_allowed=false` in the current baseline.
 44. Semantic Trust Reports may contain hashes, local model metadata, risk counts/rates, decisions, and next actions, but must not embed the source narrative or transformed narrative.
 45. Deterministic pre-scrubbing and local model transformation are preparation steps, not release authorization. Network egress still requires a separately supported policy and approval path.
+46. Format-preserving de-identification never overwrites its source. The source byte snapshot determines the recorded input hash, output is committed atomically, and source mutation before or during commit fails closed.
+47. The format-preserving Phase-1 path supports only TXT/Markdown. Unsupported formats fail closed rather than being flattened or mislabeled as preserved copies.
+48. Local-model semantic output that terminates because the token limit was reached is rejected as truncated and cannot be treated as a completed privacy transform.
+49. Format-preserving Trust Reports contain hashes, formats, counts, decisions, and next actions but do not embed source/transformed narrative text or local filenames/paths.
 
 CI should fail when tests covering these invariants fail.
 

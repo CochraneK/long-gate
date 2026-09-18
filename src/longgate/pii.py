@@ -42,7 +42,7 @@ def _count_text(text: str) -> dict[str, int]:
     }
     for token in re.findall(r"(?<![\w:])(?:[0-9A-Fa-f:.]{3,})(?![\w:])", text):
         try:
-            ipaddress.ip_address(token.strip("[](),;"))
+            ipaddress.ip_address(token.strip("[](),;."))
             counts["ip_address"] += 1
         except ValueError:
             pass

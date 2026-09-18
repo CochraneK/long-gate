@@ -12,7 +12,7 @@ from .semantic import (
     audit_semantic_preview,
 )
 from .unstructured import redact_text_local
-from .utils import sha256_file, utc_now, write_json
+from .utils import atomic_write_text, sha256_file, utc_now, write_json
 
 
 @dataclass(frozen=True)
@@ -136,8 +136,14 @@ def deidentify_local(
     if not 1 <= max_rounds <= 3:
         raise ValueError("max_rounds must be between 1 and 3.")
 
-    source, _, _, _ = extract_document_text(input_path)
     input_file = Path(input_path).expanduser().resolve()
+    output = Path(output_path).expanduser().resolve()
+    if output == input_file:
+        raise ValueError("Refusing to overwrite the input file.")
+    input_sha256 = sha256_file(input_file)
+    source, _, _, _ = extract_document_text(input_file)
+    if sha256_file(input_file) != input_sha256:
+        raise RuntimeError("Input file changed during extraction; no output was written.")
     if not source.strip():
         raise ValueError("Input document contains no extractable text.")
 
@@ -186,9 +192,14 @@ def deidentify_local(
         ]
     )
 
-    output = Path(output_path).expanduser().resolve()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(final_text, encoding="utf-8")
+    if sha256_file(input_file) != input_sha256:
+        raise RuntimeError("Input file changed during processing; no output was written.")
+    atomic_write_text(output, final_text, encoding="utf-8")
+    if sha256_file(input_file) != input_sha256:
+        output.unlink(missing_ok=True)
+        raise RuntimeError(
+            "Input file changed while output was being committed; generated output was removed."
+        )
 
     audit_path = output.with_name(output.name + ".audit.json")
     report_path = output.with_name(output.name + ".trust-report.html")
@@ -196,7 +207,7 @@ def deidentify_local(
     payload = {
         "format": "long-gate-semantic-deidentify-v1",
         "status": status,
-        "input_sha256": sha256_file(input_file),
+        "input_sha256": input_sha256,
         "output_sha256": sha256_file(output),
         "model_file": model_file,
         "attempts": [attempt.to_dict() for attempt in attempts],
@@ -212,7 +223,8 @@ def deidentify_local(
         ),
     }
     write_json(audit_path, payload)
-    report_path.write_text(
+    atomic_write_text(
+        report_path,
         _render_report(
             output_name=output.name,
             input_sha256=str(payload["input_sha256"]),

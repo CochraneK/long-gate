@@ -100,7 +100,7 @@ flowchart TD
 
     KIND -->|"TXT / Markdown / DOCX / PDF"| DEID["2B · longgate deidentify"]
     DEID --> LOOP["本地 AI 脱敏 + 审计 + 有界重试"]
-    LOOP --> SR["Semantic Trust Report"]
+    LOOP --> SR["格式保真脱敏报告"]
     SR --> RESULT{"结果"}
     RESULT -->|"机械证据通过"| REVIEW["MANUAL_REVIEW_CANDIDATE"]
     RESULT -->|"仍有风险"| L2["LOCAL_ONLY"]
@@ -140,17 +140,47 @@ longgate exact study.csv ols --outcome score --predictor age --predictor group
 
 ---
 
-# 路线 B：本地 AI 语义脱敏
+# 路线 B：私密文本——先保格式，再按需做语义泛化
 
-推荐直接使用产品级入口：
+Long Gate 现在把两件不同的事明确拆开，不再让一个 `deidentify` 命令同时承担“保留原文件”和“自由摘要改写”。
+
+## B1 · TXT / Markdown 格式保真脱敏副本
 
 ```bash
-longgate deidentify interview.txt \
-  --model auto \
-  --out deidentified.txt
+longgate deidentify interview.md
 ```
 
-它不是简单地“让 LLM 改写一下”，而是：
+默认输出：
+
+```text
+interview.deidentified.md
+interview.deidentified.md.audit.json
+interview.deidentified.md.trust-report.html
+```
+
+`deidentify` 会保持原有标题、段落、换行和非敏感正文，只把明确识别出的直接标识符替换成稳定占位符，例如 `[EMAIL_001]`、`[PHONE_001]`。同一个直接标识符在单文件内保持一致映射。
+
+安全约束：
+
+- 绝不覆盖原文件；
+- 在任何写操作之前固定原文件 SHA-256；
+- 输出采用同目录临时文件 + 原子替换；
+- 输出必须保持与输入相同扩展名；
+- 当前只支持 TXT / Markdown；其他格式 fail-closed，不伪装成“已保真处理”；
+- 当前仍需人工复核姓名、组织、地点、别名、罕见事件与组合身份线索；
+- `release_allowed = false`，生成脱敏副本不等于获准联网。
+
+## B2 · 强语义泛化 / 身份脱离摘要
+
+如果你的目标不是“保留原文件继续使用”，而是得到一个更抽象的 identity-detached summary，则使用：
+
+```bash
+longgate semantic-summarize interview.txt \
+  --model auto \
+  --out summary.txt
+```
+
+这保留原来的本地 GGUF 流程：
 
 ```text
 原始私密文档
@@ -159,68 +189,28 @@ deterministic 本地 pre-scrub
   ↓
 已验证本地 GGUF
   ↓
-语义级 identity-detaching transform
+语义级 identity-detached abstraction
   ↓
-和 ORIGINAL source 比较
+始终和 ORIGINAL source 比较
   ↓
-PII / 精确数字 / n-gram / distinctive token 审计
+PII / 数字 / n-gram / distinctive token 审计
   ↓
-不够安全？
-  ├─ 再做一轮本地语义泛化
-  └─ 最多总共 3 轮
+最多 3 轮有界 remediation
   ↓
 MANUAL_REVIEW_CANDIDATE 或 LOCAL_ONLY
 ```
 
-默认最多 2 轮，也可以明确设为 1–3：
+如果本地模型因为 token 上限返回截断结果，Long Gate 现在会直接失败关闭，不接受“半截脱敏文本”。
+
+需要检查模型文件和最小本地推理时：
 
 ```bash
-longgate deidentify interview.txt \
-  --model auto \
-  --out deidentified.txt \
-  --max-rounds 3
+longgate doctor --deep --model auto
 ```
 
-失败不会无限循环，也不会自动降低阈值。
-
-输出：
-
-```text
-deidentified.txt
-deidentified.txt.audit.json
-deidentified.txt.trust-report.html
-```
-
-Semantic Trust Report 会记录：
-
-- input SHA-256；
-- 本地模型；
-- 每轮风险指标；
-- PII / 数字复用 / n-gram / distinctive-token 风险；
-- failed conditions；
-- 最终状态；
-- next actions。
-
-**它不会把原文或脱敏正文重新嵌入报告。**
-
-当前即使达到：
-
-```text
-MANUAL_REVIEW_CANDIDATE
-```
-
-仍然是：
-
-```text
-manual_review_required = true
-automatic_release_allowed = false
-release_allowed = false
-```
-
-所以“本地 AI 脱敏过”不等于“已经证明匿名”。
+两条路径都遵守同一个原则：**脱敏质量判断 ≠ 网络外发授权。**
 
 ---
-
 # 当前 Semantic evidence
 
 `semantic-release-evidence-v1` 进入人工复核候选的机械阈值：

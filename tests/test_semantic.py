@@ -4,6 +4,7 @@ import pytest
 
 from longgate.semantic import (
     LocalLlamaCppTransformer,
+    _completion_text,
     _safe_chunks,
     audit_semantic_preview,
     evaluate_semantic_release_evidence,
@@ -110,3 +111,33 @@ def test_safe_chunks_respects_paragraph_boundaries():
 
     assert len(chunks) == 2
     assert all(len(chunk) <= 5000 for chunk in chunks)
+
+
+def test_completion_text_rejects_truncation():
+    with pytest.raises(RuntimeError, match="truncated"):
+        _completion_text(
+            {
+                "choices": [
+                    {
+                        "text": "partial result",
+                        "finish_reason": "length",
+                    }
+                ]
+            }
+        )
+
+
+def test_completion_text_accepts_stopped_completion():
+    assert (
+        _completion_text(
+            {
+                "choices": [
+                    {
+                        "text": "  generalized result  ",
+                        "finish_reason": "stop",
+                    }
+                ]
+            }
+        )
+        == "generalized result"
+    )

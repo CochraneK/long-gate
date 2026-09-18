@@ -57,7 +57,7 @@ Still open:
 - adversarial mutation tests for dangerous process/mount combinations
 - manifest-backed artifact approval bound to filename + SHA-256 + purpose
 
-## v0.5 — local AI privacy workflow ✅ / semantic research active
+## v0.5 — local AI privacy workflow ✅ / format-preserving document work active
 
 Implemented:
 - local TXT / Markdown inspection
@@ -70,8 +70,11 @@ Implemented:
 - pinned model revision + SHA-256 verification
 - local-only hardware advisor: OS / architecture / CPU / RAM / disk + best-effort NVIDIA GPU/VRAM
 - FAST / BALANCED / QUALITY model-fit guidance
-- top-level `longgate setup`, `longgate hardware`, and `longgate deidentify`
+- top-level `longgate setup`, `longgate hardware`, `longgate deidentify`, and `longgate semantic-summarize`
+- TXT/Markdown format-preserving direct-identifier replacement with stable per-document placeholders
+- source-overwrite rejection, source-hash consistency checks, and atomic local output writes
 - deterministic pre-scrub before semantic transformation
+- fail-closed detection of token-limit-truncated local model completions
 - bounded semantic remediation loop (maximum three local model rounds)
 - fail-closed `MANUAL_REVIEW_CANDIDATE` / `LOCAL_ONLY` outcomes
 - offline Semantic Trust Report without source/transformed narrative content
@@ -82,6 +85,9 @@ Implemented:
 - copyable AI setup prompt
 
 Still open:
+- format-preserving DOCX / HTML / XLSX rewrite adapters
+- cross-file batch entity maps for consistent replacement
+- semantic entity detection for names / organizations / locations without free-form whole-document rewriting
 - larger semantic identity / rare-event / relationship attack corpus
 - multilingual semantic privacy evaluation
 - privacy-aware long-document segmentation + cross-chunk consistency audit
@@ -134,9 +140,9 @@ longgate setup
       ↓
 verified local model ready
       ↓
-longgate run / longgate deidentify
+longgate run / longgate deidentify / longgate semantic-summarize
       ↓
-privacy audit + bounded remediation
+privacy audit + local review / bounded remediation
       ↓
 Trust Report
       ↓
