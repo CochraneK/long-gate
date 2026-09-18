@@ -4,6 +4,7 @@ from pathlib import Path
 
 from longgate import app
 from longgate.deidentify import DeidentifyResult
+from longgate.format_deidentify import FormatPreservingResult
 
 
 def test_top_level_help_surfaces_product_commands(monkeypatch, capsys):
@@ -15,6 +16,7 @@ def test_top_level_help_surfaces_product_commands(monkeypatch, capsys):
     assert "longgate setup" in output
     assert "longgate hardware" in output
     assert "longgate deidentify" in output
+    assert "longgate semantic-summarize" in output
     assert "longgate run" in output
 
 
@@ -37,10 +39,61 @@ def test_setup_recommend_only_does_not_call_installer(monkeypatch, capsys):
     assert payload["mode"] == "recommend-only"
 
 
-def test_deidentify_dispatches_bounded_product_path(monkeypatch, capsys, tmp_path: Path):
+def test_deidentify_dispatches_format_preserving_path(monkeypatch, capsys, tmp_path: Path):
     captured = {}
 
-    def fake_deidentify(input_path, model_path, output_path, *, max_rounds, max_tokens):
+    def fake_deidentify(input_path, output_path):
+        captured.update({"input": input_path, "output": output_path})
+        output = Path(output_path)
+        return FormatPreservingResult(
+            status="MANUAL_REVIEW_REQUIRED",
+            input_path=str(input_path),
+            output_path=str(output),
+            audit_path=str(output) + ".audit.json",
+            report_path=str(output) + ".trust-report.html",
+            input_sha256="a" * 64,
+            output_sha256="b" * 64,
+            replacements=2,
+            replacement_entities={"EMAIL": 2},
+            original_unchanged=True,
+            manual_review_required=True,
+            automatic_release_allowed=False,
+            release_allowed=False,
+            next_actions=["review"],
+        )
+
+    monkeypatch.setattr(app, "deidentify_text_copy", fake_deidentify)
+    output = tmp_path / "out.txt"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["longgate", "deidentify", "interview.txt", "--out", str(output)],
+    )
+
+    app.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert captured["input"] == "interview.txt"
+    assert captured["output"] == str(output)
+    assert payload["original_unchanged"] is True
+    assert payload["release_allowed"] is False
+
+
+def test_semantic_summarize_dispatches_bounded_product_path(
+    monkeypatch, capsys, tmp_path: Path
+):
+    captured = {}
+
+    def fake_deidentify(
+        input_path,
+        model_path,
+        output_path,
+        *,
+        max_rounds,
+        max_tokens,
+        chunking,
+        chunk_size,
+    ):
         captured.update(
             {
                 "input": input_path,
@@ -48,6 +101,8 @@ def test_deidentify_dispatches_bounded_product_path(monkeypatch, capsys, tmp_pat
                 "output": output_path,
                 "max_rounds": max_rounds,
                 "max_tokens": max_tokens,
+                "chunking": chunking,
+                "chunk_size": chunk_size,
             }
         )
         return DeidentifyResult(
@@ -65,13 +120,13 @@ def test_deidentify_dispatches_bounded_product_path(monkeypatch, capsys, tmp_pat
         )
 
     monkeypatch.setattr(app, "deidentify_local", fake_deidentify)
-    output = tmp_path / "out.txt"
+    output = tmp_path / "summary.txt"
     monkeypatch.setattr(
         sys,
         "argv",
         [
             "longgate",
-            "deidentify",
+            "semantic-summarize",
             "interview.txt",
             "--out",
             str(output),
@@ -87,6 +142,7 @@ def test_deidentify_dispatches_bounded_product_path(monkeypatch, capsys, tmp_pat
     assert captured["model"] == "auto"
     assert captured["max_rounds"] == 2
     assert captured["max_tokens"] == 512
+    assert captured["chunking"] == "none"
     assert payload["release_allowed"] is False
 
 
