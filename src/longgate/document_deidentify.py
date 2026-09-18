@@ -609,6 +609,41 @@ def _rewrite_property_xml(
     return rendered, processed, remaining.total_hits, remaining.by_entity
 
 
+def _scan_unhandled_xml(data: bytes) -> tuple[int, dict[str, int]]:
+    """Scan XML text plus obviously user-authored string attributes, not structural numbers."""
+    try:
+        from lxml import etree
+    except ImportError as exc:
+        raise RuntimeError(
+            "DOCX format-preserving de-identification requires the documents extra."
+        ) from exc
+
+    parser = etree.XMLParser(
+        resolve_entities=False,
+        no_network=True,
+        load_dtd=False,
+        huge_tree=False,
+        recover=False,
+    )
+    root = etree.fromstring(data, parser=parser)
+    total = 0
+    by_entity: dict[str, int] = {}
+
+    for value in root.itertext():
+        if value:
+            total, by_entity = _add_findings(value, total, by_entity)
+
+    for element in root.iter():
+        for value in element.attrib.values():
+            if not isinstance(value, str):
+                continue
+            lowered = value.lower()
+            if "@" in value or "mailto:" in lowered or "tel:" in lowered:
+                total, by_entity = _add_findings(value, total, by_entity)
+
+    return total, by_entity
+
+
 def _is_docx_word_text_part(name: str) -> bool:
     if name in {
         "word/document.xml",
@@ -639,6 +674,7 @@ def deidentify_docx_copy(
     media_entries = 0
     embedded_entries = 0
     other_risky_binary_entries = 0
+    force_unparsed_xml_local_only = False
 
     input_buffer = BytesIO(source_bytes)
     output_buffer = BytesIO()
@@ -720,17 +756,18 @@ def deidentify_docx_copy(
 
                 if name.endswith(".xml") and not handled_xml:
                     try:
-                        xml_text = data.decode("utf-8")
-                    except UnicodeDecodeError:
-                        xml_text = ""
-                    findings = scan_text(xml_text)
-                    if findings.total_hits:
+                        part_remaining, part_by_entity = _scan_unhandled_xml(data)
+                    except Exception:
                         unprocessed_xml_parts_with_pii += 1
-                        remaining_total += findings.total_hits
-                        for entity, count in findings.by_entity.items():
-                            remaining_by_entity[entity] = (
-                                remaining_by_entity.get(entity, 0) + count
-                            )
+                        force_unparsed_xml_local_only = True
+                    else:
+                        if part_remaining:
+                            unprocessed_xml_parts_with_pii += 1
+                            remaining_total += part_remaining
+                            for entity, count in part_by_entity.items():
+                                remaining_by_entity[entity] = (
+                                    remaining_by_entity.get(entity, 0) + count
+                                )
 
                 if name.startswith("word/media/") and not name.endswith("/"):
                     media_entries += 1
@@ -752,6 +789,7 @@ def deidentify_docx_copy(
             relationship_parts_with_pii,
             field_instruction_pii_hits,
             unprocessed_xml_parts_with_pii,
+            force_unparsed_xml_local_only,
         )
     )
     return _commit_result(
@@ -772,6 +810,7 @@ def deidentify_docx_copy(
             "relationship_parts_with_direct_pii": relationship_parts_with_pii,
             "field_instruction_direct_pii_hits": field_instruction_pii_hits,
             "unprocessed_xml_parts_with_direct_pii": unprocessed_xml_parts_with_pii,
+            "unparsed_xml_parts": int(force_unparsed_xml_local_only),
             "media_entries": media_entries,
             "embedded_entries": embedded_entries,
             "other_risky_binary_entries": other_risky_binary_entries,
