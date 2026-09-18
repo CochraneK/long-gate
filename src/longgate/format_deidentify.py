@@ -167,6 +167,17 @@ class DirectIdentifierMapper:
             raise ValueError("Persistent mapper state requires a key_secret.")
         if state.get("version") != 1:
             raise ValueError("Unsupported persistent entity-map state version.")
+        verifier = state.get("key_verifier")
+        expected_verifier = hmac.new(
+            self._key_secret,
+            b"long-gate-entity-map-state-v1",
+            hashlib.sha256,
+        ).hexdigest()
+        if not isinstance(verifier, str) or not hmac.compare_digest(
+            verifier,
+            expected_verifier,
+        ):
+            raise ValueError("Persistent entity-map state/key mismatch.")
 
         counters = state.get("counters")
         labels = state.get("labels")
@@ -210,6 +221,11 @@ class DirectIdentifierMapper:
             raise ValueError("Persistent export requires a key_secret.")
         return {
             "version": 1,
+            "key_verifier": hmac.new(
+                self._key_secret,
+                b"long-gate-entity-map-state-v1",
+                hashlib.sha256,
+            ).hexdigest(),
             "counters": dict(self._counters),
             "labels": [
                 {"entity": entity, "digest": digest, "label": label}
