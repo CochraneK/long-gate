@@ -106,7 +106,7 @@ def _load_state(path: Path, secret: bytes) -> dict[str, object]:
 
 def _collect_files(root: Path, *, recursive: bool) -> list[Path]:
     candidates = root.rglob("*") if recursive else root.iterdir()
-    return sorted(
+    files = sorted(
         (
             path
             for path in candidates
@@ -116,6 +116,15 @@ def _collect_files(root: Path, *, recursive: bool) -> list[Path]:
         ),
         key=lambda path: path.relative_to(root).as_posix().casefold(),
     )
+    normalized: set[str] = set()
+    for path in files:
+        key = path.relative_to(root).as_posix().casefold()
+        if key in normalized:
+            raise ValueError(
+                "Batch contains case-colliding paths that could overwrite each other."
+            )
+        normalized.add(key)
+    return files
 
 
 def _count_status(
@@ -144,6 +153,10 @@ def deidentify_batch(
         raise NotADirectoryError(source_root)
     if output_root == source_root or output_root.is_relative_to(source_root):
         raise ValueError("Batch output directory must be outside the input directory.")
+
+    files = _collect_files(source_root, recursive=recursive)
+    if not files:
+        raise ValueError("No supported files were found in the input directory.")
 
     state_path = output_root / _BATCH_STATE_NAME
     key_path = output_root / _BATCH_KEY_NAME
@@ -179,10 +192,6 @@ def deidentify_batch(
         }
         state = _seal_state(secret, state)
         write_json(state_path, state)
-
-    files = _collect_files(source_root, recursive=recursive)
-    if not files:
-        raise ValueError("No supported files were found in the input directory.")
 
     completed = state["completed"]
     if not isinstance(completed, dict):
