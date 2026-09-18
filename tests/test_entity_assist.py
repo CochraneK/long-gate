@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
 from docx import Document
 
 from longgate.document_deidentify import deidentify_file_copy
