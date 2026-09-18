@@ -3,7 +3,7 @@
 Long Gate has two first-class paths:
 
 ```text
-PRIVATE TABLE                         PRIVATE TXT / MARKDOWN
+PRIVATE TABLE                         PRIVATE TXT / MD / HTML / XLSX
      │                                        │
      ▼                                        ▼
 longgate run                         longgate deidentify
@@ -175,9 +175,9 @@ longgate exact study.csv ols --outcome score --predictor age --predictor group
 
 ---
 
-# 3B. Private text: format-preserving de-identification
+# 3B. Private documents: format-preserving de-identification
 
-For TXT or Markdown that must remain reusable after de-identification:
+For TXT/Markdown/HTML/XLSX that must remain reusable after de-identification:
 
 ```bash
 longgate deidentify interview.md
@@ -185,10 +185,10 @@ longgate deidentify interview.md
 
 `--out` is optional. By default Long Gate writes `interview.deidentified.md` beside the source. The source is never overwritten.
 
-The Phase-1 pipeline is:
+The preserve-first pipeline is:
 
 ```text
-source TXT / Markdown
+supported source document
       ↓
 fix source SHA-256 before any write
       ↓
@@ -203,7 +203,7 @@ scan output again
 MANUAL_REVIEW_REQUIRED
 ```
 
-At this stage names, organizations, locations, aliases, rare events, and combination uniqueness are not guaranteed to be removed. This path is therefore useful for structure-preserving preparation, not as an anonymity certificate.
+Names, organizations, locations, aliases, rare events, and combination uniqueness are not guaranteed to be removed. HTML scripts/styles/templates/SVG text and XLSX formulas/sheet titles/defined names are intentionally not silently rewritten. If direct PII remains in those regions the result is `LOCAL_ONLY`. See [Format-preserving de-identification](format-preserving.md).
 
 For stronger semantic abstraction, use the separate command:
 
