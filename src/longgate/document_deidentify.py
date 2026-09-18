@@ -544,7 +544,8 @@ def _rewrite_word_xml(
         huge_tree=False,
         recover=False,
     )
-    root = etree.fromstring(data, parser=parser)
+    # Hardened parser: no DTD/entities/network, bounded OOXML ZIP input.
+    root = etree.fromstring(data, parser=parser)  # noqa: S320
     paragraphs = root.xpath(".//w:p", namespaces={"w": _WORD_NS})
     processed_paragraphs = 0
     for paragraph in paragraphs:
@@ -590,7 +591,8 @@ def _rewrite_property_xml(
         huge_tree=False,
         recover=False,
     )
-    root = etree.fromstring(data, parser=parser)
+    # Hardened parser: no DTD/entities/network, bounded OOXML ZIP input.
+    root = etree.fromstring(data, parser=parser)  # noqa: S320
     processed = 0
     for element in root.iter():
         if element.text:
@@ -625,7 +627,8 @@ def _scan_unhandled_xml(data: bytes) -> tuple[int, dict[str, int]]:
         huge_tree=False,
         recover=False,
     )
-    root = etree.fromstring(data, parser=parser)
+    # Hardened parser: no DTD/entities/network, bounded OOXML ZIP input.
+    root = etree.fromstring(data, parser=parser)  # noqa: S320
     total = 0
     by_entity: dict[str, int] = {}
 
