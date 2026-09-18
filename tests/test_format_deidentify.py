@@ -118,13 +118,33 @@ def test_persistent_mapper_state_never_contains_raw_identifier():
 
 def test_persistent_mapper_state_requires_secret():
     with pytest.raises(ValueError, match="key_secret"):
-        DirectIdentifierMapper(state={"version": 1, "counters": {}, "labels": []})
+        DirectIdentifierMapper(
+            state={
+                "version": 1,
+                "key_verifier": "0" * 64,
+                "counters": {},
+                "labels": [],
+            }
+        )
+
+
+def test_persistent_mapper_state_rejects_wrong_secret():
+    secret = b"k" * 32
+    mapper = DirectIdentifierMapper(key_secret=secret)
+    mapper.replace("person@example.com")
+    state = mapper.export_state()
+
+    with pytest.raises(ValueError, match="state/key mismatch"):
+        DirectIdentifierMapper(key_secret=b"x" * 32, state=state)
 
 
 def test_persistent_mapper_state_rejects_raw_value_shape():
     secret = b"k" * 32
+    mapper = DirectIdentifierMapper(key_secret=secret)
+    valid_state = mapper.export_state()
     state = {
         "version": 1,
+        "key_verifier": valid_state["key_verifier"],
         "counters": {"EMAIL": 1},
         "labels": [
             {
