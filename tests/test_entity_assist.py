@@ -184,3 +184,25 @@ def test_persistent_mapper_supports_assisted_entity_types_without_raw_literals()
     restored.begin_document()
     restored.register_assisted_literals([AssistedEntityLiteral("PERSON", "张三")])
     assert restored.replace("张三") == "[PERSON_001]"
+
+
+def test_overlapping_semantic_candidate_forces_local_only(tmp_path: Path):
+    source = tmp_path / "overlap.txt"
+    source.write_text("Contact person@example.com", encoding="utf-8")
+    detector = FakeDetector(
+        [
+            AssistedEntityLiteral(
+                "QUASI_IDENTIFIER",
+                "Contact person@example.com",
+            )
+        ]
+    )
+
+    result = deidentify_file_copy(source, entity_detector=detector)
+
+    output = Path(result.output_path).read_text(encoding="utf-8")
+    assert output == "Contact [EMAIL_001]"
+    assert result.status == "LOCAL_ONLY"
+    audit = json.loads(Path(result.audit_path).read_text(encoding="utf-8"))
+    assert audit["entity_assist"]["overlap_conflicts"] == 1
+    assert "person@example.com" not in json.dumps(audit)
