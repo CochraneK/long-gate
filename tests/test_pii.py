@@ -37,3 +37,8 @@ def test_structured_scan_still_detects_string_pii():
         {"group": "person@example.com"}
     )
     assert result.total_hits >= 1
+
+
+def test_scan_text_detects_sentence_final_ip_address():
+    result = scan_text("Observed host 192.0.2.1.")
+    assert result.by_entity["ip_address"] == 1
