@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import html
+import json
 import ipaddress
 import re
 from dataclasses import asdict, dataclass
@@ -165,8 +166,16 @@ class DirectIdentifierMapper:
     def _load_state(self, state: dict[str, object]) -> None:
         if self._key_secret is None:
             raise ValueError("Persistent mapper state requires a key_secret.")
-        if state.get("version") != 1:
-            raise ValueError("Unsupported persistent entity-map state version.")
+        expected_keys = {
+            "version",
+            "key_verifier",
+            "state_mac",
+            "counters",
+            "labels",
+        }
+        if set(state) != expected_keys or state.get("version") != 1:
+            raise ValueError("Unsupported or invalid persistent entity-map state.")
+
         verifier = state.get("key_verifier")
         expected_verifier = hmac.new(
             self._key_secret,
@@ -181,19 +190,30 @@ class DirectIdentifierMapper:
 
         counters = state.get("counters")
         labels = state.get("labels")
-        if not isinstance(counters, dict) or not isinstance(labels, list):
+        state_mac = state.get("state_mac")
+        if (
+            not isinstance(counters, dict)
+            or not isinstance(labels, list)
+            or not isinstance(state_mac, str)
+        ):
             raise ValueError("Invalid persistent entity-map state.")
 
         allowed = {"EMAIL", "PHONE", "NATIONAL_ID", "POSTCODE", "IP_ADDRESS"}
         loaded_counters: dict[str, int] = {}
         for entity, value in counters.items():
-            if entity not in allowed or not isinstance(value, int) or value < 0:
+            if (
+                not isinstance(entity, str)
+                or entity not in allowed
+                or not isinstance(value, int)
+                or value < 0
+            ):
                 raise ValueError("Invalid persistent entity-map counter.")
-            loaded_counters[str(entity)] = value
+            loaded_counters[entity] = value
 
         loaded_labels: dict[tuple[str, str], str] = {}
+        normalized_labels: list[dict[str, str]] = []
         for item in labels:
-            if not isinstance(item, dict):
+            if not isinstance(item, dict) or set(item) != {"entity", "digest", "label"}:
                 raise ValueError("Invalid persistent entity-map label.")
             entity = item.get("entity")
             digest = item.get("digest")
@@ -207,19 +227,44 @@ class DirectIdentifierMapper:
                 or not re.fullmatch(rf"\[{entity}_[0-9]{{3,}}\]", label)
             ):
                 raise ValueError("Invalid persistent entity-map label.")
-            key = (str(entity), digest)
+            key = (entity, digest)
             if key in loaded_labels:
                 raise ValueError("Duplicate persistent entity-map key.")
             loaded_labels[key] = label
+            normalized_labels.append(
+                {"entity": entity, "digest": digest, "label": label}
+            )
+
+        normalized_payload = {
+            "version": 1,
+            "key_verifier": verifier,
+            "counters": loaded_counters,
+            "labels": normalized_labels,
+        }
+        expected_mac = hmac.new(
+            self._key_secret,
+            (
+                b"long-gate-entity-map-state-v1\0"
+                + json.dumps(
+                    normalized_payload,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                ).encode("utf-8")
+            ),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(state_mac, expected_mac):
+            raise ValueError("Persistent entity-map state authentication failed.")
 
         self._counters = loaded_counters
         self._labels = loaded_labels
 
     def export_state(self) -> dict[str, object]:
-        """Export only keyed digests, never raw identifier values."""
+        """Export authenticated keyed digests, never raw identifier values."""
         if self._key_secret is None:
             raise ValueError("Persistent export requires a key_secret.")
-        return {
+        payload: dict[str, object] = {
             "version": 1,
             "key_verifier": hmac.new(
                 self._key_secret,
@@ -232,6 +277,20 @@ class DirectIdentifierMapper:
                 for (entity, digest), label in sorted(self._labels.items())
             ],
         }
+        state_mac = hmac.new(
+            self._key_secret,
+            (
+                b"long-gate-entity-map-state-v1\0"
+                + json.dumps(
+                    payload,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                ).encode("utf-8")
+            ),
+            hashlib.sha256,
+        ).hexdigest()
+        return {**payload, "state_mac": state_mac}
 
     @property
     def replacements(self) -> int:
