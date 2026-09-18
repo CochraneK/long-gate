@@ -48,7 +48,7 @@ These are executable product requirements, not documentation-only promises.
 44. Semantic Trust Reports may contain hashes, local model metadata, risk counts/rates, decisions, and next actions, but must not embed the source narrative or transformed narrative.
 45. Deterministic pre-scrubbing and local model transformation are preparation steps, not release authorization. Network egress still requires a separately supported policy and approval path.
 46. Format-preserving de-identification never overwrites its source. The source byte snapshot determines the recorded input hash, output is committed atomically, and source mutation before or during commit fails closed.
-47. The format-preserving Phase-1 path supports only TXT/Markdown. Unsupported formats fail closed rather than being flattened or mislabeled as preserved copies.
+47. Format-preserving de-identification supports only explicitly implemented adapters (currently TXT/Markdown, HTML/HTM, XLSX, and DOCX). Unsupported formats fail closed rather than being flattened or mislabeled as preserved copies.
 48. Local-model semantic output that terminates because the token limit was reached is rejected as truncated and cannot be treated as a completed privacy transform.
 49. Format-preserving Trust Reports contain hashes, formats, counts, decisions, and next actions but do not embed source/transformed narrative text or local filenames/paths.
 50. A document-scoped direct-identifier map must be shared across all processed regions of an HTML/XLSX artifact so repeated literals receive consistent replacements.
@@ -60,6 +60,11 @@ These are executable product requirements, not documentation-only promises.
 56. DOCX ZIP processing enforces package-entry and total-uncompressed-size limits before rewriting and never extracts archive members to the filesystem.
 57. Digitally signed DOCX packages are not rewritten because any modification would invalidate the package signature; signed inputs fail closed.
 58. Unhandled DOCX XML parts receive residual direct-PII scanning so a clean main document cannot hide direct identifiers in secondary package metadata.
+59. Persistent cross-file entity maps never store raw direct identifiers. They store HMAC-SHA-256 digests keyed by a local 32-byte secret plus placeholders, and the mapper state is authenticated before reuse.
+60. Batch checkpoints never store source filenames or raw direct identifiers. File identities are HMAC path tokens, and the entire checkpoint is authenticated with the local batch secret.
+61. Batch resume may skip a file only when the authenticated checkpoint is valid, the input-root binding matches, the current input SHA-256 matches, and the existing output SHA-256 matches.
+62. Batch output must be outside the input tree and a fresh batch requires an empty output directory. Symlink files are not processed.
+63. Batch checkpoint state is atomically committed only after a file succeeds; a failed file is never marked complete, so recovery retries it instead of silently skipping it.
 
 CI should fail when tests covering these invariants fail.
 
