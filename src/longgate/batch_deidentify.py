@@ -83,7 +83,9 @@ def _collect_files(root: Path, *, recursive: bool) -> list[Path]:
         (
             path
             for path in candidates
-            if path.is_file() and path.suffix.lower() in SUPPORTED_BATCH_SUFFIXES
+            if path.is_file()
+            and not path.is_symlink()
+            and path.suffix.lower() in SUPPORTED_BATCH_SUFFIXES
         ),
         key=lambda path: path.relative_to(root).as_posix().casefold(),
     )
@@ -136,6 +138,8 @@ def deidentify_batch(
             raise ValueError(
                 "Batch state already exists. Use --resume or choose a fresh output directory."
             )
+        if output_root.exists() and any(output_root.iterdir()):
+            raise ValueError("Fresh batch output directory must be empty.")
         output_root.mkdir(parents=True, exist_ok=True)
         secret = secrets.token_bytes(_BATCH_KEY_BYTES)
         atomic_write_bytes(key_path, secret)
