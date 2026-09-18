@@ -163,15 +163,22 @@ def deidentify_batch(
     state_path = output_root / _BATCH_STATE_NAME
     key_path = output_root / _BATCH_KEY_NAME
     detector_model = getattr(entity_detector, "model_path", None)
-    entity_assist_config = (
-        {"mode": "none"}
-        if entity_detector is None
-        else {
+    if entity_detector is None:
+        entity_assist_config: dict[str, object] = {"mode": "none"}
+    else:
+        if detector_model is None:
+            raise ValueError(
+                "Batch entity detector must expose its verified local model_path."
+            )
+        detector_model_path = Path(str(detector_model)).expanduser().resolve()
+        if not detector_model_path.is_file():
+            raise FileNotFoundError(detector_model_path)
+        entity_assist_config = {
             "mode": "local-llm-structured-detection",
-            "model_file": Path(str(detector_model)).name,
+            "model_file": detector_model_path.name,
+            "model_sha256": sha256_file(detector_model_path),
             "max_tokens": entity_max_tokens,
         }
-    )
 
     if resume:
         if not state_path.is_file() or not key_path.is_file():
@@ -181,7 +188,8 @@ def deidentify_batch(
         expected_root = _token(secret, "input-root", str(source_root))
         if not hmac.compare_digest(str(state["input_root_token"]), expected_root):
             raise ValueError("Batch checkpoint belongs to a different input directory.")
-        if state.get("entity_assist") != entity_assist_config:
+        checkpoint_assist = state.get("entity_assist", {"mode": "none"})
+        if checkpoint_assist != entity_assist_config:
             raise ValueError(
                 "Batch entity-assist configuration differs from the authenticated checkpoint."
             )
@@ -258,6 +266,7 @@ def deidentify_batch(
         }
         completed[path_token] = record
         state["mapper_state"] = mapper.export_state()
+        state["entity_assist"] = entity_assist_config
         state["completed"] = completed
         state = _seal_state(secret, state)
         completed = state["completed"]
