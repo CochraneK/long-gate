@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from longgate.format_deidentify import (
+    DirectIdentifierMapper,
     deidentify_text_copy,
     default_output_path,
     replace_direct_identifiers,
@@ -97,3 +98,41 @@ def test_direct_identifier_mapper_preserves_iso_date():
     transformed, counts = replace_direct_identifiers("Date 2026-09-18")
     assert transformed == "Date 2026-09-18"
     assert counts == {}
+
+
+def test_persistent_mapper_state_never_contains_raw_identifier():
+    secret = b"k" * 32
+    mapper = DirectIdentifierMapper(key_secret=secret)
+    assert mapper.replace("person@example.com") == "[EMAIL_001]"
+
+    state = mapper.export_state()
+    serialized = json.dumps(state)
+    assert "person@example.com" not in serialized
+    assert state["labels"][0]["label"] == "[EMAIL_001]"
+
+    restored = DirectIdentifierMapper(key_secret=secret, state=state)
+    restored.begin_document()
+    assert restored.replace("person@example.com") == "[EMAIL_001]"
+    assert restored.replace("new@example.com") == "[EMAIL_002]"
+
+
+def test_persistent_mapper_state_requires_secret():
+    with pytest.raises(ValueError, match="key_secret"):
+        DirectIdentifierMapper(state={"version": 1, "counters": {}, "labels": []})
+
+
+def test_persistent_mapper_state_rejects_raw_value_shape():
+    secret = b"k" * 32
+    state = {
+        "version": 1,
+        "counters": {"EMAIL": 1},
+        "labels": [
+            {
+                "entity": "EMAIL",
+                "digest": "person@example.com",
+                "label": "[EMAIL_001]",
+            }
+        ],
+    }
+    with pytest.raises(ValueError, match="Invalid persistent entity-map label"):
+        DirectIdentifierMapper(key_secret=secret, state=state)
