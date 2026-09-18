@@ -122,3 +122,25 @@ def test_deidentify_rejects_unbounded_round_count(tmp_path: Path):
         assert "between 1 and 3" in str(exc)
     else:
         raise AssertionError("Expected bounded remediation validation to fail")
+
+
+def test_semantic_deidentify_refuses_source_overwrite(monkeypatch, tmp_path: Path):
+    source = tmp_path / "private.txt"
+    source.write_text(
+        "A sufficiently long private narrative for the overwrite regression test.",
+        encoding="utf-8",
+    )
+    before = source.read_bytes()
+    monkeypatch.setattr(
+        "longgate.deidentify.LocalLlamaCppTransformer",
+        _AlwaysRiskyTransformer,
+    )
+
+    try:
+        deidentify_local(source, "auto", source, max_rounds=1)
+    except ValueError as exc:
+        assert "overwrite" in str(exc)
+    else:
+        raise AssertionError("Expected semantic deidentify to reject source overwrite")
+
+    assert source.read_bytes() == before
