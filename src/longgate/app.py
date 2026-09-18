@@ -16,7 +16,7 @@ _TOP_HELP = """Long Gate — local-first privacy gateway for safe AI data access
 Start here:
   longgate setup                 Detect hardware and configure a verified local model.
   longgate hardware              Inspect local hardware and model-fit recommendations.
-  longgate deidentify FILE       Create a format-preserving TXT/Markdown/HTML/XLSX copy.
+  longgate deidentify FILE       Create a format-preserving TXT/Markdown/HTML/XLSX/DOCX copy.
   longgate semantic-summarize FILE
                                  Create a strongly abstracted local semantic summary.
   longgate run FILE              Structured privacy pipeline.
@@ -94,11 +94,11 @@ def _deidentify_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="longgate deidentify",
         description=(
-            "Create a same-format TXT/Markdown/HTML/XLSX de-identified copy by replacing "
+            "Create a same-format TXT/Markdown/HTML/XLSX/DOCX de-identified copy by replacing "
             "explicit direct identifiers locally. The source file is never overwritten."
         ),
     )
-    parser.add_argument("input", help="TXT, Markdown, HTML, or XLSX input file.")
+    parser.add_argument("input", help="TXT, Markdown, HTML, XLSX, or DOCX input file.")
     parser.add_argument(
         "--out",
         default=None,
