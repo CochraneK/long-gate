@@ -1,0 +1,17 @@
+title = "Long Gate secret-scanning policy"
+
+[extend]
+useDefault = true
+
+# Security tests need fixed non-secret sentinels so we can verify that reports
+# never echo matched values. Keep this allowlist exact and value-scoped: do not
+# allowlist tests/ or broad secret-like patterns.
+[[allowlists]]
+description = "Non-secret test sentinels used only to exercise redaction paths"
+regexes = [
+  '''sk-test-value-that-must-never-be-reported''',
+  '''very-secret-value''',
+  '''query-secret''',
+  '''cookie-secret''',
+  '''real-secret''',
+]
