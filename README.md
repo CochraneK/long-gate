@@ -224,6 +224,12 @@ python tools/build_readme_assets.py
 
 数据来源是 [`project-status.json`](project-status.json)。这样 capability 状态与公开展示可以沿着同一个 canonical state 演化。
 
+## Provenance 与 privacy profiles
+
+Long Gate 支持 **optional Ed25519 provenance**。SHA-256 provenance 可以证明当前 run 内部工件的一致性；**authenticated provenance** 只有在验证方 independently trust / **trusted public key** 的前提下，才能进一步支持来源认证。Long Gate 不替用户托管长期私钥。
+
+`research` / `clinical` / `enterprise` privacy profiles 是工程阈值预设，**not certifications**；`clinical` 也不代表 HIPAA、GDPR、NHS、伦理审批或医疗器械认证。
+
 ## 安全边界与非承诺
 
 Long Gate 当前**不声称**：
