@@ -35,7 +35,7 @@ Current pre-1.0 posture:
 |---|---|
 | Raw row-level data | **Blocked** |
 | Pseudonymized row-level data | **Blocked** |
-| Row-level synthetic data | **Hard-locked pre-1.0** |
+| Row-level synthetic data | **pre-1.0 hard-lock / fail-closed** |
 | Semantic de-identification output | **LOCAL_ONLY** |
 | Supported disclosure-limited structured aggregate | Requires manifest + SHA-256 + purpose + explicit local approval |
 
