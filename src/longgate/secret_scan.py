@@ -4,7 +4,7 @@ import json
 import shutil
 # Gitleaks is an explicit local executable resolved with shutil.which. Calls use
 # an argv list with shell=False; the subprocess boundary is intentional.
-import subprocess  # nosec B404
+import subprocess  # noqa: S404  # nosec B404
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -79,7 +79,7 @@ def scan_secrets_with_gitleaks(
         ]
         # The executable is resolved locally, arguments are not passed through a shell,
         # and user-controlled target data is one argv element rather than command text.
-        completed = subprocess.run(  # nosec B603
+        completed = subprocess.run(  # noqa: S603  # nosec B603
             command,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
