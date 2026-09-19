@@ -5,6 +5,10 @@ from typing import Any
 
 import yaml
 
+# This is the container-internal tmpfs mountpoint required by the quarantine
+# contract, not a host-side temporary-file creation path.
+QUARANTINE_TMP = "/tmp"  # nosec B108
+
 
 @dataclass(frozen=True)
 class QuarantineContractResult:
@@ -35,7 +39,7 @@ def _safe_environment(value: object) -> bool:
     for key, raw in value.items():
         if not isinstance(key, str):
             return False
-        if key == "HOME" and raw == "/tmp":
+        if key == "HOME" and raw == QUARANTINE_TMP:
             continue
         if raw not in ("", None):
             return False
@@ -136,7 +140,7 @@ def validate_quarantine_compose(text: str) -> QuarantineContractResult:
     elif not any("size=" in item for item in scratch_entries):
         violations.append("scratch_tmpfs_size_limit_required")
 
-    tmp_entries = [item for item in tmpfs if item.startswith("/tmp")]
+    tmp_entries = [item for item in tmpfs if item.startswith(QUARANTINE_TMP)]
     if not tmp_entries:
         violations.append("bounded_tmp_tmpfs_required")
 
