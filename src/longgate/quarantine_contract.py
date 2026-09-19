@@ -7,7 +7,7 @@ import yaml
 
 # This is the container-internal tmpfs mountpoint required by the quarantine
 # contract, not a host-side temporary-file creation path.
-QUARANTINE_TMP = "/tmp"  # nosec B108
+QUARANTINE_TMP = "/tmp"  # noqa: S108  # nosec B108
 
 
 @dataclass(frozen=True)
