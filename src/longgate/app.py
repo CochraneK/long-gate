@@ -11,6 +11,9 @@ from .deidentify import deidentify_local
 from .doctor import capabilities, deep_local_llm_check
 from .document_deidentify import deidentify_file_copy
 from .entity_assist import LocalLlamaCppEntityDetector
+from .egress_inspect import inspect_har
+from .endpoint_provenance import inspect_endpoint
+from .secret_scan import scan_secrets_with_gitleaks
 
 
 _TOP_HELP = """Long Gate — local-first privacy gateway for safe AI data access.
@@ -24,6 +27,10 @@ Start here:
                                  Create a strongly abstracted local semantic summary.
   longgate run FILE              Structured privacy pipeline.
   longgate doctor                Show installed Long Gate capabilities.
+  longgate endpoint inspect URL  Inspect AI endpoint DNS/TLS provenance.
+  longgate egress inspect-har FILE.har
+                                 Inspect captured AI HTTP metadata locally.
+  longgate secrets scan PATH     Run local Gitleaks secret scanning.
 
 Advanced commands remain available:
   model, inspect, exact, approve-egress, verify-run, sign-run,
@@ -196,6 +203,66 @@ def _semantic_parser() -> argparse.ArgumentParser:
     return parser
 
 
+
+def _endpoint_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="longgate endpoint",
+        description=(
+            "Inspect the configured AI endpoint using hostname classification and, "
+            "unless --no-connect is used, local DNS/TLS evidence."
+        ),
+    )
+    sub = parser.add_subparsers(dest="endpoint_command", required=True)
+    inspect_cmd = sub.add_parser(
+        "inspect",
+        help="Inspect one http(s) AI endpoint without sending a prompt.",
+    )
+    inspect_cmd.add_argument("url")
+    inspect_cmd.add_argument(
+        "--no-connect",
+        action="store_true",
+        help="Classify the hostname only; do not perform DNS or TLS connections.",
+    )
+    inspect_cmd.add_argument("--timeout", type=float, default=4.0)
+    return parser
+
+
+def _egress_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="longgate egress",
+        description=(
+            "Inspect captured outbound request metadata locally without echoing "
+            "authorization values, cookies, query values, or request bodies."
+        ),
+    )
+    sub = parser.add_subparsers(dest="egress_command", required=True)
+    inspect_har_cmd = sub.add_parser(
+        "inspect-har",
+        help="Inspect a browser/proxy HAR file locally.",
+    )
+    inspect_har_cmd.add_argument("har")
+    return parser
+
+
+def _secrets_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="longgate secrets",
+        description=(
+            "Run a local Gitleaks scan and return only finding counts, file paths, "
+            "and rule identifiers — never matched secret values."
+        ),
+    )
+    sub = parser.add_subparsers(dest="secrets_command", required=True)
+    scan_cmd = sub.add_parser("scan", help="Scan a directory or Git repository.")
+    scan_cmd.add_argument("path")
+    scan_cmd.add_argument(
+        "--history",
+        action="store_true",
+        help="Scan Git history instead of only the current directory contents.",
+    )
+    return parser
+
+
 def _print_json(value: object) -> None:
     print(json.dumps(value, indent=2, ensure_ascii=False))
 
@@ -230,6 +297,34 @@ def main() -> None:
             result.append(deep_local_llm_check(args.model).to_dict())
         _print_json(result)
         return
+
+    if command == "endpoint":
+        args = _endpoint_parser().parse_args(command_args)
+        if args.endpoint_command == "inspect":
+            result = inspect_endpoint(
+                args.url,
+                connect=not args.no_connect,
+                timeout=args.timeout,
+            )
+            _print_json(result.to_dict())
+            return
+
+    if command == "egress":
+        args = _egress_parser().parse_args(command_args)
+        if args.egress_command == "inspect-har":
+            _print_json(inspect_har(args.har).to_dict())
+            return
+
+    if command == "secrets":
+        args = _secrets_parser().parse_args(command_args)
+        if args.secrets_command == "scan":
+            _print_json(
+                scan_secrets_with_gitleaks(
+                    args.path,
+                    history=args.history,
+                ).to_dict()
+            )
+            return
 
     if command == "deidentify":
         args = _deidentify_parser().parse_args(command_args)
