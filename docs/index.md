@@ -7,7 +7,7 @@
 - [Local semantic privacy path](semantic-preview.md)
 - [Architecture](architecture.md)
 - [Threat model](threat-model.md)
-- [Security invariants](security-invariants.md)
+- [Security invariants](security-invariants.md)\n- [Security observability — endpoint provenance, HAR inspection, secrets, quarantine](security-observability.md)
 
 ## Using Long Gate
 
