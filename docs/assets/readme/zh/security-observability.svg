@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="650" viewBox="0 0 1600 650" role="img">
+<title>Security Observability · 看见出站路径，但不制造第二份泄漏</title><rect width="1600" height="650" rx="30" fill="#071421"/>
+<style>text{font-family:Inter,"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif}.t{font-size:48px;font-weight:800;fill:#f5f7fb}.s{font-size:22px;fill:#a8bfd2}.h{font-size:23px;font-weight:760;fill:#f5f7fb}.b{font-size:18px;fill:#d7e2eb}.m{font-size:15px;fill:#8faabd}.metric{font-size:42px;font-weight:850;fill:#f5f7fb}</style>
+<text x="800" y="72" text-anchor="middle" class="t">Security Observability · 看见出站路径，但不制造第二份泄漏</text><text x="800" y="108" text-anchor="middle" class="s">Secret → Endpoint → HAR → Quarantine：默认输出元数据与风险类别，不回显敏感值</text>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#69a8ff"/></marker></defs>
+<rect x="70" y="210" width="310" height="220" rx="24" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="225" y="265" text-anchor="middle" class="h">密钥</text>
+<text x="225" y="325" text-anchor="middle" class="b">Gitleaks</text>
+<text x="225" y="363" text-anchor="middle" class="b">工作树 + Git 历史</text>
+<rect x="450" y="210" width="310" height="220" rx="24" fill="#0c2133" stroke="#69a8ff" stroke-width="2"/><text x="605" y="265" text-anchor="middle" class="h">端点</text>
+<text x="605" y="325" text-anchor="middle" class="b">域名 · DNS · TLS</text>
+<text x="605" y="363" text-anchor="middle" class="b">可能中转 ≠ 已证明</text>
+<rect x="830" y="210" width="310" height="220" rx="24" fill="#0c2133" stroke="#f3c969" stroke-width="2"/><text x="985" y="265" text-anchor="middle" class="h">HAR 抓包</text>
+<text x="985" y="325" text-anchor="middle" class="b">PII 计数 · 字段名</text>
+<text x="985" y="363" text-anchor="middle" class="b">不回显正文</text>
+<rect x="1210" y="210" width="310" height="220" rx="24" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="1365" y="265" text-anchor="middle" class="h">隔离区</text>
+<text x="1365" y="325" text-anchor="middle" class="b">断网 · 非 root</text>
+<text x="1365" y="363" text-anchor="middle" class="b">只读输入</text>
+<path d="M380 320 L440 320" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<path d="M760 320 L820 320" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<path d="M1140 320 L1200 320" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<text x="800" y="535" text-anchor="middle" class="b">这些只是证据；任何观测结果都不会自动授予外发权限。</text></svg>
