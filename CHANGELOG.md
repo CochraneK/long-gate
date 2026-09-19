@@ -7,6 +7,10 @@ The project is currently **pre-1.0**. Security behavior may become stricter betw
 ## [Unreleased]
 
 ### Added
+- ARIS4C-inspired project continuity layer with canonical `project-status.json`, public-safe `handoff/`, cold-start agent handoff, decision/chat/session logs, and a repository continuity standard.
+- Chinese-default + full English README surfaces with package metadata kept English-facing.
+- Twelve rebuildable bilingual SVG README visuals covering the trust boundary, capability zones, security observability, capability maturity, and cross-agent handoff.
+- README builders and a CI continuity audit that validates handoff completeness, capability evidence paths, bilingual links/assets, and common secret patterns.
 - Top-level `longgate setup` product entrypoint that combines local hardware advice with curated Model Vault installation and verification.
 - Top-level `longgate hardware` local-only advisor for OS/architecture/CPU/RAM/disk plus best-effort NVIDIA GPU/VRAM detection.
 - FAST / BALANCED / QUALITY model-fit guidance while keeping automatic selection conservative and RAM-led.

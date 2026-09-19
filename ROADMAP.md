@@ -123,6 +123,32 @@ Still open:
 - shadow-model membership inference where justified
 - stronger DP-backend evaluation
 
+## v0.6.1 — security observability baseline ✅
+
+- explicit local Gitleaks adapter with redacted machine-readable results
+- blocking full-history Gitleaks CI
+- AI endpoint provenance classification with optional DNS/TLS evidence
+- custom/unknown endpoints marked relay-possible rather than falsely attributed
+- local HAR egress inspection with PII/sensitive-header/query counts and no payload echo
+- dedicated no-network, non-root, resource-bounded quarantine Compose contract
+- executable quarantine contract tests
+
+Still open:
+- optional local interactive HTTPS inspection/proxy integration
+- process-to-socket attribution across Windows/macOS/Linux
+- richer provider/ASN provenance evidence
+- privacy-safe redacted request preview UI
+
+## v0.6.2 — project continuity & public surface ✅
+
+- bilingual repository surface: Chinese default + full English README
+- package-registry metadata continues to use the English README
+- canonical `project-status.json` for capability maturity and README visuals
+- rebuildable bilingual repository-native SVG diagrams
+- Git-resident public-safe `handoff/` package for cross-agent/device/account continuity
+- continuity standard, conversation distillation, decision log, session log, and TODO
+- CI exercises README builders and audits continuity/evidence paths
+
 ## v0.7 — production trust research
 
 Planned:

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="650" viewBox="0 0 1600 650" role="img">
+<title>Security observability · see egress without creating a second leak</title><rect width="1600" height="650" rx="30" fill="#071421"/>
+<style>text{font-family:Inter,"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif}.t{font-size:48px;font-weight:800;fill:#f5f7fb}.s{font-size:22px;fill:#a8bfd2}.h{font-size:23px;font-weight:760;fill:#f5f7fb}.b{font-size:18px;fill:#d7e2eb}.m{font-size:15px;fill:#8faabd}.metric{font-size:42px;font-weight:850;fill:#f5f7fb}</style>
+<text x="800" y="72" text-anchor="middle" class="t">Security observability · see egress without creating a second leak</text><text x="800" y="108" text-anchor="middle" class="s">Secret → endpoint → HAR → quarantine: metadata and risk classes, not sensitive values</text>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#69a8ff"/></marker></defs>
+<rect x="70" y="210" width="310" height="220" rx="24" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="225" y="265" text-anchor="middle" class="h">SECRETS</text>
+<text x="225" y="325" text-anchor="middle" class="b">Gitleaks</text>
+<text x="225" y="363" text-anchor="middle" class="b">current tree + history</text>
+<rect x="450" y="210" width="310" height="220" rx="24" fill="#0c2133" stroke="#69a8ff" stroke-width="2"/><text x="605" y="265" text-anchor="middle" class="h">ENDPOINT</text>
+<text x="605" y="325" text-anchor="middle" class="b">hostname · DNS · TLS</text>
+<text x="605" y="363" text-anchor="middle" class="b">relay-possible ≠ proven</text>
+<rect x="830" y="210" width="310" height="220" rx="24" fill="#0c2133" stroke="#f3c969" stroke-width="2"/><text x="985" y="265" text-anchor="middle" class="h">HAR</text>
+<text x="985" y="325" text-anchor="middle" class="b">PII counts · field names</text>
+<text x="985" y="363" text-anchor="middle" class="b">no body echo</text>
+<rect x="1210" y="210" width="310" height="220" rx="24" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="1365" y="265" text-anchor="middle" class="h">QUARANTINE</text>
+<text x="1365" y="325" text-anchor="middle" class="b">no network · non-root</text>
+<text x="1365" y="363" text-anchor="middle" class="b">read-only input</text>
+<path d="M380 320 L440 320" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<path d="M760 320 L820 320" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<path d="M1140 320 L1200 320" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<text x="800" y="535" text-anchor="middle" class="b">Evidence informs a decision. It never grants egress by itself.</text></svg>

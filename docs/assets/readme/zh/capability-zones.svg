@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="720" viewBox="0 0 1600 720" role="img">
+<title>四个能力区，避免一个进程同时拥有所有权力</title><rect width="1600" height="720" rx="30" fill="#071421"/>
+<style>text{font-family:Inter,"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif}.t{font-size:48px;font-weight:800;fill:#f5f7fb}.s{font-size:22px;fill:#a8bfd2}.h{font-size:23px;font-weight:760;fill:#f5f7fb}.b{font-size:18px;fill:#d7e2eb}.m{font-size:15px;fill:#8faabd}.metric{font-size:42px;font-weight:850;fill:#f5f7fb}</style>
+<text x="800" y="72" text-anchor="middle" class="t">四个能力区，避免一个进程同时拥有所有权力</text><text x="800" y="108" text-anchor="middle" class="s">网络、私密数据、模型写入和可疑输入不放进同一个能力集合</text>
+<rect x="80" y="185" width="270" height="300" rx="24" fill="#0c2133" stroke="#69a8ff" stroke-width="3"/><text x="215" y="237" text-anchor="middle" class="h">配置区</text>
+<text x="108" y="300" class="b">network ✓</text>
+<text x="108" y="348" class="b">private data ✕</text>
+<text x="108" y="396" class="b">model vault write ✓</text>
+<rect x="470" y="185" width="270" height="300" rx="24" fill="#0c2133" stroke="#5dd6c0" stroke-width="3"/><text x="605" y="237" text-anchor="middle" class="h">私密处理区</text>
+<text x="498" y="300" class="b">network ✕</text>
+<text x="498" y="348" class="b">private data ✓</text>
+<text x="498" y="396" class="b">model vault read-only</text>
+<rect x="860" y="185" width="270" height="300" rx="24" fill="#0c2133" stroke="#f3c969" stroke-width="3"/><text x="995" y="237" text-anchor="middle" class="h">隔离区</text>
+<text x="888" y="300" class="b">network ✕</text>
+<text x="888" y="348" class="b">untrusted input read-only</text>
+<text x="888" y="396" class="b">bounded scratch</text>
+<rect x="1250" y="185" width="270" height="300" rx="24" fill="#0c2133" stroke="#69a8ff" stroke-width="3"/><text x="1385" y="237" text-anchor="middle" class="h">联网区</text>
+<text x="1278" y="300" class="b">network ✓</text>
+<text x="1278" y="348" class="b">private data ✕</text>
+<text x="1278" y="396" class="b">approved safe workspace</text>
+<text x="800" y="610" text-anchor="middle" class="b">默认禁止：同一进程既能读取原始私密数据，又能自由联网。</text></svg>

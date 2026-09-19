@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="520" viewBox="0 0 1600 520" role="img">
+<title>LONG GATE · Keep sensitive data behind the gate</title><rect width="1600" height="520" rx="30" fill="#071421"/>
+<style>text{font-family:Inter,"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif}.t{font-size:48px;font-weight:800;fill:#f5f7fb}.s{font-size:22px;fill:#a8bfd2}.h{font-size:23px;font-weight:760;fill:#f5f7fb}.b{font-size:18px;fill:#d7e2eb}.m{font-size:15px;fill:#8faabd}.metric{font-size:42px;font-weight:850;fill:#f5f7fb}</style>
+<text x="800" y="72" text-anchor="middle" class="t">LONG GATE · Keep sensitive data behind the gate</text><text x="800" y="108" text-anchor="middle" class="s">Keep sensitive data local and expose only purpose-bound, explicitly approved artifacts to networked AI.</text>
+<rect x="120" y="205" width="300" height="120" rx="22" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="146" y="258" class="metric">3</text><text x="146" y="294" class="b">HARDENED</text>
+<rect x="480" y="205" width="300" height="120" rx="22" fill="#0c2133" stroke="#69a8ff" stroke-width="2"/><text x="506" y="258" class="metric">6</text><text x="506" y="294" class="b">IMPLEMENTED</text>
+<rect x="840" y="205" width="300" height="120" rx="22" fill="#0c2133" stroke="#f3c969" stroke-width="2"/><text x="866" y="258" class="metric">1</text><text x="866" y="294" class="b">RESEARCH</text>
+<rect x="1200" y="205" width="300" height="120" rx="22" fill="#0c2133" stroke="#8798aa" stroke-width="2"/><text x="1226" y="258" class="metric">2</text><text x="1226" y="294" class="b">PLANNED</text>
+<text x="800" y="455" text-anchor="middle" class="m">State comes from project-status.json · README visuals are rebuildable</text></svg>

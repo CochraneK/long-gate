@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="720" viewBox="0 0 1600 720" role="img">
+<title>数据不是被提醒保护，而是被能力边界保护</title><rect width="1600" height="720" rx="30" fill="#071421"/>
+<style>text{font-family:Inter,"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif}.t{font-size:48px;font-weight:800;fill:#f5f7fb}.s{font-size:22px;fill:#a8bfd2}.h{font-size:23px;font-weight:760;fill:#f5f7fb}.b{font-size:18px;fill:#d7e2eb}.m{font-size:15px;fill:#8faabd}.metric{font-size:42px;font-weight:850;fill:#f5f7fb}</style>
+<text x="800" y="72" text-anchor="middle" class="t">数据不是被提醒保护，而是被能力边界保护</text><text x="800" y="108" text-anchor="middle" class="s">原始数据留在本地；只有被支持、审计并明确批准的工件才能跨门</text>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#69a8ff"/></marker></defs>
+<rect x="70" y="190" width="330" height="190" rx="22" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="94" y="232" class="h">私密区</text><text x="94" y="266" class="b">原始数据 · 禁止联网</text>
+<rect x="500" y="170" width="600" height="230" rx="22" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="524" y="212" class="h">LONG GATE</text><text x="524" y="246" class="b">策略 · 审计 · manifest · purpose · SHA-256</text>
+<rect x="1200" y="190" width="330" height="190" rx="22" fill="#0c2133" stroke="#69a8ff" stroke-width="2"/><text x="1224" y="232" class="h">联网区</text><text x="1224" y="266" class="b">只读已批准工件</text>
+<path d="M400 285 L500 285" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<path d="M1100 285 L1200 285" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<rect x="570" y="470" width="460" height="110" rx="22" fill="#102b42" stroke="#f07a7a" stroke-width="2"/><text x="800" y="515" text-anchor="middle" class="h">原始 / 假名化行级数据</text><text x="800" y="550" text-anchor="middle" class="b">永不具备网络外发资格</text></svg>
