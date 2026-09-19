@@ -2,9 +2,11 @@
 
 ## P0 — next gate
 
-- [ ] Get PR #35 and its follow-up continuity/README commits fully green.
-- [ ] Merge only after required CI/security workflows pass.
-- [ ] After merge, refresh this handoff so it no longer describes the feature branch as pending.
+- [x] Get PR #35 and its continuity/README follow-up fully green.
+- [x] Merge only after required CI/security workflows pass.
+- [x] Refresh handoff after merge so the canonical state points to `main`.
+- [ ] Keep the post-merge `main` checkpoint green.
+- [ ] Run repo-auditor against the merged baseline and fix only material findings.
 
 ## P1 — security observability follow-up
 
@@ -17,7 +19,7 @@
 
 - [ ] Keep `project-status.json` aligned with executable evidence.
 - [ ] Keep bilingual README visuals rebuildable from repository state.
-- [ ] Run repo-auditor after the current PR reaches a stable green state.
+- [ ] Exercise the handoff package from a cold-start agent perspective after major milestones.
 
 ## P2 — research / hardening
 
