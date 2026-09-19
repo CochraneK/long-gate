@@ -34,7 +34,7 @@
       "label_en": "Purpose + hash-bound egress",
       "label_zh": "Purpose + Hash 绑定外发",
       "state": "hardened",
-      "evidence": ["src/longgate/approval.py", "src/longgate/safe_workspace.py"]
+      "evidence": ["src/longgate/approval.py", "src/longgate/agent_boundary.py"]
     },
     {
       "id": "capability-zones",
