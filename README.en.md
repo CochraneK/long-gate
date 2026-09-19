@@ -224,6 +224,12 @@ python tools/build_readme_assets.py
 
 Their canonical input is [`project-status.json`](project-status.json), so capability state and public presentation can evolve from the same source of truth.
 
+## Provenance and privacy profiles
+
+Long Gate supports **optional Ed25519 provenance**. SHA-256 provenance can establish consistency within a run; **authenticated provenance** additionally depends on an independently **trusted public key**. Long Gate does not take custody of long-lived signing keys.
+
+The `research`, `clinical`, and `enterprise` privacy profiles are engineering presets, **not certifications**. A `clinical` profile does not imply HIPAA, GDPR, NHS, ethics-board, medical-device, or other regulatory approval.
+
 ## Security boundary and non-claims
 
 Long Gate does **not** currently claim:
