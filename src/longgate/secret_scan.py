@@ -72,7 +72,7 @@ def scan_secrets_with_gitleaks(
             str(report),
             "--exit-code",
             "0",
-            "--no-banner",
+            "--no-banner",\n            "--redact=100",
         ]
         completed = subprocess.run(
             command,
