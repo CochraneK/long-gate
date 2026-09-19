@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="650" viewBox="0 0 1600 650" role="img">
+<title>换电脑、换账号、换 Agent，也能从 Git 继续</title><rect width="1600" height="650" rx="30" fill="#071421"/>
+<style>text{font-family:Inter,"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif}.t{font-size:48px;font-weight:800;fill:#f5f7fb}.s{font-size:22px;fill:#a8bfd2}.h{font-size:23px;font-weight:760;fill:#f5f7fb}.b{font-size:18px;fill:#d7e2eb}.m{font-size:15px;fill:#8faabd}.metric{font-size:42px;font-weight:850;fill:#f5f7fb}</style>
+<text x="800" y="72" text-anchor="middle" class="t">换电脑、换账号、换 Agent，也能从 Git 继续</text><text x="800" y="108" text-anchor="middle" class="s">handoff/ 是冷启动入口；代码、测试和安全不变量仍是技术真相</text>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#69a8ff"/></marker></defs>
+<rect x="90" y="200" width="350" height="220" rx="22" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="114" y="242" class="h">handoff/README.md</text><text x="114" y="276" class="b">阅读顺序 + canonical 边界</text>
+<rect x="625" y="165" width="350" height="290" rx="22" fill="#0c2133" stroke="#69a8ff" stroke-width="2"/><text x="649" y="207" class="h">AGENT_HANDOFF.md</text><text x="649" y="241" class="b">使命 · 已完成 · 下一步 · 禁区</text>
+<rect x="1160" y="200" width="350" height="220" rx="22" fill="#0c2133" stroke="#5dd6c0" stroke-width="2"/><text x="1184" y="242" class="h">Canonical repo</text><text x="1184" y="276" class="b">代码 · 测试 · 状态 · 安全不变量</text>
+<path d="M440 310 L625 310" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<path d="M975 310 L1160 310" stroke="#69a8ff" stroke-width="4" marker-end="url(#a)"/>
+<text x="800" y="535" text-anchor="middle" class="b">STATUS · TODO · DECISIONS · CONTEXT · CHATLOG · SESSION_LOG</text></svg>
