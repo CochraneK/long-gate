@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img">
+<title>能力成熟度</title><rect width="1600" height="900" rx="30" fill="#071421"/>
+<style>text{font-family:Inter,"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif}.t{font-size:48px;font-weight:800;fill:#f5f7fb}.s{font-size:22px;fill:#a8bfd2}.h{font-size:23px;font-weight:760;fill:#f5f7fb}.b{font-size:18px;fill:#d7e2eb}.m{font-size:15px;fill:#8faabd}.metric{font-size:42px;font-weight:850;fill:#f5f7fb}</style>
+<text x="800" y="72" text-anchor="middle" class="t">能力成熟度</text><text x="800" y="108" text-anchor="middle" class="s">状态来自 canonical project status；Implemented 不等于 certified</text>
+<rect x="70" y="170" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="100" cy="209" r="9" fill="#5dd6c0"/><text x="122" y="204" class="h">结构化隐私流水线</text><text x="122" y="229" class="m">HARDENED</text>
+<rect x="70" y="275" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="100" cy="314" r="9" fill="#5dd6c0"/><text x="122" y="309" class="h">Purpose + Hash 绑定外发</text><text x="122" y="334" class="m">HARDENED</text>
+<rect x="70" y="380" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="100" cy="419" r="9" fill="#5dd6c0"/><text x="122" y="414" class="h">能力分区隔离</text><text x="122" y="439" class="m">HARDENED</text>
+<rect x="70" y="485" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="100" cy="524" r="9" fill="#69a8ff"/><text x="122" y="519" class="h">已验证本地 Model Vault</text><text x="122" y="544" class="m">IMPLEMENTED</text>
+<rect x="70" y="590" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="100" cy="629" r="9" fill="#69a8ff"/><text x="122" y="624" class="h">格式保真脱敏</text><text x="122" y="649" class="m">IMPLEMENTED</text>
+<rect x="70" y="695" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="100" cy="734" r="9" fill="#f3c969"/><text x="122" y="729" class="h">本地语义泛化</text><text x="122" y="754" class="m">RESEARCH</text>
+<rect x="850" y="170" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="880" cy="209" r="9" fill="#69a8ff"/><text x="902" y="204" class="h">密钥扫描</text><text x="902" y="229" class="m">IMPLEMENTED</text>
+<rect x="850" y="275" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="880" cy="314" r="9" fill="#69a8ff"/><text x="902" y="309" class="h">AI Endpoint 来源识别</text><text x="902" y="334" class="m">IMPLEMENTED</text>
+<rect x="850" y="380" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="880" cy="419" r="9" fill="#69a8ff"/><text x="902" y="414" class="h">隐私感知 HAR 检查</text><text x="902" y="439" class="m">IMPLEMENTED</text>
+<rect x="850" y="485" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="880" cy="524" r="9" fill="#69a8ff"/><text x="902" y="519" class="h">断网隔离区</text><text x="902" y="544" class="m">IMPLEMENTED</text>
+<rect x="850" y="590" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="880" cy="629" r="9" fill="#8798aa"/><text x="902" y="624" class="h">进程到网络连接归因</text><text x="902" y="649" class="m">PLANNED</text>
+<rect x="850" y="695" width="700" height="78" rx="18" fill="#0c2133" stroke="#21465f"/><circle cx="880" cy="734" r="9" fill="#8798aa"/><text x="902" y="729" class="h">可选 HTTPS 检查代理集成</text><text x="902" y="754" class="m">PLANNED</text>
+</svg>
