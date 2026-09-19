@@ -7,7 +7,8 @@
 - [Local semantic privacy path](semantic-preview.md)
 - [Architecture](architecture.md)
 - [Threat model](threat-model.md)
-- [Security invariants](security-invariants.md)\n- [Security observability — endpoint provenance, HAR inspection, secrets, quarantine](security-observability.md)
+- [Security invariants](security-invariants.md)
+- [Security observability — endpoint provenance, HAR inspection, secrets, quarantine](security-observability.md)
 
 ## Using Long Gate
 
@@ -32,6 +33,10 @@
 - [How Long Gate differs](comparison.md)
 
 ## Project
+
+- [Project status](../project-status.json)
+- [Continuity & Agent Handoff Standard](../LONG_GATE_CONTINUITY_STANDARD.md)
+- [Agent handoff entry point](../handoff/README.md)
 
 - [Roadmap](../ROADMAP.md)
 - [Security policy](../SECURITY.md)
