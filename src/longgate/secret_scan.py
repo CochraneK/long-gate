@@ -72,9 +72,10 @@ def scan_secrets_with_gitleaks(
             str(report),
             "--exit-code",
             "0",
-            "--no-banner",\n            "--redact=100",
+            "--no-banner",
+            "--redact=100",
         ]
-        completed = subprocess.run(
+        completed = subprocess.run(  # nosec B603 -- executable resolved via shutil.which
             command,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
