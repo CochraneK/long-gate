@@ -142,6 +142,10 @@ The central rule is:
 | Local image/scanned-PDF OCR | `image-ocr-local` / `pdf-ocr-local` |
 | Let a network AI read a supported safe aggregate | `run` → review → `approve-egress` → `longgate-mcp` |
 | Let another coding AI configure Setup Mode | `longgate setup-prompt` |
+| Inspect whether an AI endpoint is official, managed, routed, or custom | `longgate endpoint inspect URL` |
+| Inspect a captured HAR without echoing prompts/secrets | `longgate egress inspect-har capture.har` |
+| Scan current files or Git history for secrets | `longgate secrets scan . [--history]` |
+| Examine suspicious input in a no-network quarantine zone | `docker compose -f docker-compose.quarantine.yml ...` |
 
 ---
 
@@ -545,9 +549,9 @@ path / symlink escape            → BLOCK
 hardware detection failure       → no remote fallback
 ```
 
-CI includes unit/invariant tests, security-boundary tests, adversarial benchmarks, Bandit, Ruff security rules, `pip-audit`, Trivy, CycloneDX SBOM generation, and Dependabot.
+CI includes unit/invariant tests, security-boundary tests, adversarial benchmarks, Bandit, Ruff security rules, `pip-audit`, Trivy, a blocking full-history Gitleaks secret scan, CycloneDX SBOM generation, and Dependabot.
 
-Read [Security invariants](docs/security-invariants.md) and [Threat model](docs/threat-model.md).
+Read [Security invariants](docs/security-invariants.md), [Security observability](docs/security-observability.md), and [Threat model](docs/threat-model.md).
 
 ---
 
