@@ -26,13 +26,29 @@ def _as_string_list(value: object) -> list[str]:
     raise ValueError("expected a string or list of strings")
 
 
+def _safe_environment(value: object) -> bool:
+    """Allow only explicitly blanked variables plus a non-secret HOME override."""
+    if value in (None, [], {}):
+        return True
+    if not isinstance(value, dict):
+        return False
+    for key, raw in value.items():
+        if not isinstance(key, str):
+            return False
+        if key == "HOME" and raw == "/tmp":
+            continue
+        if raw not in ("", None):
+            return False
+    return True
+
+
 def validate_quarantine_compose(text: str) -> QuarantineContractResult:
     """Validate the dedicated no-network quarantine service.
 
-    This contract is intentionally stricter than the general deployment contract:
-    the quarantine service receives only a read-only input mount plus bounded tmpfs.
-    It does not inherit host secrets, receive Model Vault/safe-workspace mounts,
-    or obtain network capability.
+    This contract is stricter than the general deployment contract: quarantined
+    input is read-only, writable state is disposable tmpfs, networking and Linux
+    capabilities are removed, the process runs non-root, resource use is bounded,
+    and no non-empty credential/environment values are forwarded.
     """
     try:
         document = yaml.safe_load(text)
@@ -44,7 +60,7 @@ def validate_quarantine_compose(text: str) -> QuarantineContractResult:
     services = document.get("services")
     if not isinstance(services, dict):
         return QuarantineContractResult(False, ["missing_services"], {})
-    service = services.get("quarantine-inspector")
+    service = services.get("quarantine")
     if not isinstance(service, dict):
         return QuarantineContractResult(False, ["missing_quarantine_service"], {})
 
@@ -54,14 +70,24 @@ def validate_quarantine_compose(text: str) -> QuarantineContractResult:
     if service.get("read_only") is not True:
         violations.append("root_filesystem_must_be_read_only")
 
-    cap_drop = {item.upper() for item in _as_string_list(service.get("cap_drop"))}
+    user = service.get("user")
+    if not isinstance(user, str) or user.split(":", 1)[0] in {"", "0", "root"}:
+        violations.append("quarantine_must_run_non_root")
+    if service.get("working_dir") != "/scratch":
+        violations.append("working_directory_must_be_scratch")
+
+    try:
+        cap_drop = {item.upper() for item in _as_string_list(service.get("cap_drop"))}
+        security_opt = {
+            item.lower().replace("=", ":")
+            for item in _as_string_list(service.get("security_opt"))
+        }
+        tmpfs = _as_string_list(service.get("tmpfs"))
+    except ValueError:
+        return QuarantineContractResult(False, ["invalid_security_list_syntax"], {})
+
     if "ALL" not in cap_drop:
         violations.append("all_linux_capabilities_must_be_dropped")
-
-    security_opt = {
-        item.lower().replace("=", ":")
-        for item in _as_string_list(service.get("security_opt"))
-    }
     if not any(
         item in {"no-new-privileges:true", "no-new-privileges"}
         for item in security_opt
@@ -83,18 +109,36 @@ def validate_quarantine_compose(text: str) -> QuarantineContractResult:
             input_read_only = True
         if any(target in item for target in (":/private", ":/models", ":/safe")):
             forbidden_mount = True
+        if any(
+            marker in item.lower()
+            for marker in (
+                ".ssh",
+                ".aws",
+                ".config/gcloud",
+                ".azure",
+                ".kube",
+                "docker.sock",
+            )
+        ):
+            forbidden_mount = True
     if not input_read_only:
         violations.append("read_only_quarantine_input_required")
     if forbidden_mount:
         violations.append("forbidden_sensitive_mount")
 
-    environment = service.get("environment")
-    if environment not in (None, [], {}):
-        violations.append("quarantine_environment_must_be_empty")
+    environment_safe = _safe_environment(service.get("environment"))
+    if not environment_safe:
+        violations.append("non_empty_environment_value_forbidden")
 
-    tmpfs = _as_string_list(service.get("tmpfs"))
-    if not any(item.startswith("/scratch") for item in tmpfs):
+    scratch_entries = [item for item in tmpfs if item.startswith("/scratch")]
+    if not scratch_entries:
         violations.append("bounded_scratch_tmpfs_required")
+    elif not any("size=" in item for item in scratch_entries):
+        violations.append("scratch_tmpfs_size_limit_required")
+
+    tmp_entries = [item for item in tmpfs if item.startswith("/tmp")]
+    if not tmp_entries:
+        violations.append("bounded_tmp_tmpfs_required")
 
     pids_limit = service.get("pids_limit")
     if not isinstance(pids_limit, int) or pids_limit <= 0 or pids_limit > 64:
@@ -111,9 +155,10 @@ def validate_quarantine_compose(text: str) -> QuarantineContractResult:
     properties: dict[str, Any] = {
         "network_disabled": service.get("network_mode") == "none",
         "root_read_only": service.get("read_only") is True,
+        "non_root": isinstance(user, str) and user.split(":", 1)[0] not in {"", "0", "root"},
         "input_read_only": input_read_only,
-        "environment_empty": environment in (None, [], {}),
-        "scratch_tmpfs": bool(tmpfs),
+        "environment_safe": environment_safe,
+        "scratch_tmpfs": bool(scratch_entries),
         "pids_limit": pids_limit,
         "mem_limit": mem_limit,
         "cpus": cpus,
