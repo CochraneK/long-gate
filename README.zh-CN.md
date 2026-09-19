@@ -35,7 +35,7 @@ Long Gate 是一个面向 AI Agent / AI workflow 的 **local-first 隐私网关�
 |---|---|
 | 原始 row-level 数据 | **禁止** |
 | Pseudonymized row-level 数据 | **禁止** |
-| Row-level synthetic | **pre-1.0 hard lock** |
+| Row-level synthetic | **pre-1.0 hard-lock / fail-closed** |
 | Semantic de-identification 输出 | **LOCAL_ONLY** |
 | 支持的 disclosure-limited structured aggregate | 通过 manifest + SHA-256 + purpose + 本地批准后才可外发 |
 
