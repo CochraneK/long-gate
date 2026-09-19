@@ -139,6 +139,16 @@ Still open:
 - richer provider/ASN provenance evidence
 - privacy-safe redacted request preview UI
 
+## v0.6.2 — project continuity & public surface ✅
+
+- bilingual repository surface: Chinese default + full English README
+- package-registry metadata continues to use the English README
+- canonical `project-status.json` for capability maturity and README visuals
+- rebuildable bilingual repository-native SVG diagrams
+- Git-resident public-safe `handoff/` package for cross-agent/device/account continuity
+- continuity standard, conversation distillation, decision log, session log, and TODO
+- CI exercises README builders and audits continuity/evidence paths
+
 ## v0.7 — production trust research
 
 Planned:
