@@ -1,0 +1,55 @@
+services:
+  quarantine:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.local
+    network_mode: none
+    read_only: true
+    user: "65534:65534"
+    working_dir: /scratch
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    pids_limit: 64
+    mem_limit: 1g
+    cpus: "1.0"
+    volumes:
+      - ${LONGGATE_QUARANTINE_INPUT:?set LONGGATE_QUARANTINE_INPUT}:/quarantine/input:ro
+    environment:
+      HOME: /tmp
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      GOOGLE_API_KEY: ""
+      GEMINI_API_KEY: ""
+      AZURE_OPENAI_API_KEY: ""
+      COHERE_API_KEY: ""
+      MISTRAL_API_KEY: ""
+      GROQ_API_KEY: ""
+      DEEPSEEK_API_KEY: ""
+      HF_TOKEN: ""
+      HUGGING_FACE_HUB_TOKEN: ""
+      AWS_ACCESS_KEY_ID: ""
+      AWS_SECRET_ACCESS_KEY: ""
+      AWS_SESSION_TOKEN: ""
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+      - /scratch:size=256m,nosuid,nodev
+    command:
+      - python
+      - -c
+      - "print('Long Gate quarantine ready: override this command to run the local validation task.')"
+
+# Quarantine contract:
+# - no network;
+# - untrusted input is read-only;
+# - disposable writable scratch exists only in tmpfs;
+# - common cloud/AI credential variables are explicitly blanked;
+# - no host credential/config directory is mounted;
+# - all Linux capabilities are dropped and privilege escalation is disabled;
+# - process, memory, CPU, temp and scratch resources are bounded.
+#
+# Example:
+# LONGGATE_QUARANTINE_INPUT=/absolute/path/to/untrusted \
+# docker compose -f docker-compose.quarantine.yml run --rm quarantine \
+#   python /quarantine/input/check.py
