@@ -174,7 +174,9 @@ def validate_compose_capability_contract(text: str) -> DeploymentContractResult:
         network_disabled = config.get("network_mode") == "none"
         private_data = any(
             _targets_path(target, "/private")
+            or _targets_path(target, "/quarantine/input")
             or "LONGGATE_PRIVATE_DIR" in source
+            or "LONGGATE_QUARANTINE_INPUT" in source
             for source, target, _read_only in mounts
         )
         model_mounts = [
