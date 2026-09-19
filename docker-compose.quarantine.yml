@@ -34,7 +34,7 @@ services:
       AWS_SESSION_TOKEN: ""
     tmpfs:
       - /tmp:size=64m,noexec,nosuid,nodev
-      - /scratch:size=256m,nosuid,nodev
+      - /scratch:size=256m,noexec,nosuid,nodev
     command:
       - python
       - -c
