@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "project": "Long Gate",
+  "version": "0.2.0",
+  "phase": "pre-1.0",
+  "activity": "active",
+  "mission_en": "Keep sensitive data local and expose only purpose-bound, explicitly approved artifacts to networked AI.",
+  "mission_zh": "让敏感数据留在本地，只把经过目的约束与明确批准的安全工件交给联网 AI。",
+  "canonical_sources": {
+    "code": "src/longgate/",
+    "security_invariants": "docs/security-invariants.md",
+    "threat_model": "docs/threat-model.md",
+    "roadmap": "ROADMAP.md",
+    "continuity": "handoff/",
+    "release_history": "CHANGELOG.md"
+  },
+  "release_posture": {
+    "raw_row_level": "blocked",
+    "pseudonymized_row_level": "blocked",
+    "row_level_synthetic": "hard_locked_pre_1_0",
+    "semantic_deidentification": "local_only",
+    "supported_structured_aggregate": "explicit_approval_required"
+  },
+  "capabilities": [
+    {
+      "id": "structured-privacy",
+      "label_en": "Structured privacy pipeline",
+      "label_zh": "结构化隐私流水线",
+      "state": "hardened",
+      "evidence": ["src/longgate/pipeline.py", "docs/security-invariants.md"]
+    },
+    {
+      "id": "egress-approval",
+      "label_en": "Purpose + hash-bound egress",
+      "label_zh": "Purpose + Hash 绑定外发",
+      "state": "hardened",
+      "evidence": ["src/longgate/approval.py", "src/longgate/safe_workspace.py"]
+    },
+    {
+      "id": "capability-zones",
+      "label_en": "Separated capability zones",
+      "label_zh": "能力分区隔离",
+      "state": "hardened",
+      "evidence": ["docker-compose.hardened.yml", "src/longgate/deployment_contract.py"]
+    },
+    {
+      "id": "model-vault",
+      "label_en": "Verified local Model Vault",
+      "label_zh": "已验证本地 Model Vault",
+      "state": "implemented",
+      "evidence": ["src/longgate/model_vault.py"]
+    },
+    {
+      "id": "format-deidentify",
+      "label_en": "Format-preserving de-identification",
+      "label_zh": "格式保真脱敏",
+      "state": "implemented",
+      "evidence": ["src/longgate/format_deidentify.py", "src/longgate/document_deidentify.py"]
+    },
+    {
+      "id": "semantic-summarize",
+      "label_en": "Local semantic abstraction",
+      "label_zh": "本地语义泛化",
+      "state": "research",
+      "evidence": ["src/longgate/deidentify.py", "docs/semantic-preview.md"]
+    },
+    {
+      "id": "secret-scan",
+      "label_en": "Secret scanning",
+      "label_zh": "密钥扫描",
+      "state": "implemented",
+      "evidence": ["src/longgate/secret_scan.py", ".github/workflows/security-audit.yml"]
+    },
+    {
+      "id": "endpoint-provenance",
+      "label_en": "AI endpoint provenance",
+      "label_zh": "AI Endpoint 来源识别",
+      "state": "implemented",
+      "evidence": ["src/longgate/endpoint_provenance.py"]
+    },
+    {
+      "id": "har-inspection",
+      "label_en": "Privacy-aware HAR inspection",
+      "label_zh": "隐私感知 HAR 检查",
+      "state": "implemented",
+      "evidence": ["src/longgate/egress_inspect.py"]
+    },
+    {
+      "id": "quarantine",
+      "label_en": "No-network quarantine zone",
+      "label_zh": "断网隔离区",
+      "state": "implemented",
+      "evidence": ["docker-compose.quarantine.yml", "src/longgate/quarantine_contract.py"]
+    },
+    {
+      "id": "process-network-attribution",
+      "label_en": "Process-to-network attribution",
+      "label_zh": "进程到网络连接归因",
+      "state": "planned",
+      "evidence": ["ROADMAP.md"]
+    },
+    {
+      "id": "https-inspection-proxy",
+      "label_en": "Optional HTTPS inspection integration",
+      "label_zh": "可选 HTTPS 检查代理集成",
+      "state": "planned",
+      "evidence": ["ROADMAP.md"]
+    }
+  ]
+}
